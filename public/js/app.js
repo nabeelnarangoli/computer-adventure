@@ -38,6 +38,8 @@ const planLessons=()=>planUnits().filter(u=>u.status!=='known').flatMap(u=>u.les
 const allPlanLessons=()=>planUnits().flatMap(u=>u.lessons);
 const isDone=id=>!!(PROG.done&&PROG.done[id]);
 const doneCount=()=>planLessons().filter(isDone).length;
+/* lessons open one at a time: the first one, or after the one before is finished. Units the quick check marked as known stay open for review. */
+const lessonOpen=id=>{const L=planLessons();const i=L.indexOf(id);return i<=0||isDone(id)||isDone(L[i-1])};
 const nextLesson=()=>planLessons().find(id=>!isDone(id))||planLessons().slice(-1)[0];
 const unitOf=id=>UNITS.find(u=>u.lessons.includes(id));
 const unitDone=u=>u.lessons.every(isDone);
@@ -171,7 +173,7 @@ function home(){
  <div class="hour"><span><i>10 min</i> typing warm-up</span><span><i>30 min</i> learn &amp; try</span><span><i>15 min</i> challenge</span><span><i>5 min</i> show &amp; tell</span></div>`;
  let n=0;
  planUnits().forEach(u=>{const got=u.status!=='known'&&unitDone(u);const known=u.status==='known';
-  const tiles=u.lessons.map(id=>{const l=COURSE[id];if(!known)n++;const nxt=id===nx&&!isDone(id);return `<a class="tile ${isDone(id)?'done':''} ${nxt?'next':''}" href="#lesson-${id}">${isDone(id)?`<span class="ok">${SVG.check}</span>`:''}<span class="dn">${known?'·':n}</span><span class="dt">${esc(P(l.t))}</span>${nxt?'<span class="nx">Up next</span>':''}</a>`}).join('');
+  const tiles=u.lessons.map(id=>{const l=COURSE[id];if(!known)n++;const nxt=id===nx&&!isDone(id);const op=lessonOpen(id);const tg=op?'a':'div';return `<${tg} class="tile ${isDone(id)?'done':''} ${nxt?'next':''} ${op?'':'locked'}" ${op?`href="#lesson-${id}"`:'aria-disabled="true" title="Finish the lesson before it to open this one"'}>${isDone(id)?`<span class="ok">${SVG.check}</span>`:op?'':`<span class="ok lk">${LOCK}</span>`}<span class="dn">${known?'·':n}</span><span class="dt">${esc(P(l.t))}</span>${nxt?'<span class="nx">Up next</span>':op?'':'<span class="nx lk2">Locked</span>'}</${tg}>`}).join('');
   h+=`<section class="week ${u.c} ${known?'knownu':''}"><div class="wkhead"><span class="pill">${u.track==='basic'?'Basic':'Advanced'}</span><h2>${esc(P(u.t))}</h2>${u.status!=='learn'?`<span class="chip2 ${u.status}">${STATUS_LABEL[u.status]}</span>`:''}<span class="badge ${got?'got':''}">${medal(got)}${got?'Earned: ':'Badge: '}${esc(u.badge)}</span></div>${known?`<details class="knownd"><summary>You already know this unit. Open to review it (optional).</summary><div class="days">${tiles}</div></details>`:`<div class="days">${tiles}</div>`}</section>`});
  h+=aiPromo()+`</main>`;
  app.innerHTML=h;new Player($('.herodemo'),heroDemo());
@@ -185,6 +187,8 @@ function lesson(id){
  const l=COURSE[id];if(!l)return home();const u=unitOf(id);const checks=(PROG.checks||{})[id]||[];
  const order=allPlanLessons();const idx=order.indexOf(id);const prev=order[idx-1],next=order[idx+1];
  const pos=planLessons().indexOf(id);
+ if(!lessonOpen(id)){const L=planLessons();const pv=L[L.indexOf(id)-1];
+  app.innerHTML=topbar()+`<main class="wrap ${u.c}"><div class="lhead"><div class="crumb"><a href="#home">${SVG.back} Course map</a><span class="pill">${esc(P(u.t))}</span></div><div class="mrow"><div><h1>${LOCK} ${esc(P(l.t))}</h1><p class="goal">This lesson opens when you finish <a href="#lesson-${pv}">${esc(P(COURSE[pv].t))}</a>.</p><p><a class="btn" href="#lesson-${nextLesson()}">Go to my next lesson ${SVG.next}</a></p></div>${mascot('think',{say:'Finish the lesson before this one first.',cls:'md'})}</div></div></main>`;return}
  PROG.lastLesson=id;persist();
  let h=topbar()+`<main class="wrap ${u.c}"><div class="lhead"><div class="crumb"><a href="#home">${SVG.back} Course map</a><span class="pill">${esc(P(u.t))}</span>${pos>=0?`<span>Lesson ${pos+1} of ${planLessons().length}</span>`:'<span>Optional review</span>'}</div><h1>${esc(P(l.t))}</h1><p class="goal">${P(l.goal)}</p><div class="plan"><span class="chip">10 min warm-up</span><span class="chip">30 min learn &amp; try</span><span class="chip">15 min challenge</span><span class="chip">5 min show &amp; tell</span></div></div>`;
  h+=`<section class="sec">${sech(SVG.warm,'Warm-up','10 min',l.warm==='click'?'Wake up your fingers with the bubble game.':'Type for 10 minutes. Use this game, or your lessons on typingclub.com or typing.com.')}<div class="game warmup"></div></section>`;
@@ -194,7 +198,7 @@ function lesson(id){
  h+=`<section class="sec">${sech(SVG.flag,'Challenge','15 min')}<div class="chal"><p>${P(l.challenge)}</p>${readBtn(P(l.challenge))}</div></section>`;
  h+=`<section class="sec">${sech(SVG.chat,'Show &amp; Tell','5 min')}<div class="card" style="font-size:18px">${P('Teach Mum or Dad')} what you learned: <b class="tu">${P(l.tell)}</b></div></section>`;
  h+=`<div class="finish"></div><div class="stuck">${mascot('desk',{cls:'xs'})}<p><b>Stuck?</b> ${P('Press <b>Watch how</b> again, or press <b>Read to me</b>. Did something go wrong on your computer? Press <kbd>⌘</kbd> + <kbd>Z</kbd> to undo. Still stuck? Write down what happened and ask a grown-up. That\'s what real experts do!')}</p></div>
- <nav class="pn">${prev?`<a class="btn ghost" href="#lesson-${prev}">${SVG.back} Previous</a>`:'<span></span>'}${next?`<a class="btn ghost" href="#lesson-${next}">Next ${SVG.next}</a>`:''}</nav></main>`;
+ <nav class="pn">${prev?`<a class="btn ghost" href="#lesson-${prev}">${SVG.back} Previous</a>`:'<span></span>'}${next&&lessonOpen(next)?`<a class="btn ghost" href="#lesson-${next}">Next ${SVG.next}</a>`:''}</nav></main>`;
  app.innerHTML=h;
  const wu=$('.warmup');if(l.warm==='click')wClick(wu,{goal:12,title:'Mouse warm-up: bubble pop'});else wTyping(wu,{level:l.warmLevel||1,title:'Typing warm-up'});
  $$('.demo').forEach(d=>new Player(d,l.learn[+d.dataset.i].demo));
