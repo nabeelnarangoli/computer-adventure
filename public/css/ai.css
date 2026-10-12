@@ -305,3 +305,6 @@
  .stuck .mimg{width:70px!important}
 }
 @media print{.masc{display:none!important}}
+.pick2.progs.three{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:22px}
+.pick2.progs.three .pickcard{text-align:left}
+@media (max-width:980px){.pick2.progs.three{grid-template-columns:1fr}}

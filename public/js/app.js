@@ -128,13 +128,11 @@ function setupPlatform(){
  $$('[data-p]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.p;applyContext();persist();setupTrack()});
 }
 function setupTrack(){
- app.innerHTML=topbar()+setupShell(1,`<div class="mrow"><div><h1>What would you like to learn?</h1><p class="lead">Pick a course. A short check will then skip anything you already know.</p></div>${mascot('sit',{say:'Pick a course. You can switch any time.',cls:'sm'})}</div>
- <div class="pick3"><button type="button" class="pickcard tr" data-t="auto"><span class="tag2">Recommended</span><b>Build my course for me</b><span>Answer a few questions and we'll make a personal course, from where you are now all the way to advanced.</span></button>
- <button type="button" class="pickcard tr" data-t="basic"><b>Basic course</b><span>30 lessons for beginners: using the computer, files, internet safety, email, Word, PowerPoint and Excel.</span></button>
- <button type="button" class="pickcard tr" data-t="advanced"><b>Advanced course</b><span>25 lessons for people who know the basics: pro shortcuts, Excel functions, teamwork in the cloud, security, design, coding and AI.</span></button></div>
- <h2 class="pickh">Or earn an Aqlyon professional certificate</h2><div class="pick2 progs">${PROG_KEYS.map(k=>{const C=PROGRAMMES[k];return `<button type="button" class="pickcard tr aqpick" data-t="${k}"><span class="tag2">${esc(C.level)}</span><b>${esc(C.full)}</b><span>${P(C.card)}</span></button>`}).join('')}</div>
+ const comp=`<button type="button" class="pickcard tr aqpick" data-t="auto"><span class="tag2">Beginner to Advanced · Mac &amp; Windows</span><b>Computer Skills Course</b><span>From your first click to pro skills: files, internet safety, email, Word, PowerPoint, Excel, cloud, security, design and coding. A few questions build a course just for you.</span></button>`;
+ app.innerHTML=topbar()+setupShell(1,`<div class="mrow"><div><h1>What would you like to learn?</h1><p class="lead">Pick a course. A few quick questions will then build your personal path and skip anything you already know.</p></div>${mascot('sit',{say:'Pick a course. You can switch any time.',cls:'sm'})}</div>
+ <div class="pick2 progs three">${comp}${PROG_KEYS.map(k=>{const C=PROGRAMMES[k];return `<button type="button" class="pickcard tr aqpick" data-t="${k}"><span class="tag2">${esc(C.level)}</span><b>${esc(C.full)}</b><span>${P(C.card)}</span></button>`}).join('')}</div>
  <button type="button" class="linkbtn back">${SVG.back} Change computer</button>`);
- $$('[data-t]').forEach(b=>b.onclick=()=>{const t=b.dataset.t;PROG.track=t;if(PROGRAMMES[t]){persist();location.hash='#'+t;return route()}PROG.ctrack=t;persist();setupAbout()});
+ $$('[data-t]').forEach(b=>b.onclick=()=>{const t=b.dataset.t;PROG.track=t;if(PROGRAMMES[t]){persist();location.hash=PROG[t]&&PROG[t].place?'#'+t:'#'+t+'-start';return route()}PROG.ctrack=t;persist();setupAbout()});
  $('.back').onclick=setupPlatform;
 }
 function setupAbout(){
