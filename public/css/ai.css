@@ -190,3 +190,48 @@
 .aqcert .sample{color:rgba(255,255,255,.045)}
 .brand .bshort{display:none}
 @media (max-width:560px){.brand .bfull{display:none}.brand .bshort{display:inline}.brand{flex-shrink:0}.top .in{gap:8px}.savestate:not([data-s=error]){display:none}.savestate{min-width:0;overflow:hidden;text-overflow:ellipsis}.aqnav{margin-left:auto}}
+
+/* ---------- multiple programmes ---------- */
+.aqpromos{margin-top:44px;display:grid;gap:14px}
+.aqpromos .aqpromo{margin-top:0}
+.aqpromo h2{font-size:24px}
+.pickh{font-size:22px;margin:30px 0 14px}
+.pick2.progs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:760px){.pick2.progs{grid-template-columns:1fr}}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px;margin-top:10px}
+.ccard{background:var(--surface);border:1px solid var(--line);border-radius:24px;padding:22px;display:flex;flex-direction:column;gap:10px;align-items:flex-start}
+.ccard.aq{background:radial-gradient(ellipse at 85% 10%,#1c2b25,var(--aqk) 70%);color:#fff;border-color:var(--aqg)}
+.ccard.aq p{color:#DCE3E0}.ccard.aq .small{color:#B8C2BE}
+.ccard h2{font-size:24px;color:inherit}
+.ccard p{margin:0}
+.ccard .btn{margin-top:auto}
+.ccard .aqlogo{height:58px}
+.ccard .lvl2{background:var(--aqy);color:#111}
+.ccard .lvl2.b{background:var(--accent);color:var(--accent-ink)}
+.cpbar{width:100%;height:8px;border-radius:4px;background:rgba(255,255,255,.12);overflow:hidden}
+.cpbar i{display:block;height:100%;background:var(--aqg)}
+
+/* two-line certificate title */
+.aqcert.two .logo{height:128px}
+.aqcert.two .ctag{margin-top:10px}
+.aqcert.two h1{margin-top:18px;font-size:58px;line-height:1.05}
+.aqcert.two h1 small{display:block;font:800 22px Montserrat,sans-serif;letter-spacing:.42em;color:#C9D2CE;margin-bottom:10px}
+.aqcert.two .rule{margin-top:16px}
+.aqcert.two .present{margin-top:16px}
+.aqcert.two .desc{margin-top:16px;font-size:22px;max-width:1120px}
+.aqcert.two .tools{margin-top:14px}
+.aqcert.two .level{margin-top:16px}
+
+/* marketing demos */
+.sphone{height:100%;aspect-ratio:4/5;background:#fff;border:1px solid #ddd;border-radius:1.4cqw;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 .6cqw 1.6cqw rgba(0,0,0,.12)}
+.ph-head{display:flex;align-items:center;gap:.6cqw;padding:.7cqw 1cqw;font-size:1.1cqw}
+.ph-head i{width:2cqw;height:2cqw;border-radius:50%;background:linear-gradient(135deg,#F58529,#DD2A7B,#8134AF)}
+.ph-img{flex:1;min-height:0;background:linear-gradient(160deg,#1FA870,#0F3D2C);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.4cqw;text-align:center}
+.ph-img span{font-size:5cqw}.ph-img b{font-size:2cqw;line-height:1.1}.ph-img small{font-size:1.1cqw;color:#FFF200}
+.ph-cap{padding:.7cqw 1cqw;font-size:1.15cqw;line-height:1.35;min-height:5cqw;color:#222}
+.adt{margin:1.2cqw 1.6cqw;border-collapse:collapse;font-size:1.3cqw}
+.adt th{text-align:left;color:#666;font-weight:600;padding:.6cqw .8cqw;border-bottom:2px solid #eee}
+.adt td{padding:.8cqw;border-bottom:1px solid #eee}
+.adt tr.best td{background:#E7F7EF;font-weight:700}
+.aitip{margin:0 1.6cqw 1.6cqw;background:#0F1110;color:#fff;border-radius:1cqw;padding:1cqw 1.4cqw;font-size:1.3cqw;line-height:1.45}
+.aitip b{color:#2DB384}

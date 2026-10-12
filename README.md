@@ -88,3 +88,12 @@ A separate course inside the site (`#ai`), branded for Aqlyon Brand Management.
 - After all 13 quizzes are passed, `POST /api/ai/cert` checks the saved progress and issues a certificate number (`AQL-AI-YYYY-NNNNN`). The learner can save it as a PDF or print it.
 - Child/adult wording: `[[child text||adult text]]` and `[[child-only text]]` in course text.
 - Admin panel shows each learner's AI Academy progress, quiz scores and certificate.
+
+## Certificate in AI-Powered Digital Marketing
+
+A second Aqlyon programme (`#dm`), Beginner to Intermediate, built on the same screens as the AI Academy.
+
+- 12 stages in 3 levels: Foundations (big picture, prompting for marketers, audience research, brand voice), Content and channels (content planning, social media, SEO, copywriting and email), Ads, analytics and optimisation (ad campaigns, marketing analytics, campaign optimisation, final project).
+- Content: `public/js/dm-content.js`. Programme settings (names, certificate text, level-check rules): `public/js/programmes.js`. Shared screens: `public/js/academy.js`.
+- Certificates come from `POST /api/cert/<programme>` (`AQL-AI-…` or `AQL-DM-…`). Add a programme by adding a content file, an entry in `programmes.js` and its stage count in `PROGRAMMES` in `netlify/lib/handler.mjs`.
+- `#courses` lists every course; the top bar "Courses" button opens it.

@@ -7,8 +7,10 @@ const USER_RE = /^[a-z0-9._-]{3,24}$/;
 const KINDS = ['child', 'adult'];
 const LANGS = ['', 'ml', 'hi', 'ar'];
 const MAX_BODY = 300_000;
-const AI_STAGE_IDS = Array.from({ length: 13 }, (_, i) => 'ai' + (i + 1));
-const AI_PASS = 4;
+// Certificate programmes: stage ids are <key>1 … <key>N. Keep in sync with public/js/*-content.js
+const PROGRAMMES = { ai: { stages: 13, prefix: 'AQL-AI' }, dm: { stages: 12, prefix: 'AQL-DM' } };
+const stageIds = (k) => Array.from({ length: PROGRAMMES[k].stages }, (_, i) => k + (i + 1));
+const PASS = 4;
 
 const json = (status, body) => new Response(JSON.stringify(body), {
   status,
@@ -56,18 +58,18 @@ export function createHandler({ getStore, env }) {
       return p;
     } catch { return null; }
   };
-  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, lang: u.lang || '', self: !!u.selfRegistered, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null, aiCert: u.aiCert || null });
+  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, lang: u.lang || '', self: !!u.selfRegistered, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null, certs: u.certs || {} });
   const summary = (p) => {
     if (!p) return { started: false };
     const done = typeof p.planDone === 'number' ? p.planDone : Object.keys(p.done || {}).length;
-    return { started: true, platform: p.platform || null, track: p.track || null, done, total: p.planTotal || 0, lastLesson: p.lastLesson || null, level: p.placement?.level || null, updatedAt: p.updatedAt || null, ai: aiSummary(p) };
+    return { started: true, platform: p.platform || null, track: p.track || null, done, total: p.planTotal || 0, lastLesson: p.lastLesson || null, level: p.placement?.level || null, updatedAt: p.updatedAt || null, prog: progSummary(p) };
   };
 
-  const aiSummary = (p) => {
-    const st = p?.ai?.st || {};
-    const passed = AI_STAGE_IDS.filter((id) => st[id]?.passed).length;
-    return { passed, total: AI_STAGE_IDS.length, start: p?.ai?.place?.start || null, started: !!p?.ai };
-  };
+  const progSummary = (p) => Object.fromEntries(Object.keys(PROGRAMMES).map((k) => {
+    const st = p?.[k]?.st || {};
+    const ids = stageIds(k);
+    return [k, { passed: ids.filter((id) => st[id]?.passed).length, total: ids.length, start: p?.[k]?.place?.start || null, started: !!(p?.[k] && (p[k].place || p[k].last || Object.keys(st).length)) }];
+  }));
 
   const newUser = async (users, body) => {
     const username = String(body.username || '').trim().toLowerCase();
@@ -180,22 +182,27 @@ export function createHandler({ getStore, env }) {
         return json(200, { user: publicUser(u) });
       }
 
-      if (path === '/ai/cert' && method === 'POST') {
+      const cm = path.match(/^\/cert\/([a-z]+)$/);
+      if (cm && method === 'POST' && PROGRAMMES[cm[1]]) {
+        const k = cm[1];
         if (!auth || auth.r !== 'user') return json(401, { error: 'Please log in again.' });
         const u = await users.get(auth.u, { type: 'json' });
         if (!u || u.active === false) return json(401, { error: 'Please log in again.' });
-        if (u.aiCert) return json(200, { cert: u.aiCert });
+        u.certs = u.certs || {};
+        if (u.certs[k]) return json(200, { cert: u.certs[k] });
         const p = await progress.get(auth.u, { type: 'json' });
-        const st = p?.ai?.st || {};
-        const missing = AI_STAGE_IDS.filter((id) => !(st[id]?.passed && (st[id].best || 0) >= AI_PASS));
+        const st = p?.[k]?.st || {};
+        const ids = stageIds(k);
+        const missing = ids.filter((id) => !(st[id]?.passed && (st[id].best || 0) >= PASS));
         if (missing.length) return json(400, { error: 'Pass every stage quiz first. Stages still to pass: ' + missing.length + '.' });
-        const score = Math.round(AI_STAGE_IDS.reduce((t, id) => t + Math.min(5, st[id].best || 0), 0) / (AI_STAGE_IDS.length * 5) * 100);
-        const ctr = (await meta.get('cert-counter', { type: 'json' })) || { n: 100 };
+        const score = Math.round(ids.reduce((t, id) => t + Math.min(5, st[id].best || 0), 0) / (ids.length * 5) * 100);
+        const ckey = 'cert-counter-' + k;
+        const ctr = (await meta.get(ckey, { type: 'json' })) || { n: 100 };
         ctr.n += 1;
-        await meta.setJSON('cert-counter', ctr);
+        await meta.setJSON(ckey, ctr);
         const date = new Date().toISOString().slice(0, 10);
-        const cert = { id: `AQL-AI-${date.slice(0, 4)}-${String(ctr.n).padStart(5, '0')}`, name: u.name, date, score };
-        u.aiCert = cert;
+        const cert = { id: `${PROGRAMMES[k].prefix}-${date.slice(0, 4)}-${String(ctr.n).padStart(5, '0')}`, name: u.name, date, score };
+        u.certs[k] = cert;
         await users.setJSON(auth.u, u);
         return json(201, { cert });
       }
