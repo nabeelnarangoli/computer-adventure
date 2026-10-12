@@ -35,11 +35,11 @@ function acHome(C){
  let h=topbar()+`<main class="wrap aiac"><section class="aqhero">${acHead(C)}
  <div class="aqhgrid"><div><h1>${first?`Welcome, ${fn}!`:`Hi ${fn}, <em>${esc(C.welcomeEm)}</em>`}</h1>
  <p class="lead">${P(C.intro)}</p>
- ${first?`<div class="row2"><a class="btn aqbtn" href="#${k}-${S[0].id}">Start stage 1 ${SVG.next}</a></div><p class="small" style="margin-top:10px">Stages open one at a time: pass each stage quiz to open the next.</p>`
+ ${first?`<div class="row2"><a class="btn aqbtn" href="#${k}-start">Find my level ${SVG.next}</a><a class="btn ghost" href="#${k}-${S[0].id}">Start from the beginning</a></div><p class="small" style="margin-top:10px">Optional: ${C.place.length+1} quick questions show what you already know. At the end you choose whether to skip it or include everything.</p>`
  :`<div class="prog"><svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--aqg)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${R}" stroke-dashoffset="${R*(1-n/T)}" transform="rotate(-90 42 42)"/><text x="42" y="50" text-anchor="middle">${n}</text></svg><div><b>${n===T?'All stages passed!':`${n} of ${T} stages passed`}</b><span>${n===T?'Your certificate is ready.':`<span data-noi18n>Next:</span> <span class="tu">${esc(P(nx.t))}</span>`}</span></div></div>
  <a class="btn aqbtn" href="${n===T?`#${k}-cert`:`#${k}-${nx.id}`}">${n===T?'See my certificate':n===0?'Start stage 1':'Continue'} ${SVG.next}</a>`}
  </div>${mascot('sit')}</div><div class="aqtools below" aria-hidden="true">${C.heroTools.map(t=>toolChip(t)).join('')}</div>
- ${a.place?`<p class="aqplace"><span class="lvl2">${esc(C.levelNames[a.place.start]||C.levelNames[1])}</span> ${a.place.start>1?`Your level check opened Levels 1 to ${a.place.start}. Earlier stages are open: take their quiz to collect them for your certificate.`:'Your level check says: start at Level 1. Every stage builds on the last.'}</p>`:''}</section>`;
+ ${a.place?`<p class="aqplace"><span class="lvl2">${esc(C.levelNames[a.place.start]||C.levelNames[1])}</span> ${a.place.start>1?`Your level check opened Levels 1 to ${a.place.start}. Earlier stages are open: take their quiz to collect them for your certificate.`:(a.place.found>1?'You chose to include everything: stages open one at a time from stage 1.':'Your level check says: start at Level 1. Every stage builds on the last.')} <a href="#${k}-start" class="aqretake">Retake level check</a></p>`:''}</section>`;
  let num=0;
  C.levels.forEach(L=>{const st=S.filter(s=>s.lvl===L.n);const got=st.every(s=>acPassed(C,s.id));
   h+=`<section class="week ${L.c}"><div class="wkhead"><span class="pill">Level ${L.n}</span><h2>${esc(L.t)}</h2><span class="small aqlsub">${esc(L.sub)}</span><span class="badge ${got?'got':''}">${medal(got)}${got?'Level complete':`${st.filter(s=>acPassed(C,s.id)).length} / ${st.length}`}</span></div><div class="days">${st.map(s=>{num++;const ok=acPassed(C,s.id),un=acUnlocked(C,s),isNx=nx&&nx.id===s.id&&!ok;const r=a.st[s.id];
@@ -65,12 +65,19 @@ function acPlacement(C){
  }
  function finish(){
   const lv=l=>ans.filter(x=>x.lvl===l).every(x=>x.ok);
-  const start=Math.min(C.levels.length,C.startLevel(use,lv));
-  const a=acP(C);a.place={use,start,right:ans.filter(x=>x.ok).length,asked:ans.length,date:new Date().toISOString().slice(0,10)};persist();
+  const start=Math.min(C.levels.length,C.startLevel(use,lv));const right=ans.filter(x=>x.ok).length;
+  const known=C.levels.filter(L=>L.n<start);
+  const save=st=>{const a=acP(C);a.place={use,start:st,found:start,right,asked:ans.length,date:new Date().toISOString().slice(0,10)};persist()};
+  if(!known.length){save(1);
+   app.innerHTML=shell(`<div class="resulthead mrow"><div><span class="lvl2">${esc(C.levelNames[1])}</span><h1>Your learning path is ready</h1><p class="lead">You got ${right} of ${ans.length} right. We'll start at Level 1, step by step. Every stage builds on the one before.</p></div>${mascot('present',{say:'Great start! Stage 1 is open for you.',cls:'sm'})}</div>
+   <div class="row2"><a class="btn aqbtn" href="#${k}-${C.stages[0].id}">Start stage 1 ${SVG.next}</a><a class="btn ghost" href="#${k}">See all stages</a></div>`);return}
   const first=C.stages.find(s=>s.lvl===start);
-  app.innerHTML=shell(`<div class="resulthead mrow"><div><span class="lvl2">${esc(C.levelNames[start])}</span><h1>Your learning path is ready</h1><p class="lead">You got ${a.place.right} of ${ans.length} right. ${start===1?'We\'ll start at Level 1, step by step. Every stage builds on the one before.':`Levels 1 to ${start} are open for you. You can jump to <b>${esc(P(first.t))}</b>. To earn the certificate, you'll still pass the quiz for every stage, including the earlier ones (that's quick if you already know them).`}</p></div>${mascot('present',{say:start===1?'Great start! Level 1 is open for you.':`Great start! Levels 1 to ${start} are open for you.`,cls:'sm'})}</div>
-  <div class="planlist">${C.levels.map(L=>`<div class="pl ${L.c} ${L.n<=start?'':'known'}"><span class="pill">Level ${L.n}</span><b>${esc(L.t)}</b><span class="pln">${C.stages.filter(s=>s.lvl===L.n).length} stages</span>${L.n<=start?'<span class="chip2 refresh">Open</span>':'<span class="chip2">Unlocks as you pass</span>'}</div>`).join('')}</div>
-  <div class="row2"><a class="btn aqbtn" href="#${k}-${first.id}">Start ${esc(P(first.t))} ${SVG.next}</a><a class="btn ghost" href="#${k}">See all stages</a></div>`);
+  app.innerHTML=shell(`<div class="resulthead mrow"><div><span class="lvl2">${esc(C.levelNames[start])}</span><h1>You already know a lot!</h1><p class="lead">You got ${right} of ${ans.length} right. You seem to know <b>${known.map(L=>`Level ${L.n}: ${esc(L.t)}`).join(' and ')}</b>. What would you like to do?</p></div>${mascot('present',{say:'Your choice! Skip what you know, or go through everything.',cls:'sm'})}</div>
+  <div class="pick2 choose">
+   <button type="button" class="pickcard tr" data-c="skip"><span class="tag2">Faster</span><b>Skip what I already know</b><span>Start at <b>${esc(P(first.t))}</b>. Levels 1 to ${start} open now. For the certificate you still pass each earlier stage's quiz (quick if you know it).</span></button>
+   <button type="button" class="pickcard tr" data-c="all"><b>Include everything</b><span>Start at stage 1 and go through every stage in order, one at a time.</span></button>
+  </div>`);
+  $$('[data-c]').forEach(b=>b.onclick=()=>{const skip=b.dataset.c==='skip';save(skip?start:1);location.hash='#'+k+'-'+(skip?first:C.stages[0]).id});
  }
  show();
 }
@@ -187,7 +194,7 @@ function acRoute(h){
  const m=h.match(/^#([a-z]+)(?:-(.*))?$/);const C=m&&PROGRAMMES[m[1]];if(!C)return coursesPage();
  const r=m[2]||'';
  if(!r)return acHome(C);
- if(r==='start')return acHome(C);
+ if(r==='start')return acPlacement(C);
  if(r==='cert')return acCertPage(C);
  return acStagePage(C,r);
 }

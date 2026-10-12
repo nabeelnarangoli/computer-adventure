@@ -310,3 +310,4 @@
 @media (max-width:980px){.pick2.progs.three{grid-template-columns:1fr}}
 .tile.locked{cursor:not-allowed}.tile.locked:hover{transform:none;box-shadow:none}
 .pickcard.on{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent)}
+.pick2.choose{margin-top:22px}

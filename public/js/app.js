@@ -135,19 +135,36 @@ function setupTrack(){
 }
 function setupComputer(){
  const prev=p=>`<div class="mac ${p==='win'?'w11':''}" aria-hidden="true">${withPlat(p,()=>desk(win('pw','{{Finder||File Explorer}}',finderBody([['x1','School','folder'],['x2','Photo','pic']]),[16,10,60,62]),{icons:[]}))}</div>`;
- let plat=PROG.platform||'',lvl=PROG.ctrack==='advanced'?'advanced':PROG.ctrack?'auto':'';
- app.innerHTML=topbar()+setupShell(1,`<h1>Computer Skills Course</h1><p class="lead">Two quick choices and you're ready.</p>
+ let plat=PROG.platform||'';
+ app.innerHTML=topbar()+setupShell(1,`<h1>Computer Skills Course</h1><p class="lead">From your first click to pro skills, on your own computer.</p>
  <h2 class="pickh">Which computer will you learn on?</h2>
  <div class="pick2">${[['mac','Mac','MacBook or iMac (Apple)'],['win','Windows','Windows laptop or PC']].map(([k,t,d])=>`<button type="button" class="pickcard ${plat===k?'on':''}" data-p="${k}">${prev(k)}<b>${t}</b><span>${d}</span></button>`).join('')}</div>
  <p class="small">Not sure? A Mac has an apple logo on the lid. A Windows computer shows four blue squares on the Start button.</p>
- <h2 class="pickh">Where do you want to start?</h2>
- <div class="pick2">${[['auto','I\'m a beginner','Start from the very first click and go all the way to advanced: 55 lessons.'],['advanced','I know the basics','Skip the basics and go straight to the Advanced course: 25 lessons.']].map(([k,t,d])=>`<button type="button" class="pickcard tr ${lvl===k?'on':''}" data-l="${k}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>
- <div class="row2" style="margin-top:22px"><button type="button" class="btn go" ${plat&&lvl?'':'disabled'}>Start learning ${SVG.next}</button><button type="button" class="linkbtn back">${SVG.back} Choose another course</button></div>`);
- const upd=()=>{$$('[data-p]').forEach(x=>x.classList.toggle('on',x.dataset.p===plat));$$('[data-l]').forEach(x=>x.classList.toggle('on',x.dataset.l===lvl));$('.go').disabled=!(plat&&lvl)};
- $$('[data-p]').forEach(b=>b.onclick=()=>{plat=b.dataset.p;upd()});
- $$('[data-l]').forEach(b=>b.onclick=()=>{lvl=b.dataset.l;upd()});
- $('.go').onclick=()=>{PROG.platform=plat;PROG.track=lvl;PROG.ctrack=lvl;PROG.plan=makePlan(lvl);applyContext();persist();location.hash='#home';route()};
+ <div class="row2" style="margin-top:22px"><button type="button" class="btn go" data-go="check" ${plat?'':'disabled'}>Find my level ${SVG.next}</button><button type="button" class="btn ghost go" data-go="start" ${plat?'':'disabled'}>Start from the beginning</button></div>
+ <p class="small" style="margin-top:10px">Optional: a few quick questions show what you already know. At the end you choose whether to skip it or include everything.</p>
+ <button type="button" class="linkbtn back">${SVG.back} Choose another course</button>`);
+ $$('[data-p]').forEach(b=>b.onclick=()=>{plat=b.dataset.p;$$('[data-p]').forEach(x=>x.classList.toggle('on',x===b));$$('.go').forEach(g=>g.disabled=false);PROG.platform=plat;applyContext()});
+ $$('.go').forEach(g=>g.onclick=()=>{PROG.platform=plat;applyContext();
+  if(g.dataset.go==='start'){PROG.track='auto';PROG.ctrack='auto';PROG.placement=null;PROG.plan=makePlan('auto');persist();location.hash='#home';return route()}
+  persist();setupPlacement()});
  $('.back').onclick=setupTrack;
+}
+function setupPlacement(){
+ app.innerHTML=topbar()+setupShell(2,`<div class="pqpair"><div class="pqwrap"></div>${mascot('think',{say:'Take your time. Pick “I\'m not sure” instead of guessing.'})}</div>`);
+ runPlacement($('.pqwrap'),res=>setupChoice(res),5);
+}
+function setupChoice(pl){
+ const knownPlan=buildPlan(pl,'auto');const knownU=knownPlan.filter(p=>p.s==='known').map(p=>unitById(p.u)).filter(Boolean);
+ const go=skip=>{PROG.track='auto';PROG.ctrack='auto';PROG.placement=skip?pl:null;PROG.plan=skip?knownPlan:makePlan('auto');persist();location.hash='#home';route()};
+ if(!knownU.length){go(false);return}
+ const n=knownU.reduce((t,u)=>t+u.lessons.length,0);
+ app.innerHTML=topbar()+setupShell(3,`<div class="resulthead mrow"><div><span class="lvl2">${esc(pl.level)}</span><h1>You already know a lot!</h1><p class="lead">You answered ${pl.asked} questions. You seem to know these units already (${n} lessons):</p></div>${mascot('present',{say:'Your choice! Skip what you know, or go through everything.',cls:'sm'})}</div>
+ <div class="planlist">${knownU.map(u=>`<div class="pl ${u.c} known"><span class="pill">${u.track==='basic'?'Basic':'Advanced'}</span><b>${esc(P(u.t))}</b><span class="pln">${u.lessons.length} lessons</span><span class="chip2 known">You know this</span></div>`).join('')}</div>
+ <div class="pick2 choose">
+  <button type="button" class="pickcard tr" data-c="skip"><span class="tag2">Faster</span><b>Skip what I already know</b><span>These units become optional review. Your course starts with what's new for you.</span></button>
+  <button type="button" class="pickcard tr" data-c="all"><b>Include everything</b><span>Go through every lesson from lesson 1, one at a time.</span></button>
+ </div>`);
+ $$('[data-c]').forEach(b=>b.onclick=()=>go(b.dataset.c==='skip'));
 }
 
 /* ---------- course map ---------- */
@@ -211,10 +228,11 @@ function profile(){
  <section class="sec"><h2>Computer</h2><p class="small">Lessons show screens and shortcuts for this computer. Your progress is kept if you switch.</p><div class="seg">${[['mac','Mac'],['win','Windows']].map(([k,t])=>`<button type="button" data-pp="${k}" class="${PROG.platform===k?'on':''}">${t}</button>`).join('')}</div></section>
  <section class="sec"><h2>Subtitle language</h2><p class="small">English stays the main text. Your language shows as a smaller line under it.</p>${langPicker()}</section>
  <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Computer: full course'],['advanced','Computer: Advanced only'],...PROG_KEYS.map(k=>[k,PROGRAMMES[k].name])].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
-</section>
+ <p style="margin-top:16px"><button type="button" class="btn ghost sm retake">Find my level (computer course)</button></p></section>
  <section class="sec"><button type="button" class="btn ghost" id="lo">${SVG.logout} Log out</button></section></main>`;
  $$('[data-pp]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.pp;applyContext();persist();profile()});
  $$('[data-tt]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.tt;if(!PROGRAMMES[PROG.track]){PROG.ctrack=PROG.track;PROG.plan=makePlan(PROG.track)}persist();profile()});
+ $('.retake').onclick=()=>setupPlacement();
  $('#lo').onclick=()=>{clearTimeout(saveTimer);flush().finally(()=>logout())};
 }
 
