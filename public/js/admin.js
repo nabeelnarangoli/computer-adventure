@@ -70,8 +70,8 @@ const SUBL=[['','English only'],['ml','Malayalam · മലയാളം'],['hi','
 const langName=c=>(SUBL.find(l=>l[0]===(c||''))||SUBL[0])[1];
 const langSelect=(id,v='')=>`<select id="${id}" class="sel">${SUBL.map(([k,t])=>`<option value="${k}" ${k===(v||'')?'selected':''}>${t}</option>`).join('')}</select>`;
 function addLearner(){
- modal(`<h2>Add a learner</h2><form class="mform"><div class="field"><label for="n-name">Name</label><input id="n-name" required maxlength="40" placeholder="Alesha Minha"></div>
- <div class="field"><label for="n-user">Username</label><input id="n-user" required maxlength="24" autocapitalize="none" spellcheck="false" placeholder="alesha"><small class="small">Small letters, numbers, dot, dash or underscore.</small></div>
+ modal(`<h2>Add a learner</h2><form class="mform"><div class="field"><label for="n-name">Name</label><input id="n-name" required maxlength="40"></div>
+ <div class="field"><label for="n-user">Username</label><input id="n-user" required maxlength="24" autocapitalize="none" spellcheck="false"><small class="small">Small letters, numbers, dot, dash or underscore.</small></div>
  <div class="field"><label for="n-pin">PIN</label><div class="inrow"><input id="n-pin" required minlength="4" maxlength="20" value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div><small class="small">4–20 characters. Use a longer password for adults.</small></div>
  <fieldset class="qset"><legend>Learner type</legend><label class="ck"><input type="radio" name="kind" value="child" checked><span><b>Child</b>: playful wording, mentions parents</span></label><label class="ck"><input type="radio" name="kind" value="adult"><span><b>Adult</b>: plain wording</span></label></fieldset>
  <div class="field"><label for="n-lang">Subtitle language</label>${langSelect('n-lang')}<small class="small">English stays the main text; this language shows underneath. The learner can change it too.</small></div>
