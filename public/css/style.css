@@ -959,3 +959,8 @@ li>.sub{margin-bottom:.2em}
 .dkrecipe span{font-size:2.4cqw}.dkrecipe.six span{font-size:2cqw}.dkrecipe b{font-size:1.8cqw}
 .dkpanel{gap:1.2cqw}
 .tile.locked{opacity:.62}
+.read .rd-stop{display:none;align-items:center;gap:6px}
+.read.speaking .rd-go{display:none}
+.read.speaking .rd-stop{display:inline-flex}
+.read.speaking{background:#E0463E;border-color:#E0463E;color:#fff}
+.read .sq{display:inline-block;width:11px;height:11px;border-radius:2px;background:currentColor}

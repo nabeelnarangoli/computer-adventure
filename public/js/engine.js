@@ -277,11 +277,16 @@ class Player{
 
 /* ---------- read aloud ---------- */
 const canSpeak=()=>{try{return 'speechSynthesis' in window&&typeof SpeechSynthesisUtterance!=='undefined'}catch(e){return false}};
-function speakText(html){
+let READING=null;   // the button that is reading now
+function stopReading(){try{speechSynthesis.cancel()}catch(e){}if(READING){READING.classList.remove('speaking');READING.setAttribute('aria-pressed','false')}READING=null}
+function speakText(html,btn){
  try{const d=document.createElement('div');d.innerHTML=html;let t=d.textContent;
   t=t.replace(/⌘/g,' Command ').replace(/⇧/g,' Shift ').replace(/⌥/g,' Option ').replace(/⌃/g,' Control ').replace(/\s+\+\s+/g,' plus ').replace(/→/g,' then ').replace(/⎋/g,' escape ');
-  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=.92;u.pitch=1.05;speechSynthesis.speak(u)}catch(e){}
+  stopReading();const u=new SpeechSynthesisUtterance(t);u.rate=.92;u.pitch=1.05;
+  if(btn){READING=btn;btn.classList.add('speaking');btn.setAttribute('aria-pressed','true');u.onend=u.onerror=()=>{if(READING===btn)stopReading()}}
+  speechSynthesis.speak(u)}catch(e){}
 }
 const READS={};
-function readBtn(html){if(!canSpeak())return'';const id='r'+Math.random().toString(36).slice(2);READS[id]=html;return `<button type="button" class="read" data-read="${id}">${SVG.speak} Read to me</button>`}
-document.addEventListener('click',e=>{const b=e.target.closest('[data-read]');if(b)speakText(READS[b.dataset.read]||'')});
+function readBtn(html){if(!canSpeak())return'';const id='r'+Math.random().toString(36).slice(2);READS[id]=html;return `<button type="button" class="read" data-read="${id}" aria-pressed="false"><span class="rd-go">${SVG.speak} Read to me</span><span class="rd-stop" data-noi18n><i class="sq"></i> Stop reading</span></button>`}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-read]');if(!b)return;if(READING===b)return stopReading();speakText(READS[b.dataset.read]||'',b)});
+window.addEventListener('hashchange',stopReading);window.addEventListener('pagehide',stopReading);
