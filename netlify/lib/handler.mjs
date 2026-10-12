@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 
 const USER_RE = /^[a-z0-9._-]{3,24}$/;
 const KINDS = ['child', 'adult'];
+const LANGS = ['', 'ml', 'hi', 'ar'];
 const MAX_BODY = 300_000;
 
 const json = (status, body) => new Response(JSON.stringify(body), {
@@ -53,12 +54,26 @@ export function createHandler({ getStore, env }) {
       return p;
     } catch { return null; }
   };
-  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null });
+  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, lang: u.lang || '', self: !!u.selfRegistered, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null });
   const summary = (p) => {
     if (!p) return { started: false };
     const done = typeof p.planDone === 'number' ? p.planDone : Object.keys(p.done || {}).length;
     return { started: true, platform: p.platform || null, track: p.track || null, done, total: p.planTotal || 0, lastLesson: p.lastLesson || null, level: p.placement?.level || null, updatedAt: p.updatedAt || null };
   };
+
+  const newUser = async (users, body) => {
+    const username = String(body.username || '').trim().toLowerCase();
+    const name = String(body.name || '').trim().slice(0, 40);
+    const pin = String(body.pin || '');
+    const kind = KINDS.includes(body.kind) ? body.kind : 'adult';
+    const lang = LANGS.includes(body.lang) ? body.lang : '';
+    if (!name) return { error: 'Please enter the learner\'s name.' };
+    if (!USER_RE.test(username)) return { error: 'Username: 3–24 characters, only small letters, numbers, dot, dash or underscore.' };
+    if (pin.length < 4 || pin.length > 20) return { error: 'PIN must be 4 to 20 characters.' };
+    if (await users.get(username, { type: 'json' })) return { error: 'That username is already taken. Try another one.', status: 409 };
+    return { u: { username, name, kind, lang, pin: hashPin(pin), active: true, createdAt: new Date().toISOString() } };
+  };
+  const getSettings = async (meta) => ({ allowRegister: true, ...((await meta.get('settings', { type: 'json' })) || {}) });
 
   return async function handle(req) {
     const { admin, secret } = cfg();
@@ -104,6 +119,29 @@ export function createHandler({ getStore, env }) {
         return json(200, { token, user: publicUser(u), progress: p || null });
       }
 
+      if (path === '/config' && method === 'GET') {
+        const st = await getSettings(meta);
+        return json(200, { allowRegister: st.allowRegister });
+      }
+
+      if (path === '/register' && method === 'POST') {
+        const st = await getSettings(meta);
+        if (!st.allowRegister) return json(403, { error: 'Sign-up is closed. Ask your admin to create an account for you.' });
+        const ip = req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+        const ipKey = 'reg-' + crypto.createHash('sha256').update(ip).digest('hex').slice(0, 24);
+        const rl = (await meta.get(ipKey, { type: 'json' })) || { n: 0, since: Date.now() };
+        if (Date.now() - rl.since > 3600_000) { rl.n = 0; rl.since = Date.now(); }
+        if (rl.n >= 5) return json(429, { error: 'Too many new accounts from here. Please try again in an hour.' });
+        const r = await newUser(users, body);
+        if (r.error) return json(r.status || 400, { error: r.error });
+        const u = r.u;
+        u.selfRegistered = true; u.lastSeen = u.createdAt;
+        await users.setJSON(u.username, u);
+        rl.n += 1; await meta.setJSON(ipKey, rl);
+        const token = sign({ u: u.username, r: 'user', exp: Date.now() + 30 * 864e5 }, secret);
+        return json(201, { token, user: publicUser(u), progress: null });
+      }
+
       if (path === '/me' && method === 'GET') {
         if (!auth || auth.r !== 'user') return json(401, { error: 'Please log in again.' });
         const u = await users.get(auth.u, { type: 'json' });
@@ -122,6 +160,16 @@ export function createHandler({ getStore, env }) {
         p.updatedAt = new Date().toISOString();
         await progress.setJSON(auth.u, p);
         return json(200, { ok: true, updatedAt: p.updatedAt });
+      }
+
+      if (path === '/lang' && method === 'PUT') {
+        if (!auth || auth.r !== 'user') return json(401, { error: 'Please log in again.' });
+        const u = await users.get(auth.u, { type: 'json' });
+        if (!u || u.active === false) return json(401, { error: 'Please log in again.' });
+        if (!LANGS.includes(body.lang)) return json(400, { error: 'Unknown language.' });
+        u.lang = body.lang;
+        await users.setJSON(auth.u, u);
+        return json(200, { user: publicUser(u) });
       }
 
       /* ---------- admin ---------- */
@@ -154,17 +202,19 @@ export function createHandler({ getStore, env }) {
           return json(200, { users: out });
         }
 
+        if (path === '/admin/settings' && method === 'GET') return json(200, await getSettings(meta));
+        if (path === '/admin/settings' && method === 'PATCH') {
+          const cur = await getSettings(meta);
+          if (body.allowRegister !== undefined) cur.allowRegister = !!body.allowRegister;
+          await meta.setJSON('settings', cur);
+          return json(200, cur);
+        }
+
         if (path === '/admin/users' && method === 'POST') {
-          const username = String(body.username || '').trim().toLowerCase();
-          const name = String(body.name || '').trim().slice(0, 40);
-          const pin = String(body.pin || '');
-          const kind = KINDS.includes(body.kind) ? body.kind : 'adult';
-          if (!USER_RE.test(username)) return json(400, { error: 'Username: 3–24 characters, only small letters, numbers, dot, dash or underscore.' });
-          if (!name) return json(400, { error: 'Please enter the learner\'s name.' });
-          if (pin.length < 4 || pin.length > 20) return json(400, { error: 'PIN must be 4 to 20 characters.' });
-          if (await users.get(username, { type: 'json' })) return json(409, { error: 'That username is already taken.' });
-          const u = { username, name, kind, pin: hashPin(pin), active: true, createdAt: new Date().toISOString() };
-          await users.setJSON(username, u);
+          const r = await newUser(users, body);
+          if (r.error) return json(r.status || 400, { error: r.error });
+          const u = r.u;
+          await users.setJSON(u.username, u);
           return json(201, { user: publicUser(u) });
         }
 
@@ -184,6 +234,7 @@ export function createHandler({ getStore, env }) {
           if (!m[2] && method === 'PATCH') {
             if (body.name !== undefined) { const n = String(body.name).trim().slice(0, 40); if (!n) return json(400, { error: 'Name cannot be empty.' }); u.name = n; }
             if (body.kind !== undefined && KINDS.includes(body.kind)) u.kind = body.kind;
+            if (body.lang !== undefined && LANGS.includes(body.lang)) u.lang = body.lang;
             if (body.active !== undefined) u.active = !!body.active;
             if (body.pin !== undefined) {
               const pin = String(body.pin);

@@ -52,9 +52,26 @@ function topbar(){
  return `<header class="top"><div class="in"><a class="brand" href="#home"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span>Computer Adventure</span></a>
  <span class="savestate" aria-live="polite"></span>
  ${t?`<span class="stars">${SVG.star} ${doneCount()} / ${t}</span>`:''}
+ <button type="button" class="langbtn" aria-haspopup="true" title="Subtitle language">${GLOBE}<span>${esc((LANGS.find(l=>l.code===SUBLANG)||LANGS[0]).code.toUpperCase()||'EN')}</span></button>
  <a class="userbtn" href="#profile" title="Your profile">${SVG.user}<span>${esc(USER.name.split(' ')[0])}</span></a></div></header>`;
 }
-function applyContext(){setContext({platform:PROG.platform||'mac',kind:USER.kind,name:USER.name});window.CURRENT_USER=USER.username;window.CURRENT_NAME=USER.name;document.documentElement.dataset.plat=PROG.platform||'mac'}
+function applyContext(){setContext({platform:PROG.platform||'mac',kind:USER.kind,name:USER.name});window.CURRENT_USER=USER.username;window.CURRENT_NAME=USER.name;document.documentElement.dataset.plat=PROG.platform||'mac';if((USER.lang||'')!==SUBLANG)setSubLang(USER.lang||'')}
+/* ---------- subtitle language ---------- */
+const GLOBE='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.6 3.8 5.6 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.6-3.8-9S9.5 5.6 12 3z"/></svg>';
+const langPicker=(cls='')=>`<div class="langpick ${cls}" role="radiogroup" aria-label="Subtitle language">${LANGS.map(l=>`<button type="button" role="radio" aria-checked="${l.code===SUBLANG}" class="${l.code===SUBLANG?'on':''}" data-lang="${l.code}" data-noi18n><b lang="${l.code||'en'}" ${l.rtl?'dir="rtl"':''}>${l.native}</b>${l.code?`<small>${l.name}</small>`:''}</button>`).join('')}</div>`;
+async function chooseLang(code){
+ USER.lang=code;await setSubLang(code);
+ $$('.langpick [data-lang]').forEach(b=>{const on=b.dataset.lang===code;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});
+ const lb=$('.langbtn span');if(lb)lb.textContent=code?code.toUpperCase():'EN';
+ try{await API.call('/lang',{method:'PUT',body:{lang:code}})}catch(e){setSaveState('error')}
+}
+document.addEventListener('click',e=>{
+ const b=e.target.closest('[data-lang]');if(b){chooseLang(b.dataset.lang);const m=b.closest('.langmenu');if(m)m.remove();return}
+ const lb=e.target.closest('.langbtn');const open=$('.langmenu');
+ if(lb){if(open)return open.remove();const m=document.createElement('div');m.className='langmenu';m.innerHTML=`<p>Subtitles</p>${langPicker('col')}`;lb.parentElement.appendChild(m);return}
+ if(open&&!e.target.closest('.langmenu'))open.remove();
+});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=$('.langmenu');if(m)m.remove()}});
 
 /* ---------- login ---------- */
 function loginView(msg=''){
@@ -62,19 +79,48 @@ function loginView(msg=''){
  <form class="authform" autocomplete="on"><div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
  <div class="field"><label for="li-p">PIN or password</label><input id="li-p" name="pin" type="password" autocomplete="current-password" required></div>
  <p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form>
- <p class="small">No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p></div></main>`;
+ <div class="regbox" hidden><p class="small">New here?</p><button type="button" class="btn ghost reg">Create an account</button></div>
+ <p class="small noreg" hidden>No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p></div></main>`;
+ API.call('/config').then(c=>{if(c.allowRegister){$('.regbox').hidden=false;$('.reg').onclick=registerView}else $('.noreg').hidden=false}).catch(()=>{$('.noreg').hidden=false});
  const f=$('.authform');f.onsubmit=async e=>{e.preventDefault();const b=$('button',f);b.disabled=true;$('.formerr').textContent='';
   try{const d=await API.call('/login',{method:'POST',body:{username:$('#li-u').value,pin:$('#li-p').value}});API.setToken(d.token);USER=d.user;PROG=d.progress||{};PROG.done=PROG.done||{};applyContext();location.hash='#home';route()}
   catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
  $('#li-u').focus();
 }
-function logout(msg){API.setToken(null);USER=null;PROG={};location.hash='';loginView(msg||'')}
+/* ---------- self sign-up ---------- */
+const genPin=()=>String(Math.floor(1000+Math.random()*9000));
+const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,20);
+function registerView(){
+ app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Create your account</h1><p class="lead">It takes one minute. Then you can start learning straight away.</p>
+ <form class="authform regform"><div class="field"><label for="r-name">Your name</label><input id="r-name" required maxlength="40" autocomplete="name" placeholder="Alesha Minha"></div>
+ <div class="field"><label for="r-user">Username</label><input id="r-user" required maxlength="24" autocapitalize="none" spellcheck="false" autocomplete="username" placeholder="alesha"><small class="small">Small letters, numbers, dot, dash or underscore. You use it to log in.</small></div>
+ <div class="field"><label for="r-pin">PIN</label><div class="inrow"><input id="r-pin" required minlength="4" maxlength="20" autocomplete="new-password" value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div><small class="small">4 to 20 characters. Adults: use a longer password.</small></div>
+ <fieldset class="qset"><legend>Who is learning?</legend><label class="ck"><input type="radio" name="kind" value="child" checked><span><b>A child</b>: playful wording</span></label><label class="ck"><input type="radio" name="kind" value="adult"><span><b>An adult</b>: plain wording</span></label></fieldset>
+ <div class="field"><label for="r-lang">Subtitle language</label><select id="r-lang">${LANGS.map(l=>`<option value="${l.code}">${l.code?l.name+' · '+l.native:l.name}</option>`).join('')}</select><small class="small">English stays the main text. This language shows underneath.</small></div>
+ <p class="formerr" role="alert"></p><button class="btn" type="submit">Create my account ${SVG.next}</button></form>
+ <button type="button" class="linkbtn back">${SVG.back} I already have an account</button></div></main>`;
+ const nm=$('#r-name'),us=$('#r-user');let touched=false;us.oninput=()=>touched=true;nm.oninput=()=>{if(!touched)us.value=slugUser(nm.value.split(' ')[0]||'')};
+ $('.gen').onclick=()=>$('#r-pin').value=genPin();$('.back').onclick=()=>{setSubLang('');loginView()};$('#r-lang').onchange=e=>setSubLang(e.target.value);nm.focus();
+ $('.regform').onsubmit=async e=>{e.preventDefault();const b=$('button[type=submit]',e.target);b.disabled=true;$('.formerr').textContent='';
+  const body={name:nm.value.trim(),username:us.value.trim().toLowerCase(),pin:$('#r-pin').value,kind:$('input[name=kind]:checked').value,lang:$('#r-lang').value};
+  try{const d=await API.call('/register',{method:'POST',body});API.setToken(d.token);USER=d.user;PROG={done:{}};applyContext();registeredView(body)}
+  catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
+}
+function registeredView(b){
+ const txt=`Computer Adventure\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
+ app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.check||SVG.star}</span><h1>${esc(b.name.split(' ')[0])}, you're all set!</h1><p class="lead">Save these sign-in details. Your PIN is only shown now. Copy them, write them down or take a photo.</p>
+ <pre class="creds">${esc(txt)}</pre><div class="row2"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn go">Start learning ${SVG.next}</button></div></div></main>`;
+ $('.cp').onclick=async()=>{const c=$('.cp');try{await navigator.clipboard.writeText(txt);c.textContent='Copied ✓'}catch(e){c.textContent='Select the text to copy'}};
+ $('.go').onclick=()=>{location.hash='';route()};
+}
+function logout(msg){API.setToken(null);USER=null;setSubLang('');PROG={};location.hash='';loginView(msg||'')}
 
 /* ---------- setup / onboarding ---------- */
 function setupShell(step,inner){return `<main class="wrap setup"><div class="steps">${['Computer','Course','About you','Quick check','Your plan'].map((s,i)=>`<span class="${i<step?'done':i===step?'on':''}">${i+1}. ${s}</span>`).join('')}</div>${inner}</main>`}
 function setupPlatform(){
  const prev=p=>`<div class="mac ${p==='win'?'w11':''}" aria-hidden="true">${withPlat(p,()=>desk(win('pw','{{Finder||File Explorer}}',finderBody([['x1','School','folder'],['x2','Photo','pic']]),[16,10,60,62]),{icons:[]}))}</div>`;
  app.innerHTML=topbar()+setupShell(0,`<h1>Hi ${esc(USER.name.split(' ')[0])}! Which computer will you learn on?</h1><p class="lead">Every lesson, picture and shortcut will match your computer. You can change this later.</p>
+ <div class="langrow"><p class="small"><b>Subtitles:</b> English stays on top. Pick a language to show underneath.</p>${langPicker()}</div>
  <div class="pick2">${[['mac','Mac','MacBook or iMac (Apple)'],['win','Windows','Windows laptop or PC']].map(([k,t,d])=>`<button type="button" class="pickcard" data-p="${k}">${prev(k)}<b>${t}</b><span>${d}</span></button>`).join('')}</div>
  <p class="small">Not sure? A Mac has an apple logo on the lid. A Windows computer shows four blue squares on the Start button.</p>`);
  $$('[data-p]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.p;applyContext();persist();setupTrack()});
@@ -119,7 +165,7 @@ function home(){
  const total=planLessons().length,d=doneCount(),nx=nextLesson(),C=2*Math.PI*34;const nl=COURSE[nx];
  const trackName={basic:'Basic course',advanced:'Advanced course',auto:'Personal course'}[PROG.track]||'';
  let h=topbar()+`<main class="wrap"><section class="hero"><div><p class="eyebrow">${esc(trackName)} · ${PROG.platform==='win'?'Windows':'Mac'}${PROG.placement?.level?' · '+esc(PROG.placement.level):''}</p><h1>Hi ${esc(USER.name.split(' ')[0])}, <em>keep going!</em></h1><p class="lead">One lesson is about an hour. Watch the moving pictures, try each step on your own computer, play the practice games, and tick it off.</p>
- <div class="prog"><svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(total?d/total:0))}" transform="rotate(-90 42 42)"/><text x="42" y="50" text-anchor="middle">${d}</text></svg><div><b>${d===total?'Course complete!':`${d} of ${total} lessons done`}</b><span>${d===total?'Amazing work. Try the other course on your profile page.':`Next: ${esc(P(nl.t))}`}</span></div></div>
+ <div class="prog"><svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(total?d/total:0))}" transform="rotate(-90 42 42)"/><text x="42" y="50" text-anchor="middle">${d}</text></svg><div><b>${d===total?'Course complete!':`${d} of ${total} lessons done`}</b><span>${d===total?'Amazing work. Try the other course on your profile page.':`<span data-noi18n>Next:</span> <span class="tu">${esc(P(nl.t))}</span>`}</span></div></div>
  <a class="btn" href="#lesson-${nx}">${d===0?'Start your first lesson':d===total?'See your graduation':'Continue'} ${SVG.next}</a></div><div class="herodemo"></div></section>
  <div class="hour"><span><i>10 min</i> typing warm-up</span><span><i>30 min</i> learn &amp; try</span><span><i>15 min</i> challenge</span><span><i>5 min</i> show &amp; tell</span></div>`;
  let n=0;
@@ -143,7 +189,7 @@ function lesson(id){
  h+=`<section class="sec">${sech(SVG.laptop,'Try it on your computer','10 min','Now do it for real. Tick each box when it\'s done.')}${l.mac.map((m,i)=>`<label class="ck ${checks[i]?'on':''}"><input type="checkbox" data-ck="${i}" ${checks[i]?'checked':''}><span>${P(m)}</span></label>`).join('')}</section>`;
  if(l.practice&&l.practice.length)h+=`<section class="sec">${sech(SVG.game,l.final?'Final tests':'Practice games','',l.final?'':'Practise right here on this page.')}${l.practice.map((p,i)=>`<div class="game" data-p="${i}"></div>`).join('')}</section>`;
  h+=`<section class="sec">${sech(SVG.flag,'Challenge','15 min')}<div class="chal"><p>${P(l.challenge)}</p>${readBtn(P(l.challenge))}</div></section>`;
- h+=`<section class="sec">${sech(SVG.chat,'Show &amp; Tell','5 min')}<div class="card" style="font-size:18px">${P('Teach Mum or Dad')} what you learned: <b>${P(l.tell)}</b></div></section>`;
+ h+=`<section class="sec">${sech(SVG.chat,'Show &amp; Tell','5 min')}<div class="card" style="font-size:18px">${P('Teach Mum or Dad')} what you learned: <b class="tu">${P(l.tell)}</b></div></section>`;
  h+=`<div class="finish"></div><div class="stuck">${SVG.help}<p><b>Stuck?</b> ${P('Press <b>Watch how</b> again, or press <b>Read to me</b>. Did something go wrong on your computer? Press <kbd>⌘</kbd> + <kbd>Z</kbd> to undo. Still stuck? Write down what happened and ask a grown-up. That\'s what real experts do!')}</p></div>
  <nav class="pn">${prev?`<a class="btn ghost" href="#lesson-${prev}">${SVG.back} Previous</a>`:'<span></span>'}${next?`<a class="btn ghost" href="#lesson-${next}">Next ${SVG.next}</a>`:''}</nav></main>`;
  app.innerHTML=h;
@@ -155,7 +201,7 @@ function lesson(id){
 }
 function finishBox(id,next){
  const f=$('.finish');const u=unitOf(id);
- if(isDone(id)){f.innerHTML=`<h2>Lesson complete!</h2><p>${unitDone(u)?`You earned the <b>${esc(u.badge)}</b> badge. `:''}${next?'On to the next one when you\'re ready.':'You finished the whole course. Amazing!'}</p><div class="row">${next?`<a class="btn wk" href="#lesson-${next}">Next lesson ${SVG.next}</a>`:''}<a class="btn ghost" href="#home">${SVG.map} Course map</a><button type="button" class="btn ghost sm undo">Mark as not finished</button></div>`;
+ if(isDone(id)){f.innerHTML=`<h2>Lesson complete!</h2><p>${unitDone(u)?`<span class="tu">You earned the <b>${esc(u.badge)}</b> badge.</span> `:''}<span class="tu">${next?'On to the next one when you\'re ready.':'You finished the whole course. Amazing!'}</span></p><div class="row">${next?`<a class="btn wk" href="#lesson-${next}">Next lesson ${SVG.next}</a>`:''}<a class="btn ghost" href="#home">${SVG.map} Course map</a><button type="button" class="btn ghost sm undo">Mark as not finished</button></div>`;
   $('.undo',f).onclick=()=>{delete PROG.done[id];persist();finishBox(id,next);refreshStars()}}
  else{f.innerHTML=`<h2>All done?</h2><p>Watched every step, tried it on your computer and done the challenge? Then press the button!</p><div class="row"><button type="button" class="btn wk fin">${SVG.star} I finished this lesson!</button></div>`;
   $('.fin',f).onclick=()=>{PROG.done=PROG.done||{};PROG.done[id]=new Date().toISOString().slice(0,10);persist();confetti();finishBox(id,next);refreshStars()}}
@@ -165,9 +211,10 @@ function refreshStars(){const s=$('.stars');if(s)s.innerHTML=SVG.star+' '+doneCo
 /* ---------- profile ---------- */
 function profile(){
  const pl=PROG.placement||{};const q=PROG.quiz||{};
- app.innerHTML=topbar()+`<main class="wrap"><div class="lhead"><div class="crumb"><a href="#home">${SVG.back} Course map</a></div><h1>${esc(USER.name)}</h1><p class="goal">Username: <b>${esc(USER.username)}</b></p></div>
+ app.innerHTML=topbar()+`<main class="wrap"><div class="lhead"><div class="crumb"><a href="#home">${SVG.back} Course map</a></div><h1>${esc(USER.name)}</h1><p class="goal" data-noi18n>Username: <b>${esc(USER.username)}</b></p></div>
  <section class="sec"><div class="statgrid"><div><b>${doneCount()} / ${planLessons().length}</b><span>lessons done</span></div><div><b>${esc(pl.level||'–')}</b><span>level from your check</span></div><div><b>${PROG.wpm?.best||'–'}</b><span>best typing speed (wpm)</span></div><div><b>${Object.keys(q).length}</b><span>quizzes taken</span></div></div></section>
  <section class="sec"><h2>Computer</h2><p class="small">Lessons show screens and shortcuts for this computer. Your progress is kept if you switch.</p><div class="seg">${[['mac','Mac'],['win','Windows']].map(([k,t])=>`<button type="button" data-pp="${k}" class="${PROG.platform===k?'on':''}">${t}</button>`).join('')}</div></section>
+ <section class="sec"><h2>Subtitle language</h2><p class="small">English stays the main text. Your language shows as a smaller line under it.</p>${langPicker()}</section>
  <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Personal (recommended)'],['basic','Basic'],['advanced','Advanced']].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
  <p style="margin-top:16px"><button type="button" class="btn ghost sm retake">Retake the quick check</button></p></section>
  <section class="sec"><button type="button" class="btn ghost" id="lo">${SVG.logout} Log out</button></section></main>`;

@@ -46,6 +46,18 @@ ADMIN_PASSWORD=choose-a-password npm run dev
 
 Local data is saved as JSON files in `.data/`. This folder is ignored by git.
 
+## Subtitle languages
+
+English is always the main text. Each learner can add a subtitle line in **Malayalam, Hindi or Arabic** (🌐 button in the top bar, the profile page, the first setup screen, or the admin panel).
+
+- Translations live in `public/js/i18n/ml.js`, `hi.js` and `ar.js`, keyed by the English text. Numbers become `{0}`, `{1}`… and the learner's first name becomes `{N}`.
+- `public/js/i18n.js` finds each piece of text on the page and adds the translation underneath, including the captions in the animated demos.
+- If you change a lesson's English text, its subtitle disappears until you add the new sentence to the three language files. Untranslated text simply shows in English only.
+
+## Self sign-up
+
+The learner sign-in page has a **Create an account** button. People choose a name, username, PIN, child/adult wording and subtitle language, then see their sign-in details once. New accounts show up in the admin panel marked "signed up", and you manage them like any other learner. Untick **Let people create their own account** in the admin panel to close sign-up. Sign-ups are limited to 5 per hour from the same internet connection.
+
 ## Security notes
 
 - PINs are stored as salted scrypt hashes, never as plain text.

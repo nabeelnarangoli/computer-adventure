@@ -40,3 +40,7 @@
  .urow .uname{grid-column:1/-1}.urow .acts{grid-column:1/-1;justify-content:flex-start}
  .twocol{grid-template-columns:1fr}
 }
+.regtoggle{display:flex;gap:12px;align-items:flex-start;margin-top:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px;cursor:pointer;max-width:720px}
+.regtoggle input{width:22px;height:22px;margin-top:2px;accent-color:var(--accent);flex:none}
+.regtoggle span{display:flex;flex-direction:column;gap:2px}.regtoggle small{color:var(--muted);font-size:14px}
+.selfreg{color:var(--accent);font-weight:700}

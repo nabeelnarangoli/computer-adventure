@@ -147,7 +147,7 @@ function wQuiz(el,cfg){
  function q(){if(i>=qs.length){const p=sc===qs.length;el.innerHTML=`<h3>${P(cfg.title||'Quiz')}</h3><p class="big" style="margin:10px 0">${sc} / ${qs.length}</p><p>${p?'Perfect score!':sc>=qs.length*.7?'Great work!':'Good try! Read the lesson again and have another go.'}</p><button type="button" class="btn sm ghost">Try again</button>`;$('button',el).onclick=start;if(cfg.id){PROG.quiz=PROG.quiz||{};PROG.quiz[cfg.id]=Math.max(PROG.quiz[cfg.id]||0,sc);PROG.quizMax=PROG.quizMax||{};PROG.quizMax[cfg.id]=qs.length;save()}if(p)confetti();return}
   const Q=qs[i];el.innerHTML=`<h3>${P(cfg.title||'Quiz')}</h3><div class="qn">Question ${i+1} of ${qs.length}</div><div class="qq">${P(Q.q)}</div><div class="opts">${Q.a.map((a,j)=>`<button type="button" class="qopt" data-j="${j}">${P(a)}</button>`).join('')}</div><div class="qexp" hidden></div><div style="margin-top:12px"><button type="button" class="btn sm wk nextq" hidden>Next question</button></div>`;
   let answered=false;$$('.qopt',el).forEach(b=>b.onclick=()=>{if(answered)return;answered=true;const j=+b.dataset.j;if(j===Q.c){b.classList.add('right');sc++}else{b.classList.add('wrong');$$('.qopt',el)[Q.c].classList.add('right')}
-   const ex=$('.qexp',el);ex.hidden=false;ex.innerHTML=(j===Q.c?'<b>Correct!</b> ':'<b>Not quite.</b> ')+P(Q.why||'');const n=$('.nextq',el);n.hidden=false;n.focus()});
+   const ex=$('.qexp',el);ex.hidden=false;ex.innerHTML=(j===Q.c?'<b class="tu">Correct!</b> ':'<b class="tu">Not quite.</b> ')+(Q.why?'<span class="tu">'+P(Q.why)+'</span>':'');const n=$('.nextq',el);n.hidden=false;n.focus()});
   $('.nextq',el).onclick=()=>{i++;q()}}
  start();
 }

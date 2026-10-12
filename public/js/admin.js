@@ -31,7 +31,8 @@ function loginView(msg=''){
  $('#ap').focus();
 }
 
-async function load(){const d=await AAPI.call('/admin/users');USERS=d.users;}
+let SETTINGS={allowRegister:true};
+async function load(){const [d,st]=await Promise.all([AAPI.call('/admin/users'),AAPI.call('/admin/settings').catch(()=>SETTINGS)]);USERS=d.users;SETTINGS=st;}
 async function dashboard(){
  root.innerHTML=`<header class="top"><div class="in"><span class="brand"><span class="logo">${SVG.shield.replace('<svg','<svg width="20" height="20"')}</span><span>Admin panel</span></span><a class="userbtn" href="/" target="_blank" rel="noopener" style="margin-left:auto">Learner site ↗</a><button type="button" class="userbtn" id="alo">${SVG.logout}<span>Log out</span></button></div></header><main class="wrap adm"><p class="lead" style="margin-top:20px">Loading learners…</p></main>`;
  $('#alo').onclick=()=>{AAPI.setToken(null);loginView()};
@@ -47,15 +48,17 @@ function render(){
  main.innerHTML=`<div class="admhead"><h1>Learners</h1><button type="button" class="btn" id="add">＋ Add a learner</button></div>
  <div class="statgrid"><div><b>${USERS.length}</b><span>learners</span></div><div><b>${active}</b><span>active in the last 7 days</span></div><div><b>${lessons}</b><span>lessons completed in total</span></div><div><b>${avg}%</b><span>average course progress</span></div></div>
  <div class="tipbox signin">Learners sign in at <b class="url">${esc(location.origin)}/</b> <button type="button" class="mini cpurl">Copy link</button></div>
+ <label class="regtoggle"><input type="checkbox" id="allowreg" ${SETTINGS.allowRegister?'checked':''}><span><b>Let people create their own account</b><small>Shows a "Create an account" button on the learner sign-in page. New sign-ups appear here and you can manage them like any learner.</small></span></label>
  <div class="field" style="max-width:360px;margin-top:18px"><label for="flt">Search</label><input id="flt" placeholder="Name or username" value="${esc(FILTER)}"></div>
  ${USERS.length?`<div class="utable" role="table"><div class="urow uhead" role="row"><span>Learner</span><span>Computer · course</span><span>Level</span><span>Progress</span><span>Last active</span><span></span></div>${list.map(rowHTML).join('')||'<p class="small" style="padding:16px">No learners match your search.</p>'}</div>`:`<div class="empty"><h2>No learners yet</h2><p>Add your first learner: give them a username and a PIN, then send them the sign-in link above.</p><button type="button" class="btn" id="add2">＋ Add a learner</button></div>`}`;
  $('#add').onclick=addLearner;const a2=$('#add2');if(a2)a2.onclick=addLearner;
  $('.cpurl').onclick=()=>copy(location.origin+'/');
+ $('#allowreg').onchange=async e=>{const v=e.target.checked;try{SETTINGS=await AAPI.call('/admin/settings',{method:'PATCH',body:{allowRegister:v}});toast(v?'Sign-up is open':'Sign-up is closed')}catch(err){e.target.checked=!v;toast(err.message,true)}};
  const f=$('#flt');f.oninput=()=>{FILTER=f.value.toLowerCase().trim();const pos=f.selectionStart;render();const g=$('#flt');g.focus();g.setSelectionRange(pos,pos)};
  $$('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.u));
 }
 function rowHTML(u){const s=u.summary;const pct=s.total?Math.round(Math.min(1,s.done/s.total)*100):0;
- return `<div class="urow ${u.active?'':'inactive'}" role="row"><span class="uname"><b>${esc(u.name)}</b><small>@${esc(u.username)} · ${u.kind==='child'?'Child':'Adult'}${u.active?'':' · <em>switched off</em>'}</small></span>
+ return `<div class="urow ${u.active?'':'inactive'}" role="row"><span class="uname"><b>${esc(u.name)}</b><small>@${esc(u.username)} · ${u.kind==='child'?'Child':'Adult'}${u.lang?' · '+esc(langName(u.lang).split(' · ')[0]):''}${u.self?' · <span class="selfreg">signed up</span>':''}${u.active?'':' · <em>switched off</em>'}</small></span>
  <span>${s.started&&s.platform?`${s.platform==='win'?'Windows':'Mac'} · ${trackName[s.track]||'–'}`:'<span class="muted">Not started</span>'}</span>
  <span>${s.level?`<span class="chip2">${esc(s.level)}</span>`:'–'}</span>
  <span class="prog2"><span class="pbar"><i style="width:${pct}%"></i></span><small>${s.done||0} / ${s.total||0} lessons</small></span>
@@ -63,15 +66,19 @@ function rowHTML(u){const s=u.summary;const pct=s.total?Math.round(Math.min(1,s.
  <span class="acts"><button type="button" class="mini" data-act="view" data-u="${u.username}">View</button><button type="button" class="mini" data-act="pin" data-u="${u.username}">Reset PIN</button><button type="button" class="mini" data-act="more" data-u="${u.username}" aria-label="More actions">⋯</button></span></div>`}
 async function copy(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy failed. Select the text and copy it.',true)}}
 
+const SUBL=[['','English only'],['ml','Malayalam · മലയാളം'],['hi','Hindi · हिन्दी'],['ar','Arabic · العربية']];
+const langName=c=>(SUBL.find(l=>l[0]===(c||''))||SUBL[0])[1];
+const langSelect=(id,v='')=>`<select id="${id}" class="sel">${SUBL.map(([k,t])=>`<option value="${k}" ${k===(v||'')?'selected':''}>${t}</option>`).join('')}</select>`;
 function addLearner(){
  modal(`<h2>Add a learner</h2><form class="mform"><div class="field"><label for="n-name">Name</label><input id="n-name" required maxlength="40" placeholder="Alesha Minha"></div>
  <div class="field"><label for="n-user">Username</label><input id="n-user" required maxlength="24" autocapitalize="none" spellcheck="false" placeholder="alesha"><small class="small">Small letters, numbers, dot, dash or underscore.</small></div>
  <div class="field"><label for="n-pin">PIN</label><div class="inrow"><input id="n-pin" required minlength="4" maxlength="20" value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div><small class="small">4–20 characters. Use a longer password for adults.</small></div>
  <fieldset class="qset"><legend>Learner type</legend><label class="ck"><input type="radio" name="kind" value="child" checked><span><b>Child</b>: playful wording, mentions parents</span></label><label class="ck"><input type="radio" name="kind" value="adult"><span><b>Adult</b>: plain wording</span></label></fieldset>
+ <div class="field"><label for="n-lang">Subtitle language</label>${langSelect('n-lang')}<small class="small">English stays the main text; this language shows underneath. The learner can change it too.</small></div>
  <p class="formerr"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn">Create learner</button></div></form>`,(m,close)=>{
   const nm=$('#n-name',m),us=$('#n-user',m);let touched=false;us.oninput=()=>touched=true;nm.oninput=()=>{if(!touched)us.value=slugUser(nm.value.split(' ')[0]||'')};
   $('.gen',m).onclick=()=>$('#n-pin',m).value=genPin();nm.focus();
-  $('form',m).onsubmit=async e=>{e.preventDefault();const body={name:nm.value.trim(),username:us.value.trim().toLowerCase(),pin:$('#n-pin',m).value,kind:$('input[name=kind]:checked',m).value};
+  $('form',m).onsubmit=async e=>{e.preventDefault();const body={name:nm.value.trim(),username:us.value.trim().toLowerCase(),pin:$('#n-pin',m).value,kind:$('input[name=kind]:checked',m).value,lang:$('#n-lang',m).value};
    try{await AAPI.call('/admin/users',{method:'POST',body});close();await load();render();showCreds(body)}catch(err){$('.formerr',m).textContent=err.message}};
  });
 }
@@ -84,10 +91,11 @@ async function act(a,username){
  if(a==='pin')return modal(`<h2>Reset PIN for ${esc(u.name)}</h2><form class="mform"><div class="field"><label for="r-pin">New PIN</label><div class="inrow"><input id="r-pin" minlength="4" maxlength="20" required value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div></div><p class="formerr"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" type="submit">Save PIN</button></div></form>`,(m,close)=>{
   $('.gen',m).onclick=()=>$('#r-pin',m).value=genPin();
   $('form',m).onsubmit=async e=>{e.preventDefault();const pin=$('#r-pin',m).value;try{await AAPI.call('/admin/users/'+username,{method:'PATCH',body:{pin}});close();showCreds({name:u.name,username,pin})}catch(err){$('.formerr',m).textContent=err.message}}});
- if(a==='more')return modal(`<h2>${esc(u.name)}</h2><div class="morelist"><button type="button" class="btn ghost" data-m="toggle">${u.active?'Switch off account':'Switch on account'}</button><button type="button" class="btn ghost" data-m="kind">Change to ${u.kind==='child'?'adult':'child'} wording</button><button type="button" class="btn ghost" data-m="rename">Rename</button><button type="button" class="btn ghost" data-m="reset">Reset progress…</button><button type="button" class="btn danger" data-m="delete">Delete learner…</button></div><div class="mrow"><button type="button" class="btn ghost" data-close>Close</button></div>`,(m,close)=>{
+ if(a==='more')return modal(`<h2>${esc(u.name)}</h2><div class="morelist"><button type="button" class="btn ghost" data-m="toggle">${u.active?'Switch off account':'Switch on account'}</button><button type="button" class="btn ghost" data-m="kind">Change to ${u.kind==='child'?'adult':'child'} wording</button><button type="button" class="btn ghost" data-m="lang">Subtitles: ${esc(langName(u.lang))}</button><button type="button" class="btn ghost" data-m="rename">Rename</button><button type="button" class="btn ghost" data-m="reset">Reset progress…</button><button type="button" class="btn danger" data-m="delete">Delete learner…</button></div><div class="mrow"><button type="button" class="btn ghost" data-close>Close</button></div>`,(m,close)=>{
   $$('[data-m]',m).forEach(b=>b.onclick=async()=>{close();const k=b.dataset.m;try{
    if(k==='toggle'){await AAPI.call('/admin/users/'+username,{method:'PATCH',body:{active:!u.active}});toast(u.active?'Account switched off':'Account switched on')}
    if(k==='kind'){await AAPI.call('/admin/users/'+username,{method:'PATCH',body:{kind:u.kind==='child'?'adult':'child'}});toast('Wording updated')}
+   if(k==='lang'){return modal(`<h2>Subtitle language</h2><form class="mform"><div class="field"><label for="ul">Shown under the English text for ${esc(u.name)}</label>${langSelect('ul',u.lang)}</div><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" type="submit">Save</button></div></form>`,(m2,c2)=>{$('form',m2).onsubmit=async e=>{e.preventDefault();await AAPI.call('/admin/users/'+username,{method:'PATCH',body:{lang:$('#ul',m2).value}});c2();await load();render();toast('Subtitle language saved')}})}
    if(k==='rename'){return modal(`<h2>Rename</h2><form class="mform"><div class="field"><label for="rn">Name</label><input id="rn" value="${esc(u.name)}" maxlength="40" required></div><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button class="btn" type="submit">Save</button></div></form>`,(m2,c2)=>{$('form',m2).onsubmit=async e=>{e.preventDefault();await AAPI.call('/admin/users/'+username,{method:'PATCH',body:{name:$('#rn',m2).value}});c2();await load();render();toast('Renamed')}})}
    if(k==='reset'){if(!await confirmBox('Reset progress?',`${esc(u.name)} will start again from the beginning: computer choice, quick check and all lessons. This cannot be undone.`,'Reset progress',true))return;await AAPI.call('/admin/users/'+username+'/reset-progress',{method:'POST'});toast('Progress reset')}
    if(k==='delete'){if(!await confirmBox('Delete learner?',`${esc(u.name)}'s account and all progress will be removed for good.`,'Delete',true))return;await AAPI.call('/admin/users/'+username,{method:'DELETE'});toast('Learner deleted')}

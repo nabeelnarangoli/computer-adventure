@@ -63,8 +63,8 @@ kbd{font-family:var(--body);font-weight:700;background:var(--soft);color:var(--i
 .howto .h .n{width:28px;height:28px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-size:15px;flex:none}
 .howto .h p{margin:6px 0 0;color:var(--muted);font-size:15.5px;line-height:1.45}
 .hour{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
-.hour span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14.5px}
-.hour span i{font-style:normal;color:var(--accent)}
+.hour>span{background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-weight:700;font-size:14.5px}
+.hour>span i{font-style:normal;color:var(--accent)}
 .week{margin-top:44px}
 .wkhead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .wkhead .pill{background:var(--wk);color:var(--wki);border-radius:999px;padding:4px 14px;font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase}
@@ -198,7 +198,7 @@ details.parents li{margin-bottom:8px}
 .qexp{background:var(--soft);border-radius:12px;padding:10px 14px;margin-top:6px}
 .field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
 .field label{font-weight:700}
-.field input,.field textarea{font:17px var(--body);padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
+.field input,.field textarea,.field select{font:17px var(--body);padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:var(--surface);color:var(--ink)}
 .field textarea{min-height:140px;resize:vertical}
 .fb{list-style:none;padding:0;margin:12px 0 0}
 .fb li{padding:6px 0;font-weight:700}
@@ -801,3 +801,44 @@ table.sf{width:100%}table.sf th{text-align:left;vertical-align:top}table.sf th s
 /* the screen's own text size is measured against its wrapper (an element can't measure itself) */
 .stage,.game,.pickcard{container-type:inline-size}
 .w11 .tp::before{content:"Touchpad"}
+
+/* ---------- subtitle languages ---------- */
+.sub{display:block;font-family:var(--subfont,var(--body));font-weight:400;font-size:.8em;line-height:1.55;color:var(--muted);margin-top:.25em;letter-spacing:0;text-transform:none;text-wrap:pretty}
+.sub[lang="ml"]{--subfont:"Noto Sans Malayalam",var(--body)}
+.sub[lang="hi"]{--subfont:"Noto Sans Devanagari",var(--body)}
+.sub[lang="ar"]{--subfont:"Noto Sans Arabic",var(--body);unicode-bidi:plaintext;text-align:left}
+h1>.sub{font-size:clamp(15px,.4em,24px);margin-top:.5em;line-height:1.5}h2>.sub{font-size:.62em}h3>.sub{font-size:.7em}
+.btn>.sub,.qopt>.sub,button>.sub{font-size:.78em;opacity:.85;color:inherit}
+.ck>span>.sub{font-size:.85em}
+.tile .dt>.sub{font-size:.85em}
+li>.sub{margin-bottom:.2em}
+.dtxt>.sub{color:inherit;opacity:.85}
+.langbtn{display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:6px 11px;font-weight:700;font-size:14px;cursor:pointer;min-height:36px}
+.langbtn:hover{border-color:var(--accent)}
+.top .in{position:relative}
+.langmenu{position:absolute;right:16px;top:calc(100% + 6px);background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:0 12px 40px rgba(20,24,60,.18);padding:12px;z-index:60;width:230px}
+.langmenu>p{margin:0 0 8px 4px;font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.langpick{display:flex;flex-wrap:wrap;gap:8px}
+.langpick.col{flex-direction:column}
+.langpick button{display:flex;flex-direction:column;align-items:flex-start;gap:0;border:2px solid var(--line);background:var(--surface);color:var(--ink);border-radius:12px;padding:8px 14px;cursor:pointer;min-height:44px;text-align:start}
+.langpick button b{font-size:17px;font-weight:600}
+.langpick b[lang="ml"]{font-family:"Noto Sans Malayalam",var(--body)}
+.langpick b[lang="hi"]{font-family:"Noto Sans Devanagari",var(--body)}
+.langpick b[lang="ar"]{font-family:"Noto Sans Arabic",var(--body)}
+.langpick button small{font-size:12px;color:var(--muted)}
+.langpick button.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}
+.langpick button:hover{border-color:var(--accent)}
+.langrow{margin:6px 0 22px;padding:14px 16px;background:var(--surface);border:1px solid var(--line);border-radius:16px}
+.langrow p{margin:0 0 10px}
+@media (max-width:560px){.langbtn span{display:none}.langmenu{right:8px}}
+
+/* ---------- self sign-up ---------- */
+.authcard.wide{max-width:520px}
+.regbox{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.regbox .small{margin:0 0 8px}
+.regbox .btn{width:100%;justify-content:center}
+.regform .qset{text-align:left;margin:8px 0}
+.inrow{display:flex;gap:8px}.inrow input{flex:1;min-width:0}
+.authcard .creds{text-align:left;background:var(--soft);border-radius:14px;padding:14px 16px;font:15px/1.6 var(--mono);white-space:pre-wrap;word-break:break-all;margin:16px 0}
+.authcard .row2{justify-content:center}
+.authcard .linkbtn.back{margin-top:14px}
