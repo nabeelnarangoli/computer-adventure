@@ -35,11 +35,11 @@ function acHome(C){
  let h=topbar()+`<main class="wrap aiac"><section class="aqhero">${acHead(C)}
  <div class="aqhgrid"><div><h1>${first?`Welcome, ${fn}!`:`Hi ${fn}, <em>${esc(C.welcomeEm)}</em>`}</h1>
  <p class="lead">${P(C.intro)}</p>
- ${first?`<div class="row2"><a class="btn aqbtn" href="#${k}-start">Find my level ${SVG.next}</a><a class="btn ghost" href="#${k}-${S[0].id}">Start from the beginning</a></div><p class="small" style="margin-top:10px">The level check has ${C.place.length+1} quick questions and opens the stages you are ready for.</p>`
+ ${first?`<div class="row2"><a class="btn aqbtn" href="#${k}-${S[0].id}">Start stage 1 ${SVG.next}</a></div><p class="small" style="margin-top:10px">Stages open one at a time: pass each stage quiz to open the next.</p>`
  :`<div class="prog"><svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--aqg)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${R}" stroke-dashoffset="${R*(1-n/T)}" transform="rotate(-90 42 42)"/><text x="42" y="50" text-anchor="middle">${n}</text></svg><div><b>${n===T?'All stages passed!':`${n} of ${T} stages passed`}</b><span>${n===T?'Your certificate is ready.':`<span data-noi18n>Next:</span> <span class="tu">${esc(P(nx.t))}</span>`}</span></div></div>
  <a class="btn aqbtn" href="${n===T?`#${k}-cert`:`#${k}-${nx.id}`}">${n===T?'See my certificate':n===0?'Start stage 1':'Continue'} ${SVG.next}</a>`}
  </div>${mascot('sit')}</div><div class="aqtools below" aria-hidden="true">${C.heroTools.map(t=>toolChip(t)).join('')}</div>
- ${a.place?`<p class="aqplace"><span class="lvl2">${esc(C.levelNames[a.place.start]||C.levelNames[1])}</span> ${a.place.start>1?`Your level check opened Levels 1 to ${a.place.start}. Earlier stages are open: take their quiz to collect them for your certificate.`:'Your level check says: start at Level 1. Every stage builds on the last.'} <a href="#${k}-start" class="aqretake">Retake level check</a></p>`:''}</section>`;
+ ${a.place?`<p class="aqplace"><span class="lvl2">${esc(C.levelNames[a.place.start]||C.levelNames[1])}</span> ${a.place.start>1?`Your level check opened Levels 1 to ${a.place.start}. Earlier stages are open: take their quiz to collect them for your certificate.`:'Your level check says: start at Level 1. Every stage builds on the last.'}</p>`:''}</section>`;
  let num=0;
  C.levels.forEach(L=>{const st=S.filter(s=>s.lvl===L.n);const got=st.every(s=>acPassed(C,s.id));
   h+=`<section class="week ${L.c}"><div class="wkhead"><span class="pill">Level ${L.n}</span><h2>${esc(L.t)}</h2><span class="small aqlsub">${esc(L.sub)}</span><span class="badge ${got?'got':''}">${medal(got)}${got?'Level complete':`${st.filter(s=>acPassed(C,s.id)).length} / ${st.length}`}</span></div><div class="days">${st.map(s=>{num++;const ok=acPassed(C,s.id),un=acUnlocked(C,s),isNx=nx&&nx.id===s.id&&!ok;const r=a.st[s.id];
@@ -179,7 +179,7 @@ function coursesPage(){
  <div class="cgrid">${PROG_KEYS.map(card).join('')}
  <div class="ccard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><span class="lvl2 b">Mac &amp; Windows</span><h2>Computer skills course</h2><p>From first click to pro skills: files, internet safety, email, Word, PowerPoint, Excel, cloud, security, design and coding.</p><p class="small">${esc(cDone)}</p><button type="button" class="btn" data-go="computer">${PROG.plan&&PROG.plan.length?'Continue':'Start'} ${SVG.next}</button></div></div></main>`;
  $$('[data-go]').forEach(b=>b.onclick=()=>{const g=b.dataset.go;
-  if(g==='computer'){if(PROG.plan&&PROG.plan.length){PROG.track=PROG.ctrack||'auto';persist();location.hash='#home'}else{PROG.track=null;persist();location.hash='';route()}return}
+  if(g==='computer'){if(PROG.plan&&PROG.plan.length&&PROG.platform){PROG.track=PROG.ctrack||'auto';persist();location.hash='#home'}else{location.hash='';setupComputer()}return}
   PROG.track=g;persist();location.hash='#'+g});
 }
 
@@ -187,7 +187,7 @@ function acRoute(h){
  const m=h.match(/^#([a-z]+)(?:-(.*))?$/);const C=m&&PROGRAMMES[m[1]];if(!C)return coursesPage();
  const r=m[2]||'';
  if(!r)return acHome(C);
- if(r==='start')return acPlacement(C);
+ if(r==='start')return acHome(C);
  if(r==='cert')return acCertPage(C);
  return acStagePage(C,r);
 }

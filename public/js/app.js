@@ -119,54 +119,42 @@ function registeredView(b){
 }
 function logout(msg){API.setToken(null);USER=null;setSubLang('');PROG={};location.hash='';loginView(msg||'')}
 
-/* ---------- setup / onboarding ---------- */
-function setupShell(step,inner){return `<main class="wrap setup"><div class="steps">${['Computer','Course','About you','Quick check','Your plan'].map((s,i)=>`<span class="${i<step?'done':i===step?'on':''}">${i+1}. ${s}</span>`).join('')}</div>${inner}</main>`}
-function setupPlatform(){
- const prev=p=>`<div class="mac ${p==='win'?'w11':''}" aria-hidden="true">${withPlat(p,()=>desk(win('pw','{{Finder||File Explorer}}',finderBody([['x1','School','folder'],['x2','Photo','pic']]),[16,10,60,62]),{icons:[]}))}</div>`;
- app.innerHTML=topbar()+setupShell(0,`<h1>Hi ${esc(USER.name.split(' ')[0])}! Which computer will you learn on?</h1><p class="lead">Every lesson, picture and shortcut will match your computer. You can change this later.</p>
- <div class="langrow"><p class="small"><b>Subtitles:</b> English stays on top. Pick a language to show underneath.</p>${langPicker()}</div>
- <div class="pick2">${[['mac','Mac','MacBook or iMac (Apple)'],['win','Windows','Windows laptop or PC']].map(([k,t,d])=>`<button type="button" class="pickcard" data-p="${k}">${prev(k)}<b>${t}</b><span>${d}</span></button>`).join('')}</div>
- <p class="small">Not sure? A Mac has an apple logo on the lid. A Windows computer shows four blue squares on the Start button.</p>`);
- $$('[data-p]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.p;applyContext();persist();setupTrack()});
-}
+/* ---------- setup / onboarding: pick a course, nothing else to answer ---------- */
+const ALL_BASIC_KNOWN={units:Object.fromEntries(UNITS.filter(u=>u.track==='basic').map(u=>[u.id,{asked:2,right:2}]))};
+/* computer course plan from the learner's own choice: full course, Basic only, or Advanced only (no basics shown) */
+const makePlan=t=>t==='advanced'?buildPlan(ALL_BASIC_KNOWN,'advanced'):buildPlan(null,t==='basic'?'basic':'auto');
+function setupShell(step,inner){return `<main class="wrap setup">${inner}</main>`}
 function setupTrack(){
- const comp=`<button type="button" class="pickcard tr aqpick" data-t="auto"><span class="tag2">Beginner to Advanced · Mac &amp; Windows</span><b>Computer Skills Course</b><span>From your first click to pro skills: files, internet safety, email, Word, PowerPoint, Excel, cloud, security, design and coding. A few questions build a course just for you.</span></button>`;
- app.innerHTML=topbar()+setupShell(1,`<div class="mrow"><div><h1>What would you like to learn?</h1><p class="lead">Pick a course. A few quick questions will then build your personal path and skip anything you already know.</p></div>${mascot('sit',{say:'Pick a course. You can switch any time.',cls:'sm'})}</div>
+ const comp=`<button type="button" class="pickcard tr aqpick" data-t="computer"><span class="tag2">Beginner to Advanced · Mac &amp; Windows</span><b>Computer Skills Course</b><span>From your first click to pro skills: files, internet safety, email, Word, PowerPoint, Excel, cloud, security, design and coding.</span></button>`;
+ app.innerHTML=topbar()+setupShell(0,`<div class="mrow"><div><h1>Hi ${esc(USER.name.split(' ')[0])}! What would you like to learn?</h1><p class="lead">Pick a course and start straight away. You can switch any time; your progress in each course is saved.</p></div>${mascot('sit',{say:'Pick a course. You can switch any time.',cls:'sm'})}</div>
  <div class="pick2 progs three">${comp}${PROG_KEYS.map(k=>{const C=PROGRAMMES[k];return `<button type="button" class="pickcard tr aqpick" data-t="${k}"><span class="tag2">${esc(C.level)}</span><b>${esc(C.full)}</b><span>${P(C.card)}</span></button>`}).join('')}</div>
- <button type="button" class="linkbtn back">${SVG.back} Change computer</button>`);
- $$('[data-t]').forEach(b=>b.onclick=()=>{const t=b.dataset.t;PROG.track=t;if(PROGRAMMES[t]){persist();location.hash=PROG[t]&&PROG[t].place?'#'+t:'#'+t+'-start';return route()}PROG.ctrack=t;persist();setupAbout()});
- $('.back').onclick=setupPlatform;
+ <div class="langrow" style="margin-top:26px"><p class="small"><b>Subtitles:</b> English stays on top. Pick a language to show underneath.</p>${langPicker()}</div>`);
+ $$('[data-t]').forEach(b=>b.onclick=()=>{const t=b.dataset.t;
+  if(PROGRAMMES[t]){PROG.track=t;persist();location.hash='#'+t;return route()}
+  setupComputer()});
 }
-function setupAbout(){
- app.innerHTML=topbar()+setupShell(2,`<h1>Tell us a little about you</h1>
- <fieldset class="qset"><legend>How much do you use a computer?</legend>${FREQ.map(([k,t],i)=>`<label class="ck"><input type="radio" name="freq" value="${k}" ${(PROG.freq||'some')===k?'checked':''}><span>${t}</span></label>`).join('')}</fieldset>
- <fieldset class="qset"><legend>What do you most want to get better at? (pick any)</legend>${GOALS.map(([k,t])=>`<label class="ck"><input type="checkbox" name="goal" value="${k}" ${(PROG.goals||[]).includes(k)?'checked':''}><span>${t}</span></label>`).join('')}</fieldset>
- <div class="row2"><button type="button" class="btn go">Start the quick check ${SVG.next}</button>${PROG.track==='basic'?'<button type="button" class="linkbtn skip">I\'m a complete beginner: skip the check and start at lesson 1</button>':''}</div>
- <button type="button" class="linkbtn back">${SVG.back} Change course</button>`);
- const read=()=>{PROG.freq=$('input[name=freq]:checked')?.value||'some';PROG.goals=$$('input[name=goal]:checked').map(i=>i.value)};
- $('.go').onclick=()=>{read();persist();if(PROG.freq==='never'&&PROG.track!=='advanced'){PROG.placement={level:'Beginner',units:{},basicScore:0,advScore:0,asked:0,date:new Date().toISOString().slice(0,10),skipped:true};return setupResult()}setupPlacement()};
- const sk=$('.skip');if(sk)sk.onclick=()=>{read();PROG.placement={level:'Beginner',units:{},basicScore:0,advScore:0,asked:0,date:new Date().toISOString().slice(0,10),skipped:true};setupResult()};
+function setupComputer(){
+ const prev=p=>`<div class="mac ${p==='win'?'w11':''}" aria-hidden="true">${withPlat(p,()=>desk(win('pw','{{Finder||File Explorer}}',finderBody([['x1','School','folder'],['x2','Photo','pic']]),[16,10,60,62]),{icons:[]}))}</div>`;
+ let plat=PROG.platform||'',lvl=PROG.ctrack==='advanced'?'advanced':PROG.ctrack?'auto':'';
+ app.innerHTML=topbar()+setupShell(1,`<h1>Computer Skills Course</h1><p class="lead">Two quick choices and you're ready.</p>
+ <h2 class="pickh">Which computer will you learn on?</h2>
+ <div class="pick2">${[['mac','Mac','MacBook or iMac (Apple)'],['win','Windows','Windows laptop or PC']].map(([k,t,d])=>`<button type="button" class="pickcard ${plat===k?'on':''}" data-p="${k}">${prev(k)}<b>${t}</b><span>${d}</span></button>`).join('')}</div>
+ <p class="small">Not sure? A Mac has an apple logo on the lid. A Windows computer shows four blue squares on the Start button.</p>
+ <h2 class="pickh">Where do you want to start?</h2>
+ <div class="pick2">${[['auto','I\'m a beginner','Start from the very first click and go all the way to advanced: 55 lessons.'],['advanced','I know the basics','Skip the basics and go straight to the Advanced course: 25 lessons.']].map(([k,t,d])=>`<button type="button" class="pickcard tr ${lvl===k?'on':''}" data-l="${k}"><b>${t}</b><span>${d}</span></button>`).join('')}</div>
+ <div class="row2" style="margin-top:22px"><button type="button" class="btn go" ${plat&&lvl?'':'disabled'}>Start learning ${SVG.next}</button><button type="button" class="linkbtn back">${SVG.back} Choose another course</button></div>`);
+ const upd=()=>{$$('[data-p]').forEach(x=>x.classList.toggle('on',x.dataset.p===plat));$$('[data-l]').forEach(x=>x.classList.toggle('on',x.dataset.l===lvl));$('.go').disabled=!(plat&&lvl)};
+ $$('[data-p]').forEach(b=>b.onclick=()=>{plat=b.dataset.p;upd()});
+ $$('[data-l]').forEach(b=>b.onclick=()=>{lvl=b.dataset.l;upd()});
+ $('.go').onclick=()=>{PROG.platform=plat;PROG.track=lvl;PROG.ctrack=lvl;PROG.plan=makePlan(lvl);applyContext();persist();location.hash='#home';route()};
  $('.back').onclick=setupTrack;
-}
-function setupPlacement(){
- app.innerHTML=topbar()+setupShell(3,`<div class="pqpair"><div class="pqwrap"></div>${mascot('think',{say:'Take your time. Pick “I\'m not sure” instead of guessing.'})}</div>`);
- runPlacement($('.pqwrap'),res=>{PROG.placement=res;setupResult()},PROG.track==='basic'?4:5);
-}
-function setupResult(){
- PROG.plan=buildPlan(PROG.placement,PROG.track,PROG.goals);PROG.planTotal=planLessons().length;persist();
- const pl=PROG.placement;const units=planUnits();const learnN=planLessons().length;
- const warn=PROG.track==='advanced'&&['Beginner','Basic'].includes(pl.level)?`<div class="tipbox" style="margin:16px 0">We added <b>refresher</b> units first, because a few basics were new to you. You can always skip ahead.</div>`:'';
- app.innerHTML=topbar()+setupShell(4,`<div class="resulthead mrow"><div><span class="lvl2">${esc(pl.level)}</span><h1>Your personal course is ready</h1><p class="lead">${pl.skipped?'We\'ll start right at the beginning, step by step.':`You answered ${pl.asked} questions. ${learnN} lesson${learnN===1?' is':'s are'} waiting for you; units you already know are marked so you can skip them.`}</p></div>${mascot('present',{say:'Great start! Your course is ready.',cls:'sm'})}</div>${warn}
- <div class="planlist">${units.map(u=>`<div class="pl ${u.c} ${u.status}"><span class="pill">${u.track==='basic'?'Basic':'Advanced'}</span><b>${esc(P(u.t))}</b><span class="pln">${u.lessons.length} lesson${u.lessons.length>1?'s':''}</span>${u.status!=='learn'?`<span class="chip2 ${u.status}">${STATUS_LABEL[u.status]}</span>`:''}</div>`).join('')}</div>
- <div class="row2"><a class="btn startl" href="#home">Start learning ${SVG.next}</a></div>`);
- $('.startl').onclick=e=>{e.preventDefault();if(location.hash!=='#home')history.replaceState(null,'','#home');route()};
 }
 
 /* ---------- course map ---------- */
 const heroDemo=()=>DEMO(()=>desk(win('hw','{{Notes||Sticky Notes}}',`<div style="padding:2.4cqw;font-size:2.4cqw;font-weight:600;line-height:1.5;flex:1;background:{{#fff||#FFF7C2}}" data-k="ht"></div>`,[16,10,58,54],'off'),{dock:dockPlus,icons:[['h1',"[name]'s Work",'folder',86,10]]}),[['cap','Click {{Notes||Sticky Notes}}…',300],['to','d-notes'],['click'],['cls','d-notes','bounce'],['cls','d-notes','run'],['show','hw',600],['cls','d-notes','bounce',false],['cap','…and type!',200],['type','ht','Hello [name]!\nReady to learn something new today?',55],['cap','Every lesson has moving pictures like this one.']],{intro:'Press <b>Watch how</b> to see a moving picture.',start:[46,58]});
 function home(){
  const total=planLessons().length,d=doneCount(),nx=nextLesson(),C=2*Math.PI*34;const nl=COURSE[nx];
- const trackName={basic:'Basic course',advanced:'Advanced course',auto:'Personal course'}[PROG.track]||'';
+ const trackName={basic:'Basic course',advanced:'Advanced course',auto:'Computer Skills: full course'}[PROG.track]||'';
  let h=topbar()+`<main class="wrap"><section class="hero"><div><p class="eyebrow">${esc(trackName)} · ${PROG.platform==='win'?'Windows':'Mac'}${PROG.placement?.level?' · '+esc(PROG.placement.level):''}</p><h1>Hi ${esc(USER.name.split(' ')[0])}, <em>keep going!</em></h1><p class="lead">One lesson is about an hour. Watch the moving pictures, try each step on your own computer, play the practice games, and tick it off.</p>
  <div class="prog"><svg class="ring" viewBox="0 0 84 84"><circle cx="42" cy="42" r="34" fill="none" stroke="var(--soft)" stroke-width="9"/><circle cx="42" cy="42" r="34" fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(total?d/total:0))}" transform="rotate(-90 42 42)"/><text x="42" y="50" text-anchor="middle">${d}</text></svg><div><b>${d===total?'Course complete!':`${d} of ${total} lessons done`}</b><span>${d===total?'Amazing work. Try the other course on your profile page.':`<span data-noi18n>Next:</span> <span class="tu">${esc(P(nl.t))}</span>`}</span></div></div>
  <a class="btn" href="#lesson-${nx}">${d===0?'Start your first lesson':d===total?'See your graduation':'Continue'} ${SVG.next}</a></div><div class="herodemo"></div></section>
@@ -222,12 +210,11 @@ function profile(){
  <section class="sec"><div class="statgrid"><div><b>${doneCount()} / ${planLessons().length}</b><span>lessons done</span></div><div><b>${esc(pl.level||'–')}</b><span>level from your check</span></div><div><b>${PROG.wpm?.best||'–'}</b><span>best typing speed (wpm)</span></div><div><b>${Object.keys(q).length}</b><span>quizzes taken</span></div></div></section>
  <section class="sec"><h2>Computer</h2><p class="small">Lessons show screens and shortcuts for this computer. Your progress is kept if you switch.</p><div class="seg">${[['mac','Mac'],['win','Windows']].map(([k,t])=>`<button type="button" data-pp="${k}" class="${PROG.platform===k?'on':''}">${t}</button>`).join('')}</div></section>
  <section class="sec"><h2>Subtitle language</h2><p class="small">English stays the main text. Your language shows as a smaller line under it.</p>${langPicker()}</section>
- <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Personal (recommended)'],['basic','Basic'],['advanced','Advanced'],...PROG_KEYS.map(k=>[k,PROGRAMMES[k].name])].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
- <p style="margin-top:16px"><button type="button" class="btn ghost sm retake">Retake the quick check</button></p></section>
+ <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Computer: full course'],['advanced','Computer: Advanced only'],...PROG_KEYS.map(k=>[k,PROGRAMMES[k].name])].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
+</section>
  <section class="sec"><button type="button" class="btn ghost" id="lo">${SVG.logout} Log out</button></section></main>`;
  $$('[data-pp]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.pp;applyContext();persist();profile()});
- $$('[data-tt]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.tt;if(!PROGRAMMES[PROG.track]){PROG.ctrack=PROG.track;PROG.plan=buildPlan(PROG.placement,PROG.track,PROG.goals);if(!PROG.plan.length||!PROG.placement){PROG.plan=null;persist();location.hash='';return route()}}persist();profile()});
- $('.retake').onclick=()=>{PROG.plan=null;setupAbout()};
+ $$('[data-tt]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.tt;if(!PROGRAMMES[PROG.track]){PROG.ctrack=PROG.track;PROG.plan=makePlan(PROG.track)}persist();profile()});
  $('#lo').onclick=()=>{clearTimeout(saveTimer);flush().finally(()=>logout())};
 }
 
@@ -237,10 +224,9 @@ function route(){
  if(!USER)return loginView();
  const hsh=location.hash;
  if(isAcHash(hsh)){acRoute(hsh);return window.scrollTo(0,0)}
- if(!PROG.platform)return setupPlatform();
  if(!PROG.track)return setupTrack();
  if(PROGRAMMES[PROG.track]&&hsh!=='#profile'){acHome(PROGRAMMES[PROG.track]);return window.scrollTo(0,0)}
- if(!PROG.plan||!PROG.plan.length)return setupAbout();const m=hsh.match(/^#lesson-([ab]\d+)$/);
+ if(!PROG.platform||!PROG.plan||!PROG.plan.length)return setupComputer();const m=hsh.match(/^#lesson-([ab]\d+)$/);
  if(m)lesson(m[1]);else if(hsh==='#profile')profile();else home();
  window.scrollTo(0,0);
 }
