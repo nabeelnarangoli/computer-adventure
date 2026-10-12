@@ -350,7 +350,7 @@ function wPrompt(el){
 function wCert(el,cfg={}){
  el.innerHTML=`<h3>Your certificate</h3><p class="gi">Finish the quiz and the test above, then press the button.</p><button type="button" class="btn wk">Show my certificate</button><div class="certout"></div>`;
  $('.btn',el).onclick=()=>{const d=new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});const full=window.CURRENT_NAME||UNAME;const sp=PROG.wpm?.[cfg.wpmKey||'final'];
-  $('.certout',el).innerHTML=`<div class="cert"><div class="k">Certificate of achievement</div><p style="margin:14px 0 0;color:var(--muted)">This certifies that</p><h2>${esc(full)}</h2><p style="margin:0 0 6px">has completed the ${esc(cfg.track||'')} course of Computer Adventure and is officially a</p><div class="e">${esc(cfg.label||'Computer Expert')}</div><p style="margin:16px 0 0;color:var(--muted)">${d} · ${isWin()?'Windows':'Mac'}${sp?` · typing speed ${sp} words a minute`:''}</p></div>`;confetti()};
+  $('.certout',el).innerHTML=`<div class="cert"><div class="k">Certificate of achievement</div><p style="margin:14px 0 0;color:var(--muted)">This certifies that</p><h2>${esc(full)}</h2><p style="margin:0 0 6px">has completed the ${esc(cfg.track||'')} course of Aqlyon Digital Skill Academy and is officially a</p><div class="e">${esc(cfg.label||'Computer Expert')}</div><p style="margin:16px 0 0;color:var(--muted)">${d} · ${isWin()?'Windows':'Mac'}${sp?` · typing speed ${sp} words a minute`:''}</p></div>`;confetti()};
 }
 
 const WIDGETS={click:wClick,drag:wDrag,scroll:wScroll,keys:wKeys,typing:wTyping,shortcuts:wShortcuts,hot:wHot,quiz:wQuiz,editor:wEditor,email:wEmail,sheet:wSheet,sortfilter:wSortFilter,chart:wChart,draw:wDraw,password:wPassword,html:wHtml,prompt:wPrompt,cert:wCert};

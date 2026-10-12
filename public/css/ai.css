@@ -188,3 +188,5 @@
 .aiac .cheat div>b:first-child{display:block;margin-bottom:4px}
 .aiac .tile .dt{overflow-wrap:break-word;hyphens:auto}
 .aqcert .sample{color:rgba(255,255,255,.045)}
+.brand .bshort{display:none}
+@media (max-width:560px){.brand .bfull{display:none}.brand .bshort{display:inline}.brand{flex-shrink:0}.top .in{gap:8px}.savestate:not([data-s=error]){display:none}.savestate{min-width:0;overflow:hidden;text-overflow:ellipsis}.aqnav{margin-left:auto}}

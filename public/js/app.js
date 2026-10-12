@@ -1,5 +1,5 @@
 /* =====================================================================
-   Computer Adventure — learner app
+   Aqlyon Digital Skill Academy — learner app
    login → choose computer → choose course → placement check → personal course map → lessons
    ===================================================================== */
 const app=$('#app');
@@ -49,7 +49,7 @@ const medal=(on)=>`<svg class="medal" viewBox="0 0 40 40" aria-hidden="true"><pa
 /* ---------- shell ---------- */
 function topbar(){
  const t=planLessons().length;
- return `<header class="top"><div class="in"><a class="brand" href="#home"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span>Computer Adventure</span></a>
+ return `<header class="top"><div class="in"><a class="brand" href="#home"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span class="bfull">Aqlyon Digital Skill Academy</span><span class="bshort" aria-hidden="true">Aqlyon</span></a>
  <span class="savestate" aria-live="polite"></span>
  <a class="aqnav ${location.hash.startsWith('#ai')?'on':''}" href="#ai" title="Aqlyon AI Academy">${SPARK}<span>AI Academy</span></a>
  ${t?`<span class="stars">${SVG.star} ${doneCount()} / ${t}</span>`:''}
@@ -76,7 +76,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){const m=$('.langmen
 
 /* ---------- login ---------- */
 function loginView(msg=''){
- app.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Computer Adventure</h1><p class="lead">Learn computers your way, from first click to pro skills.</p>
+ app.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Aqlyon Digital Skill Academy</h1><p class="lead">Computer skills and AI, from your first click to professional AI creation.</p>
  <form class="authform" autocomplete="on"><div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
  <div class="field"><label for="li-p">PIN or password</label><input id="li-p" name="pin" type="password" autocomplete="current-password" required></div>
  <p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form>
@@ -108,7 +108,7 @@ function registerView(){
   catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
 }
 function registeredView(b){
- const txt=`Computer Adventure\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
+ const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
  app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.check||SVG.star}</span><h1>${esc(b.name.split(' ')[0])}, you're all set!</h1><p class="lead">Save these sign-in details. Your PIN is only shown now. Copy them, write them down or take a photo.</p>
  <pre class="creds">${esc(txt)}</pre><div class="row2"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn go">Start learning ${SVG.next}</button></div></div></main>`;
  $('.cp').onclick=async()=>{const c=$('.cp');try{await navigator.clipboard.writeText(txt);c.textContent='Copied ✓'}catch(e){c.textContent='Select the text to copy'}};
@@ -162,7 +162,7 @@ function setupResult(){
 }
 
 /* ---------- course map ---------- */
-const heroDemo=()=>DEMO(()=>desk(win('hw','{{Notes||Sticky Notes}}',`<div style="padding:2.4cqw;font-size:2.4cqw;font-weight:600;line-height:1.5;flex:1;background:{{#fff||#FFF7C2}}" data-k="ht"></div>`,[16,10,58,54],'off'),{dock:dockPlus,icons:[['h1',"[name]'s Work",'folder',86,10]]}),[['cap','Click {{Notes||Sticky Notes}}…',300],['to','d-notes'],['click'],['cls','d-notes','bounce'],['cls','d-notes','run'],['show','hw',600],['cls','d-notes','bounce',false],['cap','…and type!',200],['type','ht','Hello [name]!\nReady for your computer adventure?',55],['cap','Every lesson has moving pictures like this one.']],{intro:'Press <b>Watch how</b> to see a moving picture.',start:[46,58]});
+const heroDemo=()=>DEMO(()=>desk(win('hw','{{Notes||Sticky Notes}}',`<div style="padding:2.4cqw;font-size:2.4cqw;font-weight:600;line-height:1.5;flex:1;background:{{#fff||#FFF7C2}}" data-k="ht"></div>`,[16,10,58,54],'off'),{dock:dockPlus,icons:[['h1',"[name]'s Work",'folder',86,10]]}),[['cap','Click {{Notes||Sticky Notes}}…',300],['to','d-notes'],['click'],['cls','d-notes','bounce'],['cls','d-notes','run'],['show','hw',600],['cls','d-notes','bounce',false],['cap','…and type!',200],['type','ht','Hello [name]!\nReady to learn something new today?',55],['cap','Every lesson has moving pictures like this one.']],{intro:'Press <b>Watch how</b> to see a moving picture.',start:[46,58]});
 function home(){
  const total=planLessons().length,d=doneCount(),nx=nextLesson(),C=2*Math.PI*34;const nl=COURSE[nx];
  const trackName={basic:'Basic course',advanced:'Advanced course',auto:'Personal course'}[PROG.track]||'';

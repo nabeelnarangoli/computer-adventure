@@ -1,4 +1,4 @@
-# Computer Adventure
+# Aqlyon Digital Skill Academy
 
 A self-paced computer course for kids and adults on **Mac or Windows**, from the very first click to advanced skills. Learners log in, pick their computer and a course, take a short placement check, and get a personal course. Each learner's progress is saved separately. An admin panel lets you create learners and follow their progress.
 

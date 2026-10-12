@@ -42,4 +42,4 @@ http.createServer(async (req, res) => {
   if (!fs.existsSync(p)) { res.writeHead(404); return res.end('Not found'); }
   res.writeHead(200, { 'content-type': types[path.extname(p)] || 'application/octet-stream' });
   fs.createReadStream(p).pipe(res);
-}).listen(PORT, () => console.log(`Computer Adventure running at http://localhost:${PORT}`));
+}).listen(PORT, () => console.log(`Aqlyon Digital Skill Academy running at http://localhost:${PORT}`));

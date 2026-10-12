@@ -89,7 +89,7 @@ function loadLangFont(L){
 function loadLang(code){
  return new Promise(res=>{
   if(!code||window.I18N[code])return res();
-  const s=document.createElement('script');s.src=`/js/i18n/${code}.js?v=1`;s.onload=()=>res();s.onerror=()=>res();document.head.appendChild(s);
+  const s=document.createElement('script');s.src=`/js/i18n/${code}.js?v=2`;s.onload=()=>res();s.onerror=()=>res();document.head.appendChild(s);
  });
 }
 async function setSubLang(code){

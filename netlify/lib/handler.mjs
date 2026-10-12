@@ -1,4 +1,4 @@
-// Shared API logic for Computer Adventure.
+// Shared API logic for Aqlyon Digital Skill Academy.
 // Runs inside a Netlify Function (production) or the local dev server (dev-server.mjs).
 // Storage is any object with get(key,{type:'json'}), setJSON(key,value), delete(key), list().
 import crypto from 'node:crypto';

@@ -1,5 +1,5 @@
 /* =====================================================================
-   Computer Adventure — admin panel
+   Aqlyon Digital Skill Academy — admin panel
    ===================================================================== */
 const root=$('#admin');
 const AAPI={
@@ -25,7 +25,7 @@ function modal(html,onReady){const m=document.createElement('div');m.className='
 function confirmBox(title,text,okLabel,danger){return new Promise(res=>modal(`<h2>${title}</h2><p>${text}</p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn ${danger?'danger':''} ok">${okLabel}</button></div>`,(m,close)=>{$('.ok',m).onclick=()=>{close();res(true)};m.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.target===m)res(false)})}))}
 
 function loginView(msg=''){
- root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Computer Adventure</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/">Go to the learner site</a></p></div></main>`;
+ root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Aqlyon Digital Skill Academy</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/">Go to the learner site</a></p></div></main>`;
  $('form').onsubmit=async e=>{e.preventDefault();const b=$('button',e.target);b.disabled=true;$('.formerr').textContent='';
   try{const d=await AAPI.call('/admin/login',{method:'POST',body:{password:$('#ap').value}});AAPI.setToken(d.token);dashboard()}catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
  $('#ap').focus();
@@ -82,7 +82,7 @@ function addLearner(){
    try{await AAPI.call('/admin/users',{method:'POST',body});close();await load();render();showCreds(body)}catch(err){$('.formerr',m).textContent=err.message}};
  });
 }
-function showCreds(b){const txt=`Computer Adventure\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
+function showCreds(b){const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
  modal(`<h2>${esc(b.name)} is ready</h2><p>Share these sign-in details with ${esc(b.name.split(' ')[0])}. The PIN is only shown now. You can always reset it later.</p><pre class="creds">${esc(txt)}</pre><div class="mrow"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{$('.cp',m).onclick=()=>copy(txt)})}
 
 async function act(a,username){
