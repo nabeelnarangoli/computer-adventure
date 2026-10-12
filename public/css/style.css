@@ -842,3 +842,119 @@ li>.sub{margin-bottom:.2em}
 .authcard .creds{text-align:left;background:var(--soft);border-radius:14px;padding:14px 16px;font:15px/1.6 var(--mono);white-space:pre-wrap;word-break:break-all;margin:16px 0}
 .authcard .row2{justify-content:center}
 .authcard .linkbtn.back{margin-top:14px}
+
+/* ---------- demo kit: explainer boards, flows, checklists, tables ---------- */
+.dkpanel{position:absolute;inset:2.2cqw 3cqw;background:#fff;border-radius:1.4cqw;box-shadow:0 0 0 1px #dde,0 1cqw 3cqw rgba(0,0,0,.08);padding:2cqw 2.4cqw;display:flex;flex-direction:column;gap:1.6cqw;overflow:hidden}
+.dkhead b{display:block;font-size:3cqw;line-height:1.15;color:#1A1E3A}
+.dkhead small{display:block;font-size:1.5cqw;color:#666;margin-top:.4cqw}
+.dkgrid{display:grid;gap:1.3cqw;flex:1;align-content:center}
+.dkcard{background:#F5F7FD;border:.2cqw solid #E2E7F3;border-radius:1.2cqw;padding:1.3cqw 1.4cqw;transition:opacity .35s,transform .35s;min-width:0}
+.dkcard.off{transform:translateY(1.5cqw)}
+.dkcard .dki{font-size:3.4cqw;line-height:1;display:block;margin-bottom:.6cqw}
+.dkcard b{display:block;font-size:2.3cqw;line-height:1.2;color:#1A1E3A}
+.dkcard p{margin:.5cqw 0 0;font-size:1.75cqw;line-height:1.35;color:#444}
+.dkflow{flex:1;display:flex;align-items:center;justify-content:center;gap:1cqw}
+.dkstep{flex:1;min-width:0;background:#F5F7FD;border:.25cqw solid #E2E7F3;border-radius:1.2cqw;padding:1.4cqw 1cqw;text-align:center;transition:all .35s;position:relative}
+.dkstep.off{transform:scale(.85)}
+.dkstep.on{border-color:#1FA870;background:#EAF7F0;box-shadow:0 .6cqw 1.6cqw rgba(31,168,112,.18)}
+.dkstep .dkn{position:absolute;top:-1.3cqw;left:50%;transform:translateX(-50%);background:#1A1E3A;color:#fff;font-weight:800;font-size:1.3cqw;width:2.6cqw;height:2.6cqw;border-radius:50%;display:grid;place-items:center}
+.dkstep .dki{display:block;font-size:3.4cqw;line-height:1.1;margin:.6cqw 0}
+.dkstep b{display:block;font-size:1.9cqw;line-height:1.2;color:#1A1E3A}
+.dkflow.many .dkstep{padding:1.2cqw .6cqw}.dkflow.many .dkstep .dki{font-size:2.8cqw}.dkflow.many .dkstep b{font-size:1.6cqw}
+.dkarr{font-size:2.2cqw;color:#1FA870;font-weight:800;flex:none;transition:opacity .3s}
+.dkchk{flex:1;display:flex;flex-direction:column;justify-content:center;gap:1.1cqw}
+.dkci{display:flex;align-items:center;gap:1.4cqw;font-size:2.1cqw;line-height:1.3;background:#F5F7FD;border-radius:1cqw;padding:1cqw 1.4cqw;transition:background .3s}
+.dkci.done{background:#EAF7F0}
+.dkbox{flex:none;width:2.8cqw;height:2.8cqw;border-radius:.7cqw;border:.3cqw solid #9AA3BD;background:#fff;display:grid;place-items:center;transition:all .25s}
+.dkci.done .dkbox{background:#1FA870;border-color:#1FA870}
+.dkci.done .dkbox::after{content:"✓";color:#fff;font-weight:900;font-size:1.9cqw}
+.dktbl{width:100%;border-collapse:separate;border-spacing:0 .6cqw;font-size:1.85cqw;line-height:1.3;margin:auto 0}
+.dktbl th{text-align:left;font-size:1.3cqw;text-transform:uppercase;letter-spacing:.05em;color:#666;padding:0 1.2cqw}
+.dktbl td{background:#F5F7FD;padding:1cqw 1.2cqw;vertical-align:top}
+.dktbl td:first-child{border-radius:1cqw 0 0 1cqw;font-weight:700;color:#1A1E3A}
+.dktbl td:last-child{border-radius:0 1cqw 1cqw 0}
+.dktbl tr{transition:opacity .35s}
+.dkfoot{background:#1A1E3A;color:#fff;border-radius:1cqw;padding:1.1cqw 1.6cqw;font-size:1.9cqw;font-weight:700;line-height:1.3;transition:opacity .35s}
+.dkfoot b{color:#FFD84D}
+/* demo kit: extra scene parts */
+.dkkbs{position:absolute;inset:2cqw 3cqw;display:flex;flex-direction:column;gap:1.4cqw;justify-content:center}
+.dkkbs .kb{margin:0 auto;width:100%}
+.dkkl{min-height:5cqw;display:grid;place-items:center;font-size:3cqw;color:#1A1E3A}
+.dkpie{position:absolute;right:6%;top:28%;width:30%;background:#fff;border-radius:1cqw;box-shadow:0 1cqw 3cqw rgba(0,0,0,.15);padding:1.4cqw;transition:opacity .4s,transform .4s}
+.dkpie.off{transform:scale(.6)}
+.dkpie svg{width:70%;display:block;margin:0 auto}
+.dkleg{display:flex;flex-wrap:wrap;gap:.4cqw 1cqw;justify-content:center;margin-top:1cqw;font-size:1.2cqw}
+.dkleg i{display:inline-block;width:1.1cqw;height:1.1cqw;border-radius:.2cqw;margin-right:.3cqw;vertical-align:-.1cqw}
+.dknav{position:absolute;left:5%;top:30%;width:22%;background:#fff;border-radius:.8cqw;box-shadow:0 .6cqw 2cqw rgba(0,0,0,.2);padding:1cqw;display:flex;flex-direction:column;gap:.5cqw;font-size:1.35cqw;z-index:5}
+.dknav b{font-size:1.4cqw}
+.dknav span{padding:.4cqw .7cqw;border-radius:.5cqw}
+.dknav span.on{background:#DCE8FB;font-weight:700}
+.dkpb{margin:1.6cqw -1cqw;border-top:.25cqw dashed #9AA3BD;text-align:center;font-size:1.1cqw;color:#666;padding-top:.4cqw;transition:opacity .3s}
+.dkcmt{position:absolute;right:6%;top:30%;width:28%;background:#FFF8D6;border:.2cqw solid #F0D060;border-radius:.8cqw;padding:1cqw;font-size:1.4cqw;display:flex;flex-direction:column;gap:.6cqw;z-index:5}
+.dkcmt>span[data-k=ct]{min-height:2cqw;background:#fff;border-radius:.5cqw;padding:.4cqw .6cqw}
+.dkmen{background:#fff;border-radius:.5cqw;box-shadow:0 .4cqw 1cqw rgba(0,0,0,.2);padding:.5cqw .8cqw;font-weight:700}
+.dkcmt .b2{align-self:flex-start}
+.dkpick{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#fff;border-radius:1cqw;box-shadow:0 1cqw 3cqw rgba(0,0,0,.35);padding:1.6cqw;font-size:1.6cqw;z-index:6;width:52%}
+.dkpick>div{display:grid;grid-template-columns:1fr 1fr;gap:1cqw;margin-top:1cqw}
+.dkpick span{border:.2cqw solid #ddd;border-radius:.8cqw;padding:2cqw 1cqw;text-align:center;font-weight:700}
+.dkstatus{position:absolute;left:12%;bottom:13%;background:#f2f2f2;border:1px solid #ccc;border-radius:.4cqw .4cqw 0 0;font:1.3cqw/1.3 monospace;padding:.4cqw .8cqw;color:#B00020;z-index:8}
+.dkform{max-width:60%;margin:2cqw auto;display:flex;flex-direction:column;gap:1cqw;font-size:1.5cqw;position:relative}
+.dkform b{font-size:2.2cqw}
+.dkform label{display:flex;flex-direction:column;gap:.3cqw;font-weight:700}
+.dkform label span{border:.15cqw solid #bbb;border-radius:.5cqw;min-height:2.8cqw;padding:.4cqw .7cqw;font-weight:400}
+.dkform .b2{align-self:flex-start}
+.dksug{position:absolute;left:0;top:62%;background:#fff;border-radius:.6cqw;box-shadow:0 .6cqw 2cqw rgba(0,0,0,.25);padding:.8cqw 1cqw;font-weight:700;display:flex;flex-direction:column;z-index:3}
+.dksug small{font:1.2cqw monospace;color:#1FA870}
+.dkcookie{position:absolute;left:10%;right:10%;bottom:6%;background:#1A1E3A;color:#fff;border-radius:.8cqw;padding:1cqw 1.4cqw;font-size:1.5cqw;display:flex;justify-content:space-between;align-items:center}
+.dkcookie div{display:flex;gap:.8cqw}
+.dkpriv .bbar,.dkpriv .btabs{background:#3B2A5C!important;color:#fff}
+.dkpriv .addr{background:#24183A!important;color:#fff}
+.dkpriv .bpage{background:#F3EEFB}
+.dkcode{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:1.4cqw;min-height:0}
+.dkcode>div{display:flex;flex-direction:column;gap:.5cqw;min-height:0}
+.dkcode small{font-size:1.2cqw;color:#666;font-weight:700}
+.dkcode pre{flex:1;margin:0;background:#1A1E3A;color:#9FE0C3;border-radius:.8cqw;padding:1.2cqw;font:1.5cqw/1.5 ui-monospace,monospace;white-space:pre-wrap}
+.dkweb{flex:1;border:.2cqw solid #ddd;border-radius:.8cqw;padding:1.2cqw;font-size:1.6cqw;overflow:hidden}
+.dkweb h1{font-size:2.8cqw;margin:0 0 .6cqw}.dkweb p{margin:0 0 .6cqw}.dkweb ul{margin:0;padding-left:2.4cqw}
+.dkrecipe{flex:1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1.2cqw;align-content:center}
+.dkrecipe>div{background:#F5F7FD;border-left:.6cqw solid #1FA870;border-radius:1cqw;padding:1.2cqw 1.4cqw;transition:opacity .4s}
+.dkrecipe b{display:block;font-size:1.5cqw;text-transform:uppercase;letter-spacing:.06em;color:#1FA870}
+.dkrecipe span{font-size:2cqw;line-height:1.3;color:#1A1E3A}
+.dkrecipe.six{grid-template-columns:repeat(3,minmax(0,1fr))}.dkrecipe.six span{font-size:1.7cqw}
+.dkfile{margin-top:.8cqw;background:#EEF6F1;border:.15cqw solid #1FA870;border-radius:.8cqw;padding:.7cqw 1cqw;display:flex;flex-direction:column}
+.dkfile small{font-size:1.1cqw;color:#555}
+.dkmini{border-collapse:collapse;font-size:1.2cqw;margin:.3cqw 0 .6cqw}.dkmini td,.dkmini th{border-bottom:1px solid #ddd;padding:.2cqw .8cqw;text-align:left}
+.dkserp{display:flex;flex-direction:column;gap:1cqw}
+.dkaio{background:#EEF3FE;border-radius:1cqw;padding:1.2cqw 1.4cqw;font-size:1.5cqw;transition:opacity .4s}
+.dkaio p{margin:.4cqw 0}.dkaio small{color:#555}
+.dkserp .res{transition:opacity .4s}
+.dklp{max-width:70%;margin:1.4cqw auto;display:flex;flex-direction:column;gap:1cqw;font-size:1.6cqw;text-align:center}
+.dklp h3{font-size:2.6cqw;margin:0;color:#1A1E3A}
+.dklp ul{list-style:none;margin:0;padding:0;display:flex;gap:2cqw;justify-content:center}
+.dklp .b2{align-self:center;font-size:1.7cqw;padding:.8cqw 2.4cqw}
+.dkutm{font:1.9cqw/1.4 ui-monospace,monospace;background:#F5F7FD;border-radius:1cqw;padding:1.4cqw;word-break:break-all}
+.dkutm span{transition:opacity .4s}
+.dkutm span[data-k=u1]{color:#2A6FF0}.dkutm span[data-k=u2]{color:#C43E1C}.dkutm span[data-k=u3]{color:#1FA870}
+/* bigger, readable chat and tool chips inside demos */
+.mac.plain .ai2 .aimsgs{font-size:1.9cqw;justify-content:flex-start}
+.mac.plain .ai2 .aiin{font-size:1.8cqw}
+.mac.plain .ai2 .aihead{font-size:1.9cqw}
+.mac .dkpanel .tchip{font-size:1.7cqw;padding:.3cqw 1cqw .3cqw .4cqw;gap:.6cqw;border-radius:99px;margin:.2cqw .4cqw .2cqw 0}
+.mac .dkpanel .tchip i{width:2.4cqw;height:2.4cqw;font-size:1.1cqw}
+.mac .dkcard b .tchip{font-size:2.1cqw}
+.mac .dkcard b .tchip i{width:2.8cqw;height:2.8cqw;font-size:1.3cqw}
+/* demo kit: larger type so it reads on phones */
+.dkgrid{align-content:stretch}
+.dkcard{display:flex;flex-direction:column;justify-content:center}
+.dkcard .dki{font-size:4.2cqw}
+.dkcard b{font-size:2.8cqw}
+.dkcard p{font-size:2.1cqw}
+.dkhead b{font-size:3.4cqw}
+.dkstep b{font-size:2.2cqw}.dkstep .dki{font-size:4.2cqw}
+.dkflow.many .dkstep b{font-size:1.85cqw}.dkflow.many .dkstep .dki{font-size:3.4cqw}
+.dkci{font-size:2.5cqw;padding:1.1cqw 1.6cqw}
+.dktbl{font-size:2.15cqw}
+.dktbl th{font-size:1.5cqw}
+.dkfoot{font-size:2.2cqw}
+.dkrecipe span{font-size:2.4cqw}.dkrecipe.six span{font-size:2cqw}.dkrecipe b{font-size:1.8cqw}
+.dkpanel{gap:1.2cqw}
