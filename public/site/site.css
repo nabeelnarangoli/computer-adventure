@@ -34,7 +34,7 @@ p{margin:0}
 .btn.sun:hover{background:#fff}
 
 /* header */
-.hdr{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.4) blur(12px);transition:box-shadow .3s}
+.hdr{position:sticky;top:env(safe-area-inset-top,0px);z-index:50;background:color-mix(in srgb,var(--paper) 88%,transparent);backdrop-filter:saturate(1.4) blur(12px);transition:box-shadow .3s}
 .hdr.scrolled{box-shadow:0 1px 0 var(--line)}
 .hin{max-width:var(--wrap);margin:0 auto;padding:12px 24px;display:flex;align-items:center;gap:18px}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex:none}
