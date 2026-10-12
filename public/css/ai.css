@@ -235,3 +235,18 @@
 .adt tr.best td{background:#E7F7EF;font-weight:700}
 .aitip{margin:0 1.6cqw 1.6cqw;background:#0F1110;color:#fff;border-radius:1cqw;padding:1cqw 1.4cqw;font-size:1.3cqw;line-height:1.45}
 .aitip b{color:#2DB384}
+
+/* Aqlyon Career Discovery Centre lockup (replaces the Brand Management logo) */
+.aqlock{display:inline-flex;align-items:center;gap:12px;color:#fff;text-align:left}
+.aqlock img{height:54px;width:auto;flex:none}
+.aqlock>span{display:flex;flex-direction:column;line-height:1.05}
+.aqlock b{font:600 27px var(--display);letter-spacing:-.01em;color:#fff}
+.aqlock small{font-weight:700;font-size:13px;color:var(--aqg2);margin-top:3px}
+.aqhero.sm .aqlock img{height:42px}.aqhero.sm .aqlock b{font-size:22px}
+.aqpromo .aqlock{flex-direction:column;gap:6px;text-align:center}.aqpromo .aqlock>span{align-items:center}.aqpromo .aqlock b{font-size:20px}.aqpromo .aqlock small{font-size:11.5px}
+.ccard .aqlock img{height:46px}.ccard .aqlock b{font-size:22px}
+.aqcert .clogo{display:flex;flex-direction:column;align-items:center;gap:6px}
+.aqcert .clogo img{height:92px;width:auto}
+.aqcert .clogo b{font:900 40px/1 Montserrat,sans-serif;letter-spacing:.1em;color:#fff;margin-top:4px}
+.aqcert .clogo small{font:800 13px Montserrat,sans-serif;letter-spacing:.42em;color:#FFF200}
+.aqcert.two .clogo img{height:74px}.aqcert.two .clogo b{font-size:34px}.aqcert.two .clogo{gap:4px}

@@ -179,7 +179,7 @@ function home(){
  app.innerHTML=h;new Player($('.herodemo'),heroDemo());
 }
 
-function aiPromo(){return `<section class="aqpromos">${PROG_KEYS.map(k=>{const C=PROGRAMMES[k];const n=acCount(C);return `<div class="aqpromo"><img src="${AQ_LOGO}" alt="" class="aqlogo"><div><p class="aqk">${esc(C.level)}</p><h2>${esc(C.full)}</h2><p>${n?`${n} of ${C.stages.length} stages passed`:P(C.card)}</p></div><a class="btn aqbtn" href="#${k}" data-prog="${k}">${n?'Continue':'Explore'} ${SVG.next}</a></div>`}).join('')}</section>`}
+function aiPromo(){return `<section class="aqpromos">${PROG_KEYS.map(k=>{const C=PROGRAMMES[k];const n=acCount(C);return `<div class="aqpromo">${aqLockup('stack')}<div><p class="aqk">${esc(C.level)}</p><h2>${esc(C.full)}</h2><p>${n?`${n} of ${C.stages.length} stages passed`:P(C.card)}</p></div><a class="btn aqbtn" href="#${k}" data-prog="${k}">${n?'Continue':'Explore'} ${SVG.next}</a></div>`}).join('')}</section>`}
 
 /* ---------- lesson page ---------- */
 function sech(ic,t,time,p){return `<div class="sech"><span class="ico">${ic}</span><h2>${t}</h2>${time?`<span class="time">${time}</span>`:''}${p?`<p>${p}</p>`:''}</div>`}

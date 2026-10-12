@@ -14,7 +14,7 @@ const PROGRAMMES={
   startLevel:(use,lv)=>{let s=1;if(use!=='never'&&lv(1)){s=2;if(lv(2)){s=3;if(lv(3)&&(use==='weekly'||use==='daily'))s=4}}return s},
   cert:{tag:'<b>AI Academy</b> &nbsp;·&nbsp; From AI Fundamentals to Professional AI Creation',title:'Certificate of <span>Achievement</span>',
    desc:'for successfully completing the <b>Aqlyon AI Academy</b> programme and passing every stage assessment, demonstrating practical skill in using AI for writing, research, images, video, presentations, data analysis and everyday workflows.',
-   chips:['Claude','ChatGPT','Gemini','Microsoft Copilot','Higgsfield','Kling','Runway'],level:'Advanced AI Practitioner',ring:'AQLYON • BRAND MANAGEMENT • AI ACADEMY •',seal:'AI'}},
+   chips:['Claude','ChatGPT','Gemini','Microsoft Copilot','Higgsfield','Kling','Runway'],level:'Advanced AI Practitioner',ring:'AQLYON • CAREER DISCOVERY CENTRE •',seal:'AI'}},
  dm:{key:'dm',name:'Digital Marketing',full:'Certificate in AI-Powered Digital Marketing',pass:AI_PASS,
   sub:'Certificate in AI-Powered Digital Marketing · Beginner to Intermediate',
   intro:'Learn to apply AI in social media marketing, content planning, advertising campaigns, audience research, SEO, marketing analytics and campaign optimisation. Twelve practical stages with real prompts, tool guides and a final campaign project. Pass each stage quiz to move on and earn your certificate.',
@@ -26,6 +26,6 @@ const PROGRAMMES={
   startLevel:(use,lv)=>{let s=1;if(use!=='never'&&lv(1)){s=2;if(lv(2)&&(use==='regular'||use==='pro'))s=3}return s},
   cert:{tag:'<b>Digital Marketing</b> &nbsp;·&nbsp; Beginner to Intermediate',title:'<small>Certificate in</small>AI-Powered <span>Digital Marketing</span>',two:true,
    desc:'for successfully completing the <b>Certificate in AI-Powered Digital Marketing</b> and passing every stage assessment, demonstrating practical skill in applying AI to social media marketing, content planning, advertising campaigns, audience research, SEO, marketing analytics and campaign optimisation.',
-   chips:['Social Media','Content Planning','Advertising','Audience Research','SEO','Analytics','Optimisation'],level:'Intermediate · AI-Powered Digital Marketer',ring:'AQLYON • BRAND MANAGEMENT • DIGITAL MARKETING •',seal:'AI'}}
+   chips:['Social Media','Content Planning','Advertising','Audience Research','SEO','Analytics','Optimisation'],level:'Intermediate · AI-Powered Digital Marketer',ring:'AQLYON • CAREER DISCOVERY CENTRE •',seal:'AI'}}
 };
 const PROG_KEYS=Object.keys(PROGRAMMES);

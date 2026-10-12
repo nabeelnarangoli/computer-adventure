@@ -7,7 +7,8 @@
    #courses          all courses
    Progress lives in PROG[<key>] = {place, st:{id:{best,tries,passed}}, ck:{id:[..]}, cert}
    ===================================================================== */
-const AQ_LOGO='/img/aqlyon-logo.png';
+const AQ_ICON='/img/aqlyon-q.png';
+const aqLockup=(cls='')=>`<span class="aqlock ${cls}"><img src="${AQ_ICON}" alt=""><span><b>Aqlyon</b><small>Career Discovery Centre</small></span></span>`;
 const LOCK='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>';
 const GRID='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>';
 
@@ -24,7 +25,7 @@ function acUnlocked(C,s){
 }
 const acNext=C=>C.stages.find(s=>!acPassed(C,s.id)&&acUnlocked(C,s))||C.stages.find(s=>!acPassed(C,s.id));
 const acScore=C=>{const a=acP(C);return Math.round(C.stages.reduce((t,s)=>t+Math.min(5,a.st[s.id]?.best||0),0)/(C.stages.length*5)*100)};
-const acHead=(C,sub='')=>`<div class="aqhead"><img src="${AQ_LOGO}" alt="Aqlyon Brand Management" class="aqlogo"><div><p class="aqk">${esc(C.name)}</p><p class="aqsub">${esc(sub||C.sub)}</p></div></div>`;
+const acHead=(C,sub='')=>`<div class="aqhead">${aqLockup()}<div><p class="aqk">${esc(C.name)}</p><p class="aqsub">${esc(sub||C.sub)}</p></div></div>`;
 
 /* ---------- programme map ---------- */
 function acHome(C){
@@ -134,7 +135,7 @@ function certHTML(C,c){
   <div class="gridbg"></div><div class="f1"></div><div class="f2"></div>
   ${['tl','tr','bl','br'].map(p=>`<div class="corner ${p}"><svg viewBox="0 0 120 120"><path d="M0 0H120L0 120Z" fill="#1FA870"/><path d="M0 96 96 0" stroke="#0F1110" stroke-width="6"/><path d="M0 108 108 0" stroke="#FFF200" stroke-width="2"/><rect x="14" y="14" width="22" height="22" fill="#0F1110"/></svg></div>`).join('')}
   ${c.demo?'<div class="sample">Sample</div>':''}
-  <div class="inner"><img class="logo" src="${AQ_LOGO}" alt="Aqlyon Brand Management"><div class="ctag">${X.tag}</div>
+  <div class="inner"><div class="clogo"><img src="${AQ_ICON}" alt=""><b>AQLYON</b><small>CAREER DISCOVERY CENTRE</small></div><div class="ctag">${X.tag}</div>
   <h1>${X.title}</h1><div class="rule"><i></i><em></em><i></i></div>
   <div class="present">This certificate is proudly presented to</div><div class="name" style="font-size:${fs}px">${esc(nm)}</div><div class="nameline"></div>
   <div class="desc">${X.desc}</div>
@@ -143,7 +144,7 @@ function certHTML(C,c){
   <div class="bottom"><div class="sig"><div class="v">${esc(fmtLong(c.date))}</div><div class="l">Date of issue</div></div><div class="sig"><div class="v">Final score ${c.score}%</div><div class="l">Assessment result</div></div>
   <div class="seal"><svg viewBox="0 0 220 220"><defs><path id="${rid}" d="M110,110 m-78,0 a78,78 0 1,1 156,0 a78,78 0 1,1 -156,0"/></defs><circle cx="110" cy="110" r="104" fill="#FFF200"/><circle cx="110" cy="110" r="99" fill="#1FA870"/><circle cx="110" cy="110" r="92" fill="#0F1110"/><circle cx="110" cy="110" r="64" fill="none" stroke="#2DB384" stroke-width="1.5"/><text font-family="Montserrat" font-weight="800" font-size="12" fill="#2DB384"><textPath href="#${rid}" textLength="482" lengthAdjust="spacing">${X.ring}</textPath></text><text x="110" y="106" text-anchor="middle" font-family="Montserrat" font-weight="900" font-size="40" fill="#fff">${X.seal}</text><text x="110" y="126" text-anchor="middle" font-family="Montserrat" font-weight="800" font-size="11" letter-spacing="2.5" fill="#FFF200">CERTIFIED</text><path d="M110 136l3.2 6.6 7.2 1-5.2 5 1.2 7.2-6.4-3.4-6.4 3.4 1.2-7.2-5.2-5 7.2-1z" fill="#FFF200"/><g fill="none" stroke="#2DB384" stroke-width="2" stroke-linecap="round"><path d="M58 128c4 16 14 26 30 32"/><path d="M162 128c-4 16-14 26-30 32"/></g><g fill="#2DB384"><ellipse cx="60" cy="136" rx="4" ry="8" transform="rotate(-30 60 136)"/><ellipse cx="68" cy="148" rx="4" ry="8" transform="rotate(-45 68 148)"/><ellipse cx="80" cy="157" rx="4" ry="8" transform="rotate(-65 80 157)"/><ellipse cx="160" cy="136" rx="4" ry="8" transform="rotate(30 160 136)"/><ellipse cx="152" cy="148" rx="4" ry="8" transform="rotate(45 152 148)"/><ellipse cx="140" cy="157" rx="4" ry="8" transform="rotate(65 140 157)"/></g></svg></div>
   <div class="sig"><div class="v">${esc(c.id)}</div><div class="l">Certificate ID</div></div><div class="sig"><div class="v script">N. Abdul</div><div class="l">Signature</div></div></div>
-  <div class="issued">Issued by <b>Aqlyon Brand Management</b></div>
+  <div class="issued">Issued by <b>Aqlyon Career Discovery Centre</b></div>
  </div></div></div>`;
 }
 function loadCertFonts(){if(document.getElementById('aqfonts'))return;const l=document.createElement('link');l.id='aqfonts';l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;800;900&family=Cormorant+Garamond:wght@500;700&family=Great+Vibes&display=swap';document.head.appendChild(l)}
@@ -169,7 +170,7 @@ async function acCertPage(C){
 function coursesPage(){
  const cDone=PROG.plan&&PROG.plan.length?`${doneCount()} of ${planLessons().length} lessons done`:'Not started';
  const card=(k)=>{const C=PROGRAMMES[k];const n=acCount(C),T=C.stages.length,started=acStarted(C);
-  return `<div class="ccard aq"><img src="${AQ_LOGO}" alt="" class="aqlogo"><span class="lvl2">${esc(C.level)}</span><h2>${esc(C.full)}</h2><p>${P(C.card)}</p><div class="cpbar"><i style="width:${n/T*100}%"></i></div><p class="small">${started?`${n} of ${T} stages passed${acP(C).cert?' · Certificate earned':''}`:'Not started'}</p><button type="button" class="btn aqbtn" data-go="${k}">${started?'Continue':'Start'} ${SVG.next}</button></div>`};
+  return `<div class="ccard aq">${aqLockup()}<span class="lvl2">${esc(C.level)}</span><h2>${esc(C.full)}</h2><p>${P(C.card)}</p><div class="cpbar"><i style="width:${n/T*100}%"></i></div><p class="small">${started?`${n} of ${T} stages passed${acP(C).cert?' · Certificate earned':''}`:'Not started'}</p><button type="button" class="btn aqbtn" data-go="${k}">${started?'Continue':'Start'} ${SVG.next}</button></div>`};
  app.innerHTML=topbar()+`<main class="wrap"><div class="lhead"><h1>All courses</h1><p class="goal">Switch between courses any time. Your progress in each one is saved.</p></div>
  <div class="cgrid">${PROG_KEYS.map(card).join('')}
  <div class="ccard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><span class="lvl2 b">Mac &amp; Windows</span><h2>Computer skills course</h2><p>From first click to pro skills: files, internet safety, email, Word, PowerPoint, Excel, cloud, security, design and coding.</p><p class="small">${esc(cDone)}</p><button type="button" class="btn" data-go="computer">${PROG.plan&&PROG.plan.length?'Continue':'Start'} ${SVG.next}</button></div></div></main>`;

@@ -318,3 +318,8 @@ address a{color:var(--green-d);font-weight:600}
 @keyframes cuein{from{opacity:0}}
 @media (max-width:900px){.hbook{display:none}.hacad .acl small{display:none}.btn.acad{padding:9px 16px}}
 @media (max-width:420px){.brand small{display:none}}
+.aclock{display:inline-flex;align-items:center;gap:14px;margin-bottom:22px}
+.aclock img{height:64px;width:auto}
+.aclock>span{display:flex;flex-direction:column;line-height:1.05}
+.aclock b{font:800 30px var(--disp);color:#fff;letter-spacing:-.01em}
+.aclock small{font-weight:600;font-size:14px;color:#7DD9AE;margin-top:4px}

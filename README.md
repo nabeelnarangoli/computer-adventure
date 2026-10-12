@@ -80,7 +80,7 @@ Commit and push your changes, and Netlify redeploys within about a minute.
 
 ## Aqlyon AI Academy
 
-A separate course inside the site (`#ai`), branded for Aqlyon Brand Management.
+A separate course inside the site (`#ai`), branded for Aqlyon Career Discovery Centre.
 
 - 13 stages in 4 levels: Foundations, Everyday AI, Creative Studio, AI Pro. Content lives in `public/js/ai-content.js`; screens in `public/js/ai-academy.js`; styles in `public/css/ai.css`.
 - Covers Claude, ChatGPT, Gemini, Microsoft Copilot, Kling, Runway and Higgsfield, with "which tool for which job" guidance, prompts to copy, practice games and animated demos.
