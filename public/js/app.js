@@ -51,7 +51,7 @@ const medal=(on)=>`<svg class="medal" viewBox="0 0 40 40" aria-hidden="true"><pa
 /* ---------- shell ---------- */
 function topbar(){
  const t=planLessons().length;
- return `<header class="top"><div class="in"><a class="brand" href="#home"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span class="bfull">Aqlyon Digital Skill Academy</span><span class="bshort" aria-hidden="true">Aqlyon</span></a>
+ return `<header class="top"><div class="in"><a class="brand" href="#courses" title="All courses"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span class="bfull">Aqlyon Digital Skill Academy</span><span class="bshort" aria-hidden="true">Aqlyon</span></a>
  <span class="savestate" aria-live="polite"></span>
  <a class="aqnav ${isAcHash(location.hash)?'on':''}" href="#courses" title="All courses">${GRID}<span>Courses</span></a>
  ${t?`<span class="stars">${SVG.star} ${doneCount()} / ${t}</span>`:''}
