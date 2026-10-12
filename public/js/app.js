@@ -77,13 +77,13 @@ document.addEventListener('click',e=>{const a=e.target.closest('[data-prog]');if
 
 /* ---------- login ---------- */
 function loginView(msg=''){
- app.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Aqlyon Digital Skill Academy</h1><p class="lead">Computer skills and AI, from your first click to professional AI creation.</p>
+ app.innerHTML=`<main class="auth"><div class="authpair">${mascot('wave',{say:'Welcome! Log in to start learning.'})}<div class="authcard"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Aqlyon Digital Skill Academy</h1><p class="lead">Computer skills and AI, from your first click to professional AI creation.</p>
  <form class="authform" autocomplete="on"><div class="field"><label for="li-u">Username</label><input id="li-u" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
  <div class="field"><label for="li-p">PIN or password</label><input id="li-p" name="pin" type="password" autocomplete="current-password" required></div>
  <p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form>
  <div class="regbox" hidden><p class="small">New here?</p><button type="button" class="btn ghost reg">Create an account</button></div>
- <p class="small noreg" hidden>No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p><p class="small" style="margin-top:18px"><a href="/">Aqlyon Career Discovery Centre website</a></p></div></main>`;
- API.call('/config').then(c=>{if(c.allowRegister){$('.regbox').hidden=false;$('.reg').onclick=registerView}else $('.noreg').hidden=false}).catch(()=>{$('.noreg').hidden=false});
+ <p class="small noreg" hidden>No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p><p class="small" style="margin-top:18px"><a href="/">Aqlyon Career Discovery Centre website</a></p></div></div></main>`;
+ API.call('/config').then(c=>{if(c.allowRegister){$('.regbox').hidden=false;const mb=$('.authpair .mbub');if(mb)mb.textContent='Welcome! Log in, or create your free account in one minute.';$('.reg').onclick=registerView}else $('.noreg').hidden=false}).catch(()=>{$('.noreg').hidden=false});
  const f=$('.authform');f.onsubmit=async e=>{e.preventDefault();const b=$('button',f);b.disabled=true;$('.formerr').textContent='';
   try{const d=await API.call('/login',{method:'POST',body:{username:$('#li-u').value,pin:$('#li-p').value}});API.setToken(d.token);USER=d.user;PROG=d.progress||{};PROG.done=PROG.done||{};applyContext();location.hash='#home';route()}
   catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
@@ -93,14 +93,14 @@ function loginView(msg=''){
 const genPin=()=>String(Math.floor(1000+Math.random()*9000));
 const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,20);
 function registerView(){
- app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Create your account</h1><p class="lead">It takes one minute. Then you can start learning straight away.</p>
+ app.innerHTML=`<main class="auth"><div class="authpair">${mascot('wave',{say:'Hello! Pick a username and a PIN. That\'s all.'})}<div class="authcard wide"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Create your account</h1><p class="lead">It takes one minute. Then you can start learning straight away.</p>
  <form class="authform regform"><div class="field"><label for="r-name">Your name</label><input id="r-name" required maxlength="40" autocomplete="name" placeholder="Alesha Minha"></div>
  <div class="field"><label for="r-user">Username</label><input id="r-user" required maxlength="24" autocapitalize="none" spellcheck="false" autocomplete="username" placeholder="alesha"><small class="small">Small letters, numbers, dot, dash or underscore. You use it to log in.</small></div>
  <div class="field"><label for="r-pin">PIN</label><div class="inrow"><input id="r-pin" required minlength="4" maxlength="20" autocomplete="new-password" value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div><small class="small">4 to 20 characters. Adults: use a longer password.</small></div>
  <fieldset class="qset"><legend>Who is learning?</legend><label class="ck"><input type="radio" name="kind" value="child" checked><span><b>A child</b>: playful wording</span></label><label class="ck"><input type="radio" name="kind" value="adult"><span><b>An adult</b>: plain wording</span></label></fieldset>
  <div class="field"><label for="r-lang">Subtitle language</label><select id="r-lang">${LANGS.map(l=>`<option value="${l.code}">${l.code?l.name+' · '+l.native:l.name}</option>`).join('')}</select><small class="small">English stays the main text. This language shows underneath.</small></div>
  <p class="formerr" role="alert"></p><button class="btn" type="submit">Create my account ${SVG.next}</button></form>
- <button type="button" class="linkbtn back">${SVG.back} I already have an account</button></div></main>`;
+ <button type="button" class="linkbtn back">${SVG.back} I already have an account</button></div></div></main>`;
  const nm=$('#r-name'),us=$('#r-user');let touched=false;us.oninput=()=>touched=true;nm.oninput=()=>{if(!touched)us.value=slugUser(nm.value.split(' ')[0]||'')};
  $('.gen').onclick=()=>$('#r-pin').value=genPin();$('.back').onclick=()=>{setSubLang('');loginView()};$('#r-lang').onchange=e=>setSubLang(e.target.value);nm.focus();
  $('.regform').onsubmit=async e=>{e.preventDefault();const b=$('button[type=submit]',e.target);b.disabled=true;$('.formerr').textContent='';
@@ -110,8 +110,8 @@ function registerView(){
 }
 function registeredView(b){
  const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/academy\nUsername: ${b.username}\nPIN: ${b.pin}`;
- app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.check||SVG.star}</span><h1>${esc(b.name.split(' ')[0])}, you're all set!</h1><p class="lead">Save these sign-in details. Your PIN is only shown now. Copy them, write them down or take a photo.</p>
- <pre class="creds">${esc(txt)}</pre><div class="row2"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn go">Start learning ${SVG.next}</button></div></div></main>`;
+ app.innerHTML=`<main class="auth"><div class="authpair">${mascot('celebrate',{say:`You're all set, ${esc(b.name.split(' ')[0])}! Save your sign-in details first.`})}<div class="authcard wide"><span class="logo big">${SVG.check||SVG.star}</span><h1>${esc(b.name.split(' ')[0])}, you're all set!</h1><p class="lead">Save these sign-in details. Your PIN is only shown now. Copy them, write them down or take a photo.</p>
+ <pre class="creds">${esc(txt)}</pre><div class="row2"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn go">Start learning ${SVG.next}</button></div></div></div></main>`;
  $('.cp').onclick=async()=>{const c=$('.cp');try{await navigator.clipboard.writeText(txt);c.textContent='Copied ✓'}catch(e){c.textContent='Select the text to copy'}};
  $('.go').onclick=()=>{location.hash='';route()};
 }
@@ -128,7 +128,7 @@ function setupPlatform(){
  $$('[data-p]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.p;applyContext();persist();setupTrack()});
 }
 function setupTrack(){
- app.innerHTML=topbar()+setupShell(1,`<h1>What would you like to learn?</h1><p class="lead">Pick a course. A short check will then skip anything you already know.</p>
+ app.innerHTML=topbar()+setupShell(1,`<div class="mrow"><div><h1>What would you like to learn?</h1><p class="lead">Pick a course. A short check will then skip anything you already know.</p></div>${mascot('sit',{say:'Pick a course. You can switch any time.',cls:'sm'})}</div>
  <div class="pick3"><button type="button" class="pickcard tr" data-t="auto"><span class="tag2">Recommended</span><b>Build my course for me</b><span>Answer a few questions and we'll make a personal course, from where you are now all the way to advanced.</span></button>
  <button type="button" class="pickcard tr" data-t="basic"><b>Basic course</b><span>30 lessons for beginners: using the computer, files, internet safety, email, Word, PowerPoint and Excel.</span></button>
  <button type="button" class="pickcard tr" data-t="advanced"><b>Advanced course</b><span>25 lessons for people who know the basics: pro shortcuts, Excel functions, teamwork in the cloud, security, design, coding and AI.</span></button></div>
@@ -149,14 +149,14 @@ function setupAbout(){
  $('.back').onclick=setupTrack;
 }
 function setupPlacement(){
- app.innerHTML=topbar()+setupShell(3,`<div class="pqwrap"></div>`);
+ app.innerHTML=topbar()+setupShell(3,`<div class="pqpair"><div class="pqwrap"></div>${mascot('think',{say:'Take your time. Pick “I\'m not sure” instead of guessing.'})}</div>`);
  runPlacement($('.pqwrap'),res=>{PROG.placement=res;setupResult()},PROG.track==='basic'?4:5);
 }
 function setupResult(){
  PROG.plan=buildPlan(PROG.placement,PROG.track,PROG.goals);PROG.planTotal=planLessons().length;persist();
  const pl=PROG.placement;const units=planUnits();const learnN=planLessons().length;
  const warn=PROG.track==='advanced'&&['Beginner','Basic'].includes(pl.level)?`<div class="tipbox" style="margin:16px 0">We added <b>refresher</b> units first, because a few basics were new to you. You can always skip ahead.</div>`:'';
- app.innerHTML=topbar()+setupShell(4,`<div class="resulthead"><span class="lvl2">${esc(pl.level)}</span><h1>Your personal course is ready</h1><p class="lead">${pl.skipped?'We\'ll start right at the beginning, step by step.':`You answered ${pl.asked} questions. ${learnN} lesson${learnN===1?' is':'s are'} waiting for you; units you already know are marked so you can skip them.`}</p></div>${warn}
+ app.innerHTML=topbar()+setupShell(4,`<div class="resulthead mrow"><div><span class="lvl2">${esc(pl.level)}</span><h1>Your personal course is ready</h1><p class="lead">${pl.skipped?'We\'ll start right at the beginning, step by step.':`You answered ${pl.asked} questions. ${learnN} lesson${learnN===1?' is':'s are'} waiting for you; units you already know are marked so you can skip them.`}</p></div>${mascot('present',{say:'Great start! Your course is ready.',cls:'sm'})}</div>${warn}
  <div class="planlist">${units.map(u=>`<div class="pl ${u.c} ${u.status}"><span class="pill">${u.track==='basic'?'Basic':'Advanced'}</span><b>${esc(P(u.t))}</b><span class="pln">${u.lessons.length} lesson${u.lessons.length>1?'s':''}</span>${u.status!=='learn'?`<span class="chip2 ${u.status}">${STATUS_LABEL[u.status]}</span>`:''}</div>`).join('')}</div>
  <div class="row2"><a class="btn startl" href="#home">Start learning ${SVG.next}</a></div>`);
  $('.startl').onclick=e=>{e.preventDefault();if(location.hash!=='#home')history.replaceState(null,'','#home');route()};
@@ -195,7 +195,7 @@ function lesson(id){
  if(l.practice&&l.practice.length)h+=`<section class="sec">${sech(SVG.game,l.final?'Final tests':'Practice games','',l.final?'':'Practise right here on this page.')}${l.practice.map((p,i)=>`<div class="game" data-p="${i}"></div>`).join('')}</section>`;
  h+=`<section class="sec">${sech(SVG.flag,'Challenge','15 min')}<div class="chal"><p>${P(l.challenge)}</p>${readBtn(P(l.challenge))}</div></section>`;
  h+=`<section class="sec">${sech(SVG.chat,'Show &amp; Tell','5 min')}<div class="card" style="font-size:18px">${P('Teach Mum or Dad')} what you learned: <b class="tu">${P(l.tell)}</b></div></section>`;
- h+=`<div class="finish"></div><div class="stuck">${SVG.help}<p><b>Stuck?</b> ${P('Press <b>Watch how</b> again, or press <b>Read to me</b>. Did something go wrong on your computer? Press <kbd>⌘</kbd> + <kbd>Z</kbd> to undo. Still stuck? Write down what happened and ask a grown-up. That\'s what real experts do!')}</p></div>
+ h+=`<div class="finish"></div><div class="stuck">${mascot('desk',{cls:'xs'})}<p><b>Stuck?</b> ${P('Press <b>Watch how</b> again, or press <b>Read to me</b>. Did something go wrong on your computer? Press <kbd>⌘</kbd> + <kbd>Z</kbd> to undo. Still stuck? Write down what happened and ask a grown-up. That\'s what real experts do!')}</p></div>
  <nav class="pn">${prev?`<a class="btn ghost" href="#lesson-${prev}">${SVG.back} Previous</a>`:'<span></span>'}${next?`<a class="btn ghost" href="#lesson-${next}">Next ${SVG.next}</a>`:''}</nav></main>`;
  app.innerHTML=h;
  const wu=$('.warmup');if(l.warm==='click')wClick(wu,{goal:12,title:'Mouse warm-up: bubble pop'});else wTyping(wu,{level:l.warmLevel||1,title:'Typing warm-up'});
