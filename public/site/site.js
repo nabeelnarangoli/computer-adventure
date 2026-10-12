@@ -84,7 +84,7 @@ if(g){
   if(t-last>2600){tx=Math.sin(t/1700)*.55;ty=Math.sin(t/2300)*.25}
   cx+=(tx-cx)*.08;cy+=(ty-cy)*.08;
   const k=m.clientWidth/540;eyes.forEach(i=>i.style.transform=`translate(${(cx*5.5*k).toFixed(2)}px,${(cy*2.6*k).toFixed(2)}px)`);
-  if(!RM)body.style.transform=`perspective(900px) rotateY(${(cx*9).toFixed(2)}deg) rotateX(${(-cy*4).toFixed(2)}deg) rotate(${(cx*1.4).toFixed(2)}deg)`;
+ 
  };
  raf=requestAnimationFrame(tick);
  new IntersectionObserver(es=>es.forEach(e=>vis=e.isIntersecting)).observe(m);
