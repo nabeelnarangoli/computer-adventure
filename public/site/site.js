@@ -45,11 +45,11 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 /* ---------- hero motion: the Q asks, the paths answer ---------- */
 const g=$('.branches');
 if(g){
- const tail=[172,366],N=CLUSTERS.length;const nodes=[];
+ const tail=[366,282],N=CLUSTERS.length;const nodes=[];
  CLUSTERS.forEach((c,i)=>{
-  const y=36+i*(486/(N-1)),x=372-Math.abs(i-3.5)*6;
+  const y=140+i*(452/(N-1)),x=486-Math.abs(i-3.5)*7;
   const p=document.createElementNS(NS,'path');p.id='bp'+i;
-  p.setAttribute('d',`M${tail[0]} ${tail[1]} C ${tail[0]+70} ${tail[1]+20}, ${x-120} ${y}, ${x} ${y}`);
+  p.setAttribute('d',`M${tail[0]} ${tail[1]} C ${tail[0]+50} ${tail[1]}, ${x-70} ${y}, ${x} ${y}`);
   g.appendChild(p);const len=Math.ceil(p.getTotalLength());p.style.setProperty('--len',len);p.style.setProperty('--d',(.6+i*.09)+'s');
   const w=Math.round(c.s.length*9.4+30);
   const wrap=document.createElementNS(NS,'g');wrap.setAttribute('transform',`translate(${x} ${y})`);
@@ -60,7 +60,7 @@ if(g){
  const pulse=document.createElementNS(NS,'circle');pulse.setAttribute('class','pulse');pulse.setAttribute('r','7');pulse.setAttribute('opacity','0');
  pulse.innerHTML='<animateMotion dur="1.2s" fill="freeze" begin="indefinite" calcMode="spline" keyTimes="0;1" keySplines=".6 0 .2 1"><mpath href="#bp0"/></animateMotion>';
  g.appendChild(pulse);
- const qt=$('.qtext span');let qi=0,ci=-1,timer=null;
+ const qt=$('.bubble span');let qi=0,ci=-1,timer=null;
  const step=()=>{
   qi=(qi+1)%QUESTIONS.length;qt.classList.add('out');
   setTimeout(()=>{qt.textContent=QUESTIONS[qi].q;qt.classList.remove('out')},350);
