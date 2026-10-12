@@ -43,11 +43,11 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 /* ---------- hero motion: the Q asks, the paths answer ---------- */
 const g=$('.branches');
 if(g){
- const tail=[366,282],N=CLUSTERS.length;const nodes=[];
+ const tail=[282,122],N=CLUSTERS.length;const nodes=[];
  CLUSTERS.forEach((c,i)=>{
-  const y=140+i*(452/(N-1)),x=486-Math.abs(i-3.5)*7;
+  const y=168+i*(430/(N-1)),x=470-Math.abs(i-3.5)*7;
   const p=document.createElementNS(NS,'path');p.id='bp'+i;
-  p.setAttribute('d',`M${tail[0]} ${tail[1]} C ${tail[0]+50} ${tail[1]}, ${x-70} ${y}, ${x} ${y}`);
+  p.setAttribute('d',`M${tail[0]} ${tail[1]} C ${tail[0]+40} ${tail[1]+40}, ${x-90} ${y}, ${x} ${y}`);
   g.appendChild(p);const len=Math.ceil(p.getTotalLength());p.style.setProperty('--len',len);p.style.setProperty('--d',(.6+i*.09)+'s');
   const w=Math.round(c.s.length*9.4+30);
   const wrap=document.createElementNS(NS,'g');wrap.setAttribute('transform',`translate(${x} ${y})`);
