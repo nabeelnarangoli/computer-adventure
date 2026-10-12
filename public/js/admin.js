@@ -25,7 +25,7 @@ function modal(html,onReady){const m=document.createElement('div');m.className='
 function confirmBox(title,text,okLabel,danger){return new Promise(res=>modal(`<h2>${title}</h2><p>${text}</p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn ${danger?'danger':''} ok">${okLabel}</button></div>`,(m,close)=>{$('.ok',m).onclick=()=>{close();res(true)};m.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.target===m)res(false)})}))}
 
 function loginView(msg=''){
- root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Aqlyon Digital Skill Academy</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/">Go to the learner site</a></p></div></main>`;
+ root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Aqlyon Digital Skill Academy</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/academy">Go to the learner site</a></p></div></main>`;
  $('form').onsubmit=async e=>{e.preventDefault();const b=$('button',e.target);b.disabled=true;$('.formerr').textContent='';
   try{const d=await AAPI.call('/admin/login',{method:'POST',body:{password:$('#ap').value}});AAPI.setToken(d.token);dashboard()}catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
  $('#ap').focus();
@@ -34,7 +34,7 @@ function loginView(msg=''){
 let SETTINGS={allowRegister:true};
 async function load(){const [d,st]=await Promise.all([AAPI.call('/admin/users'),AAPI.call('/admin/settings').catch(()=>SETTINGS)]);USERS=d.users;SETTINGS=st;}
 async function dashboard(){
- root.innerHTML=`<header class="top"><div class="in"><span class="brand"><span class="logo">${SVG.shield.replace('<svg','<svg width="20" height="20"')}</span><span>Admin panel</span></span><a class="userbtn" href="/" target="_blank" rel="noopener" style="margin-left:auto">Learner site ↗</a><button type="button" class="userbtn" id="alo">${SVG.logout}<span>Log out</span></button></div></header><main class="wrap adm"><p class="lead" style="margin-top:20px">Loading learners…</p></main>`;
+ root.innerHTML=`<header class="top"><div class="in"><span class="brand"><span class="logo">${SVG.shield.replace('<svg','<svg width="20" height="20"')}</span><span>Admin panel</span></span><a class="userbtn" href="/academy" target="_blank" rel="noopener" style="margin-left:auto">Learner site ↗</a><button type="button" class="userbtn" id="alo">${SVG.logout}<span>Log out</span></button></div></header><main class="wrap adm"><p class="lead" style="margin-top:20px">Loading learners…</p></main>`;
  $('#alo').onclick=()=>{AAPI.setToken(null);loginView()};
  try{await load()}catch(e){return}
  render();
@@ -47,12 +47,12 @@ function render(){
  const list=USERS.filter(u=>!FILTER||(u.name+' '+u.username).toLowerCase().includes(FILTER));
  main.innerHTML=`<div class="admhead"><h1>Learners</h1><button type="button" class="btn" id="add">＋ Add a learner</button></div>
  <div class="statgrid"><div><b>${USERS.length}</b><span>learners</span></div><div><b>${active}</b><span>active in the last 7 days</span></div><div><b>${lessons}</b><span>lessons completed in total</span></div><div><b>${avg}%</b><span>average course progress</span></div></div>
- <div class="tipbox signin">Learners sign in at <b class="url">${esc(location.origin)}/</b> <button type="button" class="mini cpurl">Copy link</button></div>
+ <div class="tipbox signin">Learners sign in at <b class="url">${esc(location.origin)}/academy</b> <button type="button" class="mini cpurl">Copy link</button></div>
  <label class="regtoggle"><input type="checkbox" id="allowreg" ${SETTINGS.allowRegister?'checked':''}><span><b>Let people create their own account</b><small>Shows a "Create an account" button on the learner sign-in page. New sign-ups appear here and you can manage them like any learner.</small></span></label>
  <div class="field" style="max-width:360px;margin-top:18px"><label for="flt">Search</label><input id="flt" placeholder="Name or username" value="${esc(FILTER)}"></div>
  ${USERS.length?`<div class="utable" role="table"><div class="urow uhead" role="row"><span>Learner</span><span>Computer · course</span><span>Level</span><span>Progress</span><span>Last active</span><span></span></div>${list.map(rowHTML).join('')||'<p class="small" style="padding:16px">No learners match your search.</p>'}</div>`:`<div class="empty"><h2>No learners yet</h2><p>Add your first learner: give them a username and a PIN, then send them the sign-in link above.</p><button type="button" class="btn" id="add2">＋ Add a learner</button></div>`}`;
  $('#add').onclick=addLearner;const a2=$('#add2');if(a2)a2.onclick=addLearner;
- $('.cpurl').onclick=()=>copy(location.origin+'/');
+ $('.cpurl').onclick=()=>copy(location.origin+'/academy');
  $('#allowreg').onchange=async e=>{const v=e.target.checked;try{SETTINGS=await AAPI.call('/admin/settings',{method:'PATCH',body:{allowRegister:v}});toast(v?'Sign-up is open':'Sign-up is closed')}catch(err){e.target.checked=!v;toast(err.message,true)}};
  const f=$('#flt');f.oninput=()=>{FILTER=f.value.toLowerCase().trim();const pos=f.selectionStart;render();const g=$('#flt');g.focus();g.setSelectionRange(pos,pos)};
  $$('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.u));
@@ -82,7 +82,7 @@ function addLearner(){
    try{await AAPI.call('/admin/users',{method:'POST',body});close();await load();render();showCreds(body)}catch(err){$('.formerr',m).textContent=err.message}};
  });
 }
-function showCreds(b){const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
+function showCreds(b){const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/academy\nUsername: ${b.username}\nPIN: ${b.pin}`;
  modal(`<h2>${esc(b.name)} is ready</h2><p>Share these sign-in details with ${esc(b.name.split(' ')[0])}. The PIN is only shown now. You can always reset it later.</p><pre class="creds">${esc(txt)}</pre><div class="mrow"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{$('.cp',m).onclick=()=>copy(txt)})}
 
 async function act(a,username){

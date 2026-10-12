@@ -82,7 +82,7 @@ function loginView(msg=''){
  <div class="field"><label for="li-p">PIN or password</label><input id="li-p" name="pin" type="password" autocomplete="current-password" required></div>
  <p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form>
  <div class="regbox" hidden><p class="small">New here?</p><button type="button" class="btn ghost reg">Create an account</button></div>
- <p class="small noreg" hidden>No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p></div></main>`;
+ <p class="small noreg" hidden>No account yet? Ask your admin (a parent, teacher or manager) to create one for you.</p><p class="small" style="margin-top:18px"><a href="/">Aqlyon Career Discovery Centre website</a></p></div></main>`;
  API.call('/config').then(c=>{if(c.allowRegister){$('.regbox').hidden=false;$('.reg').onclick=registerView}else $('.noreg').hidden=false}).catch(()=>{$('.noreg').hidden=false});
  const f=$('.authform');f.onsubmit=async e=>{e.preventDefault();const b=$('button',f);b.disabled=true;$('.formerr').textContent='';
   try{const d=await API.call('/login',{method:'POST',body:{username:$('#li-u').value,pin:$('#li-p').value}});API.setToken(d.token);USER=d.user;PROG=d.progress||{};PROG.done=PROG.done||{};applyContext();location.hash='#home';route()}
@@ -109,7 +109,7 @@ function registerView(){
   catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
 }
 function registeredView(b){
- const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/\nUsername: ${b.username}\nPIN: ${b.pin}`;
+ const txt=`Aqlyon Digital Skill Academy\nSign in at: ${location.origin}/academy\nUsername: ${b.username}\nPIN: ${b.pin}`;
  app.innerHTML=`<main class="auth"><div class="authcard wide"><span class="logo big">${SVG.check||SVG.star}</span><h1>${esc(b.name.split(' ')[0])}, you're all set!</h1><p class="lead">Save these sign-in details. Your PIN is only shown now. Copy them, write them down or take a photo.</p>
  <pre class="creds">${esc(txt)}</pre><div class="row2"><button type="button" class="btn ghost cp">Copy details</button><button type="button" class="btn go">Start learning ${SVG.next}</button></div></div></main>`;
  $('.cp').onclick=async()=>{const c=$('.cp');try{await navigator.clipboard.writeText(txt);c.textContent='Copied ✓'}catch(e){c.textContent='Select the text to copy'}};

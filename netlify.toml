@@ -8,6 +8,12 @@
 [functions]
   node_bundler = "esbuild"
 
+# Learning app (Aqlyon Academy) lives at /academy; the company website is /
+[[redirects]]
+  from = "/academy"
+  to = "/academy.html"
+  status = 200
+
 # Pretty URL for the admin panel
 [[redirects]]
   from = "/admin"

@@ -97,3 +97,9 @@ A second Aqlyon programme (`#dm`), Beginner to Intermediate, built on the same s
 - Content: `public/js/dm-content.js`. Programme settings (names, certificate text, level-check rules): `public/js/programmes.js`. Shared screens: `public/js/academy.js`.
 - Certificates come from `POST /api/cert/<programme>` (`AQL-AI-…` or `AQL-DM-…`). Add a programme by adding a content file, an entry in `programmes.js` and its stage count in `PROGRAMMES` in `netlify/lib/handler.mjs`.
 - `#courses` lists every course; the top bar "Courses" button opens it.
+
+## Company website (Aqlyon Career Discovery Centre)
+
+- `/` is the company website: `public/index.html`, `public/site/site.css`, `public/site/site.js`.
+- The learning app moved to `/academy` (`public/academy.html`). Every "Aqlyon Academy" button on the website opens it. Admin stays at `/admin`.
+- The "Book a consultation" form uses Netlify Forms (form name `consultation`). In Netlify: Forms → enable form detection, then add an email notification so requests reach you. `/thanks` is the fallback page.
