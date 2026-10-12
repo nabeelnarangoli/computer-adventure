@@ -75,19 +75,20 @@ if(g){
  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
 }
 
-/* ---------- mascot follows the pointer (eyes + gentle lean); idles on touch screens ---------- */
-(()=>{const m=$('.mascot'),body=$('.mbody'),eyes=$$('.iris');if(!m)return;
- let tx=0,ty=0,cx=0,cy=0,last=0,raf=0,vis=true;
- addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const r=m.getBoundingClientRect();const ox=r.left+r.width*.47,oy=r.top+r.height*.27;
-  tx=Math.max(-1,Math.min(1,(e.clientX-ox)/(innerWidth*.45)));ty=Math.max(-1,Math.min(1,(e.clientY-oy)/(innerHeight*.45)));last=performance.now()},{passive:true});
- const tick=t=>{raf=requestAnimationFrame(tick);if(!vis)return;
-  if(t-last>2600){tx=Math.sin(t/1700)*.55;ty=Math.sin(t/2300)*.25}
-  cx+=(tx-cx)*.08;cy+=(ty-cy)*.08;
-  const k=m.clientWidth/540;eyes.forEach(i=>i.style.transform=`translate(${(cx*5.5*k).toFixed(2)}px,${(cy*2.6*k).toFixed(2)}px)`);
- 
+/* ---------- mascots: eyes follow the pointer; they look around on their own when idle or on touch screens ---------- */
+(()=>{const ms=$$('[data-eyes]');if(!ms.length)return;
+ let px=null,py=null,last=0;
+ addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;px=e.clientX;py=e.clientY;last=performance.now()},{passive:true});
+ const st=ms.map(m=>({m,eyes:$$('.iris',m),w:+m.dataset.w,ox:+m.dataset.ox,oy:+m.dataset.oy,cx:0,cy:0,vis:false,ph:Math.random()*9}));
+ const io=new IntersectionObserver(es=>es.forEach(e=>{const o=st.find(x=>x.m===e.target);if(o)o.vis=e.isIntersecting}));st.forEach(o=>io.observe(o.m));
+ const tick=t=>{requestAnimationFrame(tick);
+  st.forEach(o=>{if(!o.vis)return;let tx,ty;
+   if(px===null||t-last>2600){tx=Math.sin(t/1700+o.ph)*.55;ty=Math.sin(t/2300+o.ph)*.25}
+   else{const r=o.m.getBoundingClientRect();tx=Math.max(-1,Math.min(1,(px-(r.left+r.width*o.ox))/(innerWidth*.45)));ty=Math.max(-1,Math.min(1,(py-(r.top+r.height*o.oy))/(innerHeight*.45)))}
+   o.cx+=(tx-o.cx)*.08;o.cy+=(ty-o.cy)*.08;const k=o.m.clientWidth/o.w;
+   o.eyes.forEach(i=>i.style.transform=`translate(${(o.cx*5.5*k).toFixed(2)}px,${(o.cy*2.6*k).toFixed(2)}px)`)});
  };
- raf=requestAnimationFrame(tick);
- new IntersectionObserver(es=>es.forEach(e=>vis=e.isIntersecting)).observe(m);
+ requestAnimationFrame(tick);
 })();
 
 /* ---------- nine questions: the profile builds as you scroll ---------- */
