@@ -75,6 +75,21 @@ if(g){
  document.addEventListener('visibilitychange',()=>document.hidden?stop():start());
 }
 
+/* ---------- mascot follows the pointer (eyes + gentle lean); idles on touch screens ---------- */
+(()=>{const m=$('.mascot'),body=$('.mbody'),eyes=$$('.iris');if(!m)return;
+ let tx=0,ty=0,cx=0,cy=0,last=0,raf=0,vis=true;
+ addEventListener('pointermove',e=>{if(e.pointerType==='touch')return;const r=m.getBoundingClientRect();const ox=r.left+r.width*.47,oy=r.top+r.height*.27;
+  tx=Math.max(-1,Math.min(1,(e.clientX-ox)/(innerWidth*.45)));ty=Math.max(-1,Math.min(1,(e.clientY-oy)/(innerHeight*.45)));last=performance.now()},{passive:true});
+ const tick=t=>{raf=requestAnimationFrame(tick);if(!vis)return;
+  if(t-last>2600){tx=Math.sin(t/1700)*.55;ty=Math.sin(t/2300)*.25}
+  cx+=(tx-cx)*.08;cy+=(ty-cy)*.08;
+  const k=m.clientWidth/540;eyes.forEach(i=>i.style.transform=`translate(${(cx*5.5*k).toFixed(2)}px,${(cy*2.6*k).toFixed(2)}px)`);
+  if(!RM)body.style.transform=`perspective(900px) rotateY(${(cx*9).toFixed(2)}deg) rotateX(${(-cy*4).toFixed(2)}deg) rotate(${(cx*1.4).toFixed(2)}deg)`;
+ };
+ raf=requestAnimationFrame(tick);
+ new IntersectionObserver(es=>es.forEach(e=>vis=e.isIntersecting)).observe(m);
+})();
+
 /* ---------- nine questions: the profile builds as you scroll ---------- */
 const ql=$('.qlist'),pr=$('.prows');
 ql.innerHTML=QUESTIONS.map((x,i)=>`<li data-i="${i}"><span class="qn">Question ${i+1} of 9</span><h3>${esc(x.q)}</h3><p>${esc(x.a)}</p></li>`).join('');
