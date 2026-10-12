@@ -281,3 +281,5 @@ address a{color:var(--green-d);font-weight:600}
  .mark{background-size:100% 100%}
 }
 .layer ul{transition:opacity .4s}.layer[aria-hidden="true"] ul{opacity:0}.layer[aria-hidden="true"]{cursor:pointer;filter:saturate(.85)}
+.btn.acad{background:#0F1110;color:var(--sun);border-color:#0F1110}
+.btn.acad:hover{background:#262A28;color:var(--sun)}
