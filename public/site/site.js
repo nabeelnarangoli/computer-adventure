@@ -6,9 +6,7 @@ const NS='http://www.w3.org/2000/svg';
 
 /* ---------- header + menu ---------- */
 const hdr=$('.hdr');const onScroll=()=>hdr.classList.toggle('scrolled',scrollY>8);addEventListener('scroll',onScroll,{passive:true});onScroll();
-const menu=$('.menu'),nav=$('#nav');
-menu.onclick=()=>{const o=menu.getAttribute('aria-expanded')!=='true';menu.setAttribute('aria-expanded',o);nav.classList.toggle('open',o)};
-nav.addEventListener('click',e=>{if(e.target.closest('a')){menu.setAttribute('aria-expanded','false');nav.classList.remove('open')}});
+const cue=$('.scrollcue');if(cue){const hide=()=>cue.classList.toggle('gone',scrollY>120);addEventListener('scroll',hide,{passive:true});hide()}
 $('.yr').textContent=new Date().getFullYear();
 
 /* ---------- content ---------- */
