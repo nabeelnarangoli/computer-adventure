@@ -1,0 +1,190 @@
+/* Aqlyon AI Academy: brand colours from the Aqlyon logo (charcoal, green, yellow) */
+:root{--aqk:#0F1110;--aqk2:#1A1F1D;--aqg:#1FA870;--aqg2:#2DB384;--aqy:#FFF200}
+
+/* top bar link */
+.aqnav{display:inline-flex;align-items:center;gap:6px;font-weight:700;font-size:14.5px;text-decoration:none;color:var(--ink);background:var(--soft);border-radius:999px;padding:6px 12px;white-space:nowrap}
+.aqnav svg{color:var(--aqg)}
+.aqnav.on{background:var(--aqk);color:#fff}
+.stars+.aqnav,.savestate+.aqnav{margin-left:auto}
+.stars{margin-left:0}
+.top .in>.savestate{margin-left:auto}
+@media (max-width:560px){.aqnav span{display:none}.aqnav{padding:7px}}
+
+/* buttons */
+.btn.aqbtn{background:var(--aqg);color:#fff}
+.btn.aqbtn:hover{background:var(--aqg2)}
+
+/* hero */
+.aqhero{margin-top:22px;background:radial-gradient(ellipse 70% 90% at 80% 30%,#1c2b25 0%,var(--aqk2) 50%,var(--aqk) 100%);color:#fff;border-radius:28px;padding:26px 28px 28px;position:relative;overflow:hidden}
+.aqhero::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;background-image:linear-gradient(var(--aqg2) 1px,transparent 1px),linear-gradient(90deg,var(--aqg2) 1px,transparent 1px);background-size:32px 32px}
+.aqhero.sm{padding:16px 22px}
+.aqhead{display:flex;align-items:center;gap:16px;position:relative;z-index:1}
+.aqlogo{height:64px;width:auto;flex:none}
+.aqhero.sm .aqlogo{height:48px}
+.aqk{margin:0;font:700 13px var(--body);letter-spacing:.24em;text-transform:uppercase;color:var(--aqg2)}
+.aqsub{margin:2px 0 0;color:#C9D2CE;font-size:15px}
+.aqhgrid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:28px;align-items:center;margin-top:22px;position:relative;z-index:1}
+.aqhero h1{font-size:clamp(32px,5.4vw,52px);color:#fff}
+.aqhero h1 em{font-style:normal;color:var(--aqg2)}
+.aqhero .lead{color:#DCE3E0;font-size:18px;margin:12px 0 20px;max-width:56ch}
+.aqhero .small{color:#B8C2BE}
+.aqhero .prog b{color:#fff}.aqhero .prog span{color:#C9D2CE}.aqhero .ring text{fill:#fff}
+.aqhero .btn.ghost{background:rgba(255,255,255,.12);color:#fff}
+.aqtools{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.aqtools .tchip{background:rgba(255,255,255,.08);border-color:rgba(45,179,132,.5);color:#fff;font-size:15px;padding:8px 12px}
+.aqplace{position:relative;z-index:1;margin:20px 0 0;padding-top:16px;border-top:1px solid rgba(255,255,255,.12);color:#DCE3E0;font-size:15.5px}
+.aqplace .lvl2{background:var(--aqy);color:#111;margin-right:6px}
+.aqretake{color:var(--aqg2);font-weight:700;margin-left:6px}
+.aqlsub{flex-basis:auto}
+@media (max-width:760px){.aqhgrid{grid-template-columns:1fr}.aqhero{padding:20px 18px}.aqlogo{height:52px}.aqtools{justify-content:flex-start}}
+
+/* level sections */
+.aiac .tile.locked{opacity:.62;background:var(--soft)}
+.aiac .tile.locked .dn{color:var(--muted)}
+.aiac .tile .ok.lk{background:var(--muted);color:#fff}
+.aiac .tile .nx.sc{color:var(--good)}
+.aiac .tile .nx.lk2{color:var(--muted)}
+.aiac .lhead h1 svg{width:.8em;height:.8em;vertical-align:-.05em}
+.chip.okc{background:color-mix(in srgb,var(--good) 18%,var(--surface));color:var(--good);display:inline-flex;align-items:center;gap:4px}
+.chip.okc svg{width:14px;height:14px}
+
+/* tool chips, tables, flows */
+.tchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:3px 10px 3px 4px;font-weight:700;font-size:14px;white-space:nowrap;margin:2px 2px 2px 0;color:var(--ink)}
+.tchip i{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 11px var(--body);font-style:normal;flex:none}
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.toolgrid>div{background:var(--soft);border-radius:14px;padding:12px 14px}
+.toolgrid p{margin:8px 0 0!important;font-size:15.5px}
+.ttable{width:100%;border-collapse:collapse;font-size:15.5px;margin-bottom:12px}
+.ttable th{text-align:left;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:6px 8px;border-bottom:2px solid var(--line)}
+.ttable td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.ttable td:first-child{font-weight:700;width:40%}
+.flow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.flow span{background:color-mix(in srgb,var(--wk) 14%,var(--surface));border:1px solid color-mix(in srgb,var(--wk) 40%,transparent);border-radius:999px;padding:5px 12px;font-weight:700;font-size:14.5px}
+.step.nodemo .txt{max-width:none}
+
+/* prompt cards */
+.pcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.pcard{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.pcard pre{margin:0;white-space:pre-wrap;font:15px/1.5 var(--mono);background:var(--soft);border-radius:12px;padding:12px;flex:1}
+.pcard .btn{align-self:flex-start}
+
+/* quiz gate */
+.aqquiz{border:2px solid var(--wk)}
+.aqquiz h3 svg{width:22px;height:22px;color:var(--good);vertical-align:-3px}
+.aqquiz .row,.qres .row{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.qdots{display:flex;gap:6px;margin:6px 0 10px}
+.qdots i{width:28px;height:6px;border-radius:3px;background:var(--line)}
+.qdots i.d{background:var(--wk)}.qdots i.c{background:color-mix(in srgb,var(--wk) 50%,var(--line))}
+.qres{text-align:center;padding:10px 0}
+.qres .row{justify-content:center}
+.qres.pass .big{color:var(--good)}.qres.fail .big{color:var(--bad)}
+.qres h3{font-size:26px;margin:4px 0 8px}
+
+/* certificate card on the map */
+.aqcertcard{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center;background:var(--surface);border:2px dashed var(--line);border-radius:24px;padding:20px}
+.aqcertcard.ready{border:2px solid var(--aqg)}
+.aqcertcard h2{font-size:28px;margin-bottom:8px}
+.aqcmini{filter:saturate(.9)}
+.aqcertcard:not(.ready) .aqcmini{opacity:.75}
+@media (max-width:760px){.aqcertcard{grid-template-columns:minmax(0,1fr)}}
+.aqcmini{min-width:0}
+
+/* promo on the computer course map */
+.aqpromo{margin-top:44px;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;background:radial-gradient(ellipse at 85% 20%,#1c2b25,var(--aqk) 70%);color:#fff;border-radius:24px;padding:20px 24px}
+.aqpromo h2{font-size:26px;color:#fff;margin:4px 0 6px}
+.aqpromo p{margin:0;color:#DCE3E0}
+.aqpromo .aqlogo{height:72px}
+@media (max-width:760px){.aqpromo{grid-template-columns:1fr}.aqpromo .aqlogo{height:56px}}
+
+/* track picker: 4 cards */
+.pick3.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+.pickcard.aqpick{background:var(--aqk);color:#fff;border-color:var(--aqg)}
+.pickcard.aqpick>span{color:#DCE3E0}
+.pickcard.aqpick .tag2{background:var(--aqy);color:#111!important}
+@media (max-width:760px){.pick3.four{grid-template-columns:1fr}}
+
+/* ---------- demo scenes ---------- */
+.ai2 .aihead{display:flex;align-items:center;gap:.8cqw}
+.tdot{width:2.4cqw;height:2.4cqw;border-radius:50%;display:grid;place-items:center;color:#fff;font:700 1.1cqw sans-serif;font-style:normal}
+.afile{margin-left:auto;font-weight:600;font-size:1.25cqw;background:#EEF6F1;border-radius:.6cqw;padding:.3cqw .8cqw}
+.dots{display:inline-flex;gap:.4cqw}.dots i{width:.7cqw;height:.7cqw;border-radius:50%;background:#999;animation:aqdot 1s infinite}.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes aqdot{0%,100%{opacity:.25}50%{opacity:1}}
+.mini-chart{display:flex;align-items:flex-end;gap:1cqw;height:9cqw;margin-top:.8cqw;padding:0 .4cqw;border-bottom:1px solid #ccc}
+.mini-chart i{flex:1;background:#10A37F;border-radius:.4cqw .4cqw 0 0;position:relative}
+.mini-chart i b{position:absolute;bottom:-2cqw;left:0;right:0;text-align:center;font-size:1.1cqw;color:#555}
+.gen{position:absolute;inset:2cqw 6cqw;background:#fff;border-radius:1.2cqw;box-shadow:0 0 0 1px #dde,0 1cqw 3cqw rgba(0,0,0,.08);display:flex;flex-direction:column;overflow:hidden}
+.genbar{display:flex;align-items:center;gap:1cqw;padding:1cqw 1.6cqw;border-bottom:1px solid #eee;font-size:1.5cqw}
+.genbar .chips{margin-left:auto;display:flex;gap:.6cqw}
+.genbar .chips span{font-size:1.15cqw;border:1px solid #ddd;border-radius:99px;padding:.2cqw .8cqw;color:#444}
+.genbar .chips span.pick{background:#1FA870;border-color:#1FA870;color:#fff}
+.genp{margin:1cqw 1.6cqw;border:1px solid #ddd;border-radius:.8cqw;padding:.8cqw 1cqw;font-size:1.35cqw;min-height:4.2cqw;color:#222}
+.genout{flex:1;display:grid;place-items:center;padding:0 1.6cqw 1.6cqw;min-height:0}
+.frame{height:100%;aspect-ratio:1/1;background:repeating-conic-gradient(#f0f0f0 0 25%,#fafafa 0 50%) 0 0/2cqw 2cqw;border-radius:.8cqw;overflow:hidden;position:relative;transition:aspect-ratio .5s}
+.frame.w169,.frame.wide{aspect-ratio:16/9;height:auto;width:100%;max-height:100%}
+.art{position:absolute;inset:0}
+.art svg{width:100%;height:100%;display:block}
+.art.blur{filter:blur(1.6cqw) saturate(.4);transform:scale(1.08)}
+.mac .art{transition:filter 1.2s,transform 4s ease-out,opacity .4s!important}
+.art.push{transform:scale(1.25)}
+.vbar{position:absolute;left:0;right:0;bottom:0;height:.6cqw;background:rgba(0,0,0,.3)}
+.vbar i{display:block;height:100%;width:0;background:#1FA870}
+.mac .vbar i.go{width:100%;transition:width 4s linear!important}
+.sgrid{flex:1;display:grid;grid-template-columns:repeat(3,1fr);gap:1.2cqw;padding:0 1.6cqw 1.6cqw;align-content:center}
+.sl{aspect-ratio:16/9;border-radius:.8cqw;background:linear-gradient(150deg,#0F1110,#1d3a2e);color:#fff;padding:1cqw;display:flex;flex-direction:column;gap:.4cqw;box-shadow:0 .4cqw 1.2cqw rgba(0,0,0,.15)}
+.sl b{font-size:1.3cqw;line-height:1.2}.sl i{font-style:normal;font-size:3cqw;text-align:center;flex:1;display:grid;place-items:center}.sl small{font-size:1cqw;color:#9fe0c3}
+
+/* ---------- certificate (designed at 1600 × 1131, scaled to fit) ---------- */
+.aqcert{position:relative;width:100%;overflow:hidden;border-radius:10px;box-shadow:0 10px 30px rgba(0,0,0,.25);aspect-ratio:1600/1131}
+.aqscale{width:1600px;height:1131px;transform-origin:0 0}
+.aqcert .cx{position:relative;width:1600px;height:1131px;overflow:hidden;color:#fff;background:radial-gradient(ellipse 70% 60% at 50% 42%,#1a2520 0%,#171A19 45%,#0F1110 100%);font-family:Montserrat,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.aqcert .gridbg{position:absolute;inset:0;opacity:.06;background-image:linear-gradient(#2DB384 1px,transparent 1px),linear-gradient(90deg,#2DB384 1px,transparent 1px);background-size:40px 40px;-webkit-mask-image:radial-gradient(ellipse at center,transparent 35%,#000 80%);mask-image:radial-gradient(ellipse at center,transparent 35%,#000 80%)}
+.aqcert .f1{position:absolute;inset:26px;border:3px solid #1FA870}
+.aqcert .f2{position:absolute;inset:38px;border:1px solid rgba(45,179,132,.45)}
+.aqcert .corner{position:absolute;width:120px;height:120px}
+.aqcert .corner svg{width:100%;height:100%;display:block}
+.aqcert .tl{top:18px;left:18px}.aqcert .tr{top:18px;right:18px;transform:scaleX(-1)}
+.aqcert .bl{bottom:18px;left:18px;transform:scaleY(-1)}.aqcert .br{bottom:18px;right:18px;transform:scale(-1,-1)}
+.aqcert .sample{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-18deg);font:900 220px Montserrat,sans-serif;color:rgba(255,255,255,.07);letter-spacing:.1em;pointer-events:none;z-index:3}
+.aqcert .inner{position:absolute;inset:62px 120px 0;display:flex;flex-direction:column;align-items:center;text-align:center}
+.aqcert .logo{height:150px}
+.aqcert .ctag{margin-top:14px;font:600 15px Montserrat,sans-serif;letter-spacing:.32em;text-transform:uppercase;color:#C9D2CE}
+.aqcert .ctag b{color:#2DB384;font-weight:800}
+.aqcert h1{margin-top:26px;font:900 66px/1 Montserrat,sans-serif;letter-spacing:.06em;text-transform:uppercase;color:#fff;text-wrap:nowrap}
+.aqcert h1 span{color:#2DB384}
+.aqcert .rule{display:flex;align-items:center;gap:14px;margin-top:20px;width:560px}
+.aqcert .rule i{flex:1;height:2px;background:linear-gradient(90deg,transparent,#1FA870)}
+.aqcert .rule i+em+i{background:linear-gradient(90deg,#1FA870,transparent)}
+.aqcert .rule em{width:10px;height:10px;background:#FFF200;transform:rotate(45deg)}
+.aqcert .present{margin-top:24px;font:500 26px "Cormorant Garamond",Georgia,serif;color:#C9D2CE}
+.aqcert .name{margin-top:2px;font-family:"Great Vibes",cursive;line-height:1.15;color:#fff;white-space:nowrap;min-height:113px;display:flex;align-items:center}
+.aqcert .nameline{width:640px;height:2px;background:linear-gradient(90deg,transparent,#2DB384 15%,#2DB384 85%,transparent);margin-top:-6px}
+.aqcert .desc{margin-top:22px;max-width:1040px;font:500 24px/1.45 "Cormorant Garamond",Georgia,serif;color:#dfe6e2}
+.aqcert .desc b{font-weight:700;color:#fff}
+.aqcert .tools{margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.aqcert .tools span{font:600 12.5px Montserrat,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#fff;border:1px solid rgba(45,179,132,.7);background:rgba(31,168,112,.14);padding:6px 13px;border-radius:999px}
+.aqcert .level{margin-top:20px;font:800 15px Montserrat,sans-serif;letter-spacing:.3em;color:#FFF200;text-transform:uppercase}
+.aqcert .level small{font-weight:600;color:#C9D2CE;font-size:15px}
+.aqcert .bottom{position:absolute;left:0;right:0;bottom:118px;display:grid;grid-template-columns:1fr 1fr 230px 1fr 1fr;align-items:end;gap:28px;padding:0 175px}
+.aqcert .sig{text-align:center}
+.aqcert .sig .v{font:700 22px "Cormorant Garamond",Georgia,serif;color:#fff;min-height:34px;display:flex;align-items:flex-end;justify-content:center;white-space:nowrap}
+.aqcert .sig .v.script{font:400 42px "Great Vibes",cursive}
+.aqcert .sig .l{border-top:1.5px solid #1FA870;margin-top:6px;padding-top:8px;font:600 12.5px Montserrat,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#C9D2CE}
+.aqcert .seal{display:grid;place-items:center}
+.aqcert .seal svg{width:210px;height:210px;filter:drop-shadow(0 0 22px rgba(31,168,112,.35))}
+.aqcert .issued{position:absolute;left:0;right:0;bottom:72px;text-align:center;font:600 12px Montserrat,sans-serif;letter-spacing:.34em;color:#C9D2CE;text-transform:uppercase}
+.aqcert .issued b{color:#2DB384}
+
+/* print just the certificate, one landscape page at its real size */
+@media print{
+ @page{size:1600px 1131px;margin:0}
+ body{background:#0F1110!important}
+ body *{visibility:hidden}
+ .certslot .aqcert,.certslot .aqcert *{visibility:visible}
+ .certslot .aqcert{position:fixed;left:0;top:0;width:1600px;height:1131px!important;border-radius:0;box-shadow:none}
+ .certslot .aqscale{transform:none!important}
+ .top,.sub{display:none!important}
+}
+.aiac .cheat div{display:block}
+.aiac .cheat div>b:first-child{display:block;margin-bottom:4px}
+.aiac .tile .dt{overflow-wrap:break-word;hyphens:auto}
+.aqcert .sample{color:rgba(255,255,255,.045)}

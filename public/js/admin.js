@@ -18,7 +18,7 @@ const fmtDate=s=>s?new Date(s).toLocaleDateString('en-GB',{day:'numeric',month:'
 const ago=s=>{if(!s)return'Never';const d=(Date.now()-new Date(s))/864e5;return d<1?'Today':d<2?'Yesterday':d<7?Math.floor(d)+' days ago':fmtDate(s)};
 const genPin=()=>String(Math.floor(1000+Math.random()*9000));
 const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,20);
-const trackName={auto:'Personal',basic:'Basic',advanced:'Advanced'};
+const trackName={auto:'Personal',basic:'Basic',advanced:'Advanced',ai:'AI Academy'};
 function toast(msg,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 function modal(html,onReady){const m=document.createElement('div');m.className='modalbg';m.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(m);
  const close=()=>m.remove();m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
@@ -61,7 +61,7 @@ function rowHTML(u){const s=u.summary;const pct=s.total?Math.round(Math.min(1,s.
  return `<div class="urow ${u.active?'':'inactive'}" role="row"><span class="uname"><b>${esc(u.name)}</b><small>@${esc(u.username)} · ${u.kind==='child'?'Child':'Adult'}${u.lang?' · '+esc(langName(u.lang).split(' · ')[0]):''}${u.self?' · <span class="selfreg">signed up</span>':''}${u.active?'':' · <em>switched off</em>'}</small></span>
  <span>${s.started&&s.platform?`${s.platform==='win'?'Windows':'Mac'} · ${trackName[s.track]||'–'}`:'<span class="muted">Not started</span>'}</span>
  <span>${s.level?`<span class="chip2">${esc(s.level)}</span>`:'–'}</span>
- <span class="prog2"><span class="pbar"><i style="width:${pct}%"></i></span><small>${s.done||0} / ${s.total||0} lessons</small></span>
+ <span class="prog2"><span class="pbar"><i style="width:${pct}%"></i></span><small>${s.done||0} / ${s.total||0} lessons</small>${s.ai?.started?`<small class="aiprog">AI Academy: ${s.ai.passed} / ${s.ai.total}${u.aiCert?' · <b>certified</b>':''}</small>`:''}</span>
  <span>${ago(u.lastSeen)}</span>
  <span class="acts"><button type="button" class="mini" data-act="view" data-u="${u.username}">View</button><button type="button" class="mini" data-act="pin" data-u="${u.username}">Reset PIN</button><button type="button" class="mini" data-act="more" data-u="${u.username}" aria-label="More actions">⋯</button></span></div>`}
 async function copy(t){try{await navigator.clipboard.writeText(t);toast('Copied')}catch(e){toast('Copy failed. Select the text and copy it.',true)}}
@@ -102,6 +102,9 @@ async function act(a,username){
    await load();render()}catch(err){toast(err.message,true)}})});
 }
 
+function aiAdmin(p,u){if(!p.ai&&!u.aiCert)return'';const st=p.ai?.st||{};
+ const rows=AI_STAGES.map((x,i)=>{const r=st[x.id];return `<tr><td><b>${i+1}. ${esc(P(x.t))}</b><br><small class="small">Level ${x.lvl}</small></td><td>${r?.passed?'<span class="chip2 known">Passed</span>':r?.tries?'<span class="chip2 refresh">Trying</span>':'–'}</td><td>${r?`${r.best}/5`:'–'}</td><td>${r?.tries||0}</td></tr>`}).join('');
+ return `<h3 style="margin-top:18px">Aqlyon AI Academy</h3><p class="small">${p.ai?.place?`Level check: ${['','Starter','Explorer','Creator','Pro'][p.ai.place.start]} (${p.ai.place.right}/${p.ai.place.asked} right, ${fmtDate(p.ai.place.date)}). `:''}${u.aiCert?`Certificate <b>${esc(u.aiCert.id)}</b> issued ${fmtDate(u.aiCert.date)}, final score ${u.aiCert.score}%.`:'No certificate yet.'}</p><div class="shwrap"><table class="dtable"><tr><th>Stage</th><th>Status</th><th>Best quiz</th><th>Tries</th></tr>${rows}</table></div>`}
 async function viewUser(u){
  let d;try{d=await AAPI.call('/admin/users/'+u.username)}catch(e){return toast(e.message,true)}
  const p=d.progress||{};setContext({platform:p.platform||'mac',kind:u.kind,name:u.name});
@@ -113,8 +116,8 @@ async function viewUser(u){
  modal(`<h2>${esc(u.name)} <small class="small">@${esc(u.username)}</small></h2>
  <div class="statgrid sm"><div><b>${d.summary.done||0} / ${d.summary.total||0}</b><span>lessons</span></div><div><b>${esc(pl?.level||'–')}</b><span>level${pl?.date?' ('+fmtDate(pl.date)+')':''}</span></div><div><b>${p.platform?(p.platform==='win'?'Windows':'Mac'):'–'}</b><span>computer</span></div><div><b>${p.wpm?.best||'–'}</b><span>best wpm</span></div></div>
  ${pl&&!pl.skipped?`<p class="small">Quick check: basics ${pl.basicScore}% correct${pl.advScore||pl.level==='Advanced'||pl.level==='Expert'?`, advanced ${pl.advScore}% correct`:''} (${pl.asked} questions).</p>`:''}
- ${plan.length?`<div class="shwrap"><table class="dtable"><tr><th>Unit</th><th>Status</th><th>Quick check</th><th>Progress</th></tr>${unitRows}</table></div>`:'<p>This learner hasn\'t set up their course yet.</p>'}
- <div class="twocol"><div><h3>Recently finished</h3><ul class="plainlist">${recent||'<li class="small">Nothing yet</li>'}</ul></div><div><h3>Quiz scores</h3><ul class="plainlist">${qz||'<li class="small">No quizzes yet</li>'}</ul><h3>Typing</h3><p class="small">First: ${p.wpm?.first||'–'} · Best: ${p.wpm?.best||'–'} · Final test: ${p.wpm?.final||p.wpm?.advFinal||'–'} wpm</p></div></div>
+ ${plan.length?`<div class="shwrap"><table class="dtable"><tr><th>Unit</th><th>Status</th><th>Quick check</th><th>Progress</th></tr>${unitRows}</table></div>`:(p.track==='ai'?'<p>This learner is doing the AI Academy only.</p>':'<p>This learner hasn\'t set up their course yet.</p>')}
+ ${aiAdmin(p,u)}<div class="twocol"><div><h3>Recently finished</h3><ul class="plainlist">${recent||'<li class="small">Nothing yet</li>'}</ul></div><div><h3>Quiz scores</h3><ul class="plainlist">${qz||'<li class="small">No quizzes yet</li>'}</ul><h3>Typing</h3><p class="small">First: ${p.wpm?.first||'–'} · Best: ${p.wpm?.best||'–'} · Final test: ${p.wpm?.final||p.wpm?.advFinal||'–'} wpm</p></div></div>
  <div class="mrow"><button type="button" class="btn" data-close>Close</button></div>`);
 }
 

@@ -16,6 +16,7 @@ const isWin=()=>PLAT==='win';
 function P(s){
  if(s==null)return '';s=String(s);
  s=s.replace(/\{\{([\s\S]*?)\|\|([\s\S]*?)\}\}/g,(m,a,b)=>isWin()?b:a);
+ s=s.replace(/\[\[((?:(?!\]\]|\[\[|\|\|)[\s\S])*)\|\|((?:(?!\]\]|\[\[)[\s\S])*)\]\]/g,(m,a,b)=>AUD==='adult'?b:a).replace(/\[\[((?:(?!\]\]|\[\[)[\s\S])*)\]\]/g,(m,a)=>AUD==='adult'?'':a);
  s=s.replace(/\[name\]/g,esc(UNAME)).replace(/\[initial\]/g,esc((UNAME[0]||'A').toUpperCase()));
  if(isWin())s=s.replace(/<kbd>return<\/kbd>/g,'<kbd>Enter</kbd>').replace(/<kbd>delete<\/kbd>/g,'<kbd>Backspace</kbd>').replace(/<kbd>esc<\/kbd>/g,'<kbd>Esc</kbd>').replace(/<kbd>⌘<\/kbd>/g,'<kbd>Ctrl</kbd>').replace(/<kbd>⌥<\/kbd>/g,'<kbd>Alt</kbd>').replace(/<kbd>⇧<\/kbd>/g,'<kbd>Shift</kbd>').replace(/⌘/g,'Ctrl').replace(/⌥/g,'Alt').replace(/⇧/g,'Shift');
  if(AUD==='adult')s=s.replace(/Show Mum or Dad/g,'Show a friend or family member').replace(/Teach Mum or Dad/g,'Teach a friend or family member').replace(/Mum or Dad/g,'a friend or family member').replace(/Mum &amp; Dad|Mum & Dad/g,'family members').replace(/Ask a grown-up/g,'Ask someone you trust').replace(/ask a grown-up/g,'ask someone you trust').replace(/a grown-up/g,'someone you trust').replace(/grown-ups/g,'people you trust').replace(/your family/g,'friends or family');

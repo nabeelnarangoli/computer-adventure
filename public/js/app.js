@@ -51,6 +51,7 @@ function topbar(){
  const t=planLessons().length;
  return `<header class="top"><div class="in"><a class="brand" href="#home"><span class="logo">${SVG.laptop.replace('<svg','<svg width="20" height="20"')}</span><span>Computer Adventure</span></a>
  <span class="savestate" aria-live="polite"></span>
+ <a class="aqnav ${location.hash.startsWith('#ai')?'on':''}" href="#ai" title="Aqlyon AI Academy">${SPARK}<span>AI Academy</span></a>
  ${t?`<span class="stars">${SVG.star} ${doneCount()} / ${t}</span>`:''}
  <button type="button" class="langbtn" aria-haspopup="true" title="Subtitle language">${GLOBE}<span>${esc((LANGS.find(l=>l.code===SUBLANG)||LANGS[0]).code.toUpperCase()||'EN')}</span></button>
  <a class="userbtn" href="#profile" title="Your profile">${SVG.user}<span>${esc(USER.name.split(' ')[0])}</span></a></div></header>`;
@@ -127,11 +128,12 @@ function setupPlatform(){
 }
 function setupTrack(){
  app.innerHTML=topbar()+setupShell(1,`<h1>What would you like to learn?</h1><p class="lead">Pick a course. A short check will then skip anything you already know.</p>
- <div class="pick3"><button type="button" class="pickcard tr" data-t="auto"><span class="tag2">Recommended</span><b>Build my course for me</b><span>Answer a few questions and we'll make a personal course, from where you are now all the way to advanced.</span></button>
+ <div class="pick3 four"><button type="button" class="pickcard tr" data-t="auto"><span class="tag2">Recommended</span><b>Build my course for me</b><span>Answer a few questions and we'll make a personal course, from where you are now all the way to advanced.</span></button>
  <button type="button" class="pickcard tr" data-t="basic"><b>Basic course</b><span>30 lessons for beginners: using the computer, files, internet safety, email, Word, PowerPoint and Excel.</span></button>
- <button type="button" class="pickcard tr" data-t="advanced"><b>Advanced course</b><span>25 lessons for people who know the basics: pro shortcuts, Excel functions, teamwork in the cloud, security, design, coding and AI.</span></button></div>
+ <button type="button" class="pickcard tr" data-t="advanced"><b>Advanced course</b><span>25 lessons for people who know the basics: pro shortcuts, Excel functions, teamwork in the cloud, security, design, coding and AI.</span></button>
+ <button type="button" class="pickcard tr aqpick" data-t="ai"><span class="tag2">New</span><b>Aqlyon AI Academy</b><span>13 stages from "What is AI?" to making images, videos, content, slides and data reports with Claude, ChatGPT, Gemini, Copilot, Kling, Runway and Higgsfield. Earn a certificate.</span></button></div>
  <button type="button" class="linkbtn back">${SVG.back} Change computer</button>`);
- $$('[data-t]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.t;persist();setupAbout()});
+ $$('[data-t]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.t;persist();if(PROG.track==='ai'){location.hash='#ai';route()}else setupAbout()});
  $('.back').onclick=setupPlatform;
 }
 function setupAbout(){
@@ -172,9 +174,11 @@ function home(){
  planUnits().forEach(u=>{const got=u.status!=='known'&&unitDone(u);const known=u.status==='known';
   const tiles=u.lessons.map(id=>{const l=COURSE[id];if(!known)n++;const nxt=id===nx&&!isDone(id);return `<a class="tile ${isDone(id)?'done':''} ${nxt?'next':''}" href="#lesson-${id}">${isDone(id)?`<span class="ok">${SVG.check}</span>`:''}<span class="dn">${known?'·':n}</span><span class="dt">${esc(P(l.t))}</span>${nxt?'<span class="nx">Up next</span>':''}</a>`}).join('');
   h+=`<section class="week ${u.c} ${known?'knownu':''}"><div class="wkhead"><span class="pill">${u.track==='basic'?'Basic':'Advanced'}</span><h2>${esc(P(u.t))}</h2>${u.status!=='learn'?`<span class="chip2 ${u.status}">${STATUS_LABEL[u.status]}</span>`:''}<span class="badge ${got?'got':''}">${medal(got)}${got?'Earned: ':'Badge: '}${esc(u.badge)}</span></div>${known?`<details class="knownd"><summary>You already know this unit. Open to review it (optional).</summary><div class="days">${tiles}</div></details>`:`<div class="days">${tiles}</div>`}</section>`});
- h+=`</main>`;
+ h+=aiPromo()+`</main>`;
  app.innerHTML=h;new Player($('.herodemo'),heroDemo());
 }
+
+function aiPromo(){const n=aiPassedCount();return `<section class="aqpromo"><img src="${AQ_LOGO}" alt="" class="aqlogo"><div><p class="aqk">New · AI Academy</p><h2>${n?`AI Academy: ${n} of ${AI_STAGES.length} stages passed`:'Learn to create with AI'}</h2><p>${P('Claude, ChatGPT, Gemini, Copilot, Kling, Runway and Higgsfield: from "What is AI?" to images, videos, content, slides and data. Earn the Aqlyon AI Academy certificate.')}</p></div><a class="btn aqbtn" href="#ai">${n?'Continue':'Explore the academy'} ${SVG.next}</a></section>`}
 
 /* ---------- lesson page ---------- */
 function sech(ic,t,time,p){return `<div class="sech"><span class="ico">${ic}</span><h2>${t}</h2>${time?`<span class="time">${time}</span>`:''}${p?`<p>${p}</p>`:''}</div>`}
@@ -215,11 +219,11 @@ function profile(){
  <section class="sec"><div class="statgrid"><div><b>${doneCount()} / ${planLessons().length}</b><span>lessons done</span></div><div><b>${esc(pl.level||'–')}</b><span>level from your check</span></div><div><b>${PROG.wpm?.best||'–'}</b><span>best typing speed (wpm)</span></div><div><b>${Object.keys(q).length}</b><span>quizzes taken</span></div></div></section>
  <section class="sec"><h2>Computer</h2><p class="small">Lessons show screens and shortcuts for this computer. Your progress is kept if you switch.</p><div class="seg">${[['mac','Mac'],['win','Windows']].map(([k,t])=>`<button type="button" data-pp="${k}" class="${PROG.platform===k?'on':''}">${t}</button>`).join('')}</div></section>
  <section class="sec"><h2>Subtitle language</h2><p class="small">English stays the main text. Your language shows as a smaller line under it.</p>${langPicker()}</section>
- <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Personal (recommended)'],['basic','Basic'],['advanced','Advanced']].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
+ <section class="sec"><h2>Course</h2><p class="small">Switching keeps every lesson you've finished.</p><div class="seg">${[['auto','Personal (recommended)'],['basic','Basic'],['advanced','Advanced'],['ai','AI Academy']].map(([k,t])=>`<button type="button" data-tt="${k}" class="${PROG.track===k?'on':''}">${t}</button>`).join('')}</div>
  <p style="margin-top:16px"><button type="button" class="btn ghost sm retake">Retake the quick check</button></p></section>
  <section class="sec"><button type="button" class="btn ghost" id="lo">${SVG.logout} Log out</button></section></main>`;
  $$('[data-pp]').forEach(b=>b.onclick=()=>{PROG.platform=b.dataset.pp;applyContext();persist();profile()});
- $$('[data-tt]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.tt;PROG.plan=buildPlan(PROG.placement,PROG.track,PROG.goals);persist();profile()});
+ $$('[data-tt]').forEach(b=>b.onclick=()=>{PROG.track=b.dataset.tt;if(PROG.track!=='ai'){PROG.plan=buildPlan(PROG.placement,PROG.track,PROG.goals);if(!PROG.plan.length||!PROG.placement){PROG.plan=null;persist();location.hash='';return route()}}persist();profile()});
  $('.retake').onclick=()=>{PROG.plan=null;setupAbout()};
  $('#lo').onclick=()=>{clearTimeout(saveTimer);flush().finally(()=>logout())};
 }
@@ -228,10 +232,12 @@ function profile(){
 function route(){
  try{speechSynthesis.cancel()}catch(e){}
  if(!USER)return loginView();
+ const hsh=location.hash;
+ if(hsh.startsWith('#ai')){aiRoute(hsh);return window.scrollTo(0,0)}
  if(!PROG.platform)return setupPlatform();
  if(!PROG.track)return setupTrack();
- if(!PROG.plan||!PROG.plan.length)return setupAbout();
- const hsh=location.hash;const m=hsh.match(/^#lesson-([ab]\d+)$/);
+ if(PROG.track==='ai'&&hsh!=='#profile'){aiHome();return window.scrollTo(0,0)}
+ if(!PROG.plan||!PROG.plan.length)return setupAbout();const m=hsh.match(/^#lesson-([ab]\d+)$/);
  if(m)lesson(m[1]);else if(hsh==='#profile')profile();else home();
  window.scrollTo(0,0);
 }

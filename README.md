@@ -77,3 +77,14 @@ Lessons are JavaScript objects in `public/js/course-*.js`. Text can contain:
 - Mac key symbols (⌘ ⌥ ⇧): these become Ctrl / Alt / Shift automatically for Windows learners.
 
 Commit and push your changes, and Netlify redeploys within about a minute.
+
+## Aqlyon AI Academy
+
+A separate course inside the site (`#ai`), branded for Aqlyon Brand Management.
+
+- 13 stages in 4 levels: Foundations, Everyday AI, Creative Studio, AI Pro. Content lives in `public/js/ai-content.js`; screens in `public/js/ai-academy.js`; styles in `public/css/ai.css`.
+- Covers Claude, ChatGPT, Gemini, Microsoft Copilot, Kling, Runway and Higgsfield, with "which tool for which job" guidance, prompts to copy, practice games and animated demos.
+- Optional 7-question level check opens the levels a learner is ready for. Every stage ends with a 5-question quiz; 4 of 5 passes and unlocks the next stage. Unlimited retries; best score counts.
+- After all 13 quizzes are passed, `POST /api/ai/cert` checks the saved progress and issues a certificate number (`AQL-AI-YYYY-NNNNN`). The learner can save it as a PDF or print it.
+- Child/adult wording: `[[child text||adult text]]` and `[[child-only text]]` in course text.
+- Admin panel shows each learner's AI Academy progress, quiz scores and certificate.

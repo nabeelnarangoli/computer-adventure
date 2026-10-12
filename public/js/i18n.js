@@ -13,8 +13,8 @@ const LANGS=[
 window.I18N=window.I18N||{};
 let SUBLANG='';
 
-const I18N_SKIP='script,style,svg,kbd,code,pre,input,textarea,select,.mac,.sub,[contenteditable],[data-noi18n],.arena,.bins,.pool,.scrollbox,.kbwrap,.tyline,.edarea,.shwrap,.sfwrap,.chartbox,.htmlpg,.cert,.certout,.promptout,.pastebox,.pad,.focusbox';
-const I18N_TINY='.langbtn,.pill,.chip,.chip2,.savestate,.stars,.brand,.userbtn,.sn,.time,.tag2,.lvl2,.dn,.ok,.nx,.qn';
+const I18N_SKIP='.aqcert,.aqtools,script,style,svg,kbd,code,pre,input,textarea,select,.mac,.sub,[contenteditable],[data-noi18n],.arena,.bins,.pool,.scrollbox,.kbwrap,.tyline,.edarea,.shwrap,.sfwrap,.chartbox,.htmlpg,.cert,.certout,.promptout,.pastebox,.pad,.focusbox';
+const I18N_TINY='.langbtn,.aqnav,.tchip,.qdots,.pill,.chip,.chip2,.savestate,.stars,.brand,.userbtn,.sn,.time,.tag2,.lvl2,.dn,.ok,.nx,.qn';
 
 /* key from English text: returns {key, nums} */
 function i18nKey(txt){
