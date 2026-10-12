@@ -308,3 +308,4 @@
 .pick2.progs.three{grid-template-columns:repeat(3,minmax(0,1fr));margin-top:22px}
 .pick2.progs.three .pickcard{text-align:left}
 @media (max-width:980px){.pick2.progs.three{grid-template-columns:1fr}}
+.tile.locked{cursor:not-allowed}.tile.locked:hover{transform:none;box-shadow:none}

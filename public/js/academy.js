@@ -21,7 +21,8 @@ function acUnlocked(C,s){
  const i=C.stages.indexOf(s);if(i===0)return true;
  if(s.final)return C.stages.filter(x=>!x.final).every(x=>acPassed(C,x.id));
  if(acPassed(C,s.id)||acPassed(C,C.stages[i-1].id))return true;
- return s.lvl<=(acP(C).place?.start||1);
+ const st=acP(C).place?.start||0;   // without a level check, only the next stage opens
+ return st>1&&s.lvl<=st;
 }
 const acNext=C=>C.stages.find(s=>!acPassed(C,s.id)&&acUnlocked(C,s))||C.stages.find(s=>!acPassed(C,s.id));
 const acScore=C=>{const a=acP(C);return Math.round(C.stages.reduce((t,s)=>t+Math.min(5,a.st[s.id]?.best||0),0)/(C.stages.length*5)*100)};
@@ -42,7 +43,7 @@ function acHome(C){
  let num=0;
  C.levels.forEach(L=>{const st=S.filter(s=>s.lvl===L.n);const got=st.every(s=>acPassed(C,s.id));
   h+=`<section class="week ${L.c}"><div class="wkhead"><span class="pill">Level ${L.n}</span><h2>${esc(L.t)}</h2><span class="small aqlsub">${esc(L.sub)}</span><span class="badge ${got?'got':''}">${medal(got)}${got?'Level complete':`${st.filter(s=>acPassed(C,s.id)).length} / ${st.length}`}</span></div><div class="days">${st.map(s=>{num++;const ok=acPassed(C,s.id),un=acUnlocked(C,s),isNx=nx&&nx.id===s.id&&!ok;const r=a.st[s.id];
-   return `<a class="tile ${ok?'done':''} ${isNx?'next':''} ${un?'':'locked'}" href="#${k}-${s.id}">${ok?`<span class="ok">${SVG.check}</span>`:un?'':`<span class="ok lk">${LOCK}</span>`}<span class="dn">${num}</span><span class="dt">${esc(P(s.t))}</span>${ok?`<span class="nx sc">Quiz ${r.best}/5</span>`:isNx?'<span class="nx">Up next</span>':un?'':'<span class="nx lk2">Locked</span>'}</a>`}).join('')}</div></section>`});
+   const tag=un?'a':'div';return `<${tag} class="tile ${ok?'done':''} ${isNx?'next':''} ${un?'':'locked'}" ${un?`href="#${k}-${s.id}"`:`aria-disabled="true" title="Pass the stage before it to open this one"`}>${ok?`<span class="ok">${SVG.check}</span>`:un?'':`<span class="ok lk">${LOCK}</span>`}<span class="dn">${num}</span><span class="dt">${esc(P(s.t))}</span>${ok?`<span class="nx sc">Quiz ${r.best}/5</span>`:isNx?'<span class="nx">Up next</span>':un?'':'<span class="nx lk2">Locked</span>'}</${tag}>`}).join('')}</div></section>`});
  const all=acAll(C);
  h+=`<section class="sec"><div class="aqcertcard ${all?'ready':''}"><div class="aqcmini">${certHTML(C,{name:USER.name,date:new Date().toISOString().slice(0,10),score:all?acScore(C):94,id:'AQL-'+k.toUpperCase()+'-0000-00000',demo:!all})}</div><div><h2>${all?'Your certificate is ready!':'Your certificate'}</h2><p>${all?'You passed every stage. Open your certificate to save it as a PDF or print it.':`Pass all ${T} stage quizzes to earn the <b>${esc(C.full)}</b> with your name, date, final score and a unique certificate number.`}</p>${all?`<a class="btn aqbtn" href="#${k}-cert">Open my certificate ${SVG.next}</a>`:`<p class="small">${n} of ${T} stages passed.</p>`}</div></div></section>`;
  h+=`<p class="small" style="margin-top:30px"><a href="#courses">${SVG.back} All courses</a></p></main>`;app.innerHTML=h;fitCerts();
