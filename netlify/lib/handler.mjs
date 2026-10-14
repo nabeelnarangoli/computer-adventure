@@ -94,6 +94,8 @@ export function createHandler({ getStore, env }) {
     const url = new URL(req.url);
     const pm = url.pathname.match(/^\/events\/([a-z0-9-]{1,80})\/?$/);
     if (pm && req.method === 'GET') return EV.page(pm[1], url.origin);
+    const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20})\/?$/);
+    if (bm && req.method === 'GET') return EV.badge(bm[1], url.origin);
     const path = url.pathname.replace(/^\/api/, '').replace(/\/+$/, '') || '/';
     const method = req.method.toUpperCase();
     const users = getStore('users');
@@ -231,7 +233,7 @@ export function createHandler({ getStore, env }) {
           return json(401, { error: 'Wrong admin password.' });
         }
         await meta.setJSON('admin-attempts', { fails: 0, lockUntil: 0 });
-        return json(200, { token: sign({ r: 'admin', exp: Date.now() + 12 * 36e5 }, secret) });
+        return json(200, { token: sign({ r: 'admin', exp: Date.now() + (body.remember ? 14 * 864e5 : 12 * 36e5) }, secret) });
       }
 
       if (path.startsWith('/admin/')) {

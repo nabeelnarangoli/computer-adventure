@@ -1,4 +1,4 @@
-// Netlify Function: shareable event pages at /events/<slug> (with link-preview tags).
+// Netlify Function: shareable event pages at /events/<slug> (with link-preview tags) and participant badges at /badge/<token>.
 import { getStore } from '@netlify/blobs';
 import { createHandler } from '../lib/handler.mjs';
 
@@ -8,4 +8,4 @@ const handler = createHandler({
   env: () => ({ ADMIN_PASSWORD: readEnv('ADMIN_PASSWORD'), SESSION_SECRET: readEnv('SESSION_SECRET') }),
 });
 export default async (req) => handler(req);
-export const config = { path: '/events/*' };
+export const config = { path: ['/events/*', '/badge/*'] };

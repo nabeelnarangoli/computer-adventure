@@ -27,7 +27,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; ch
 
 http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
-  if (url.pathname.startsWith('/api/') || /^\/events\/[a-z0-9-]+\/?$/.test(url.pathname)) {
+  if (url.pathname.startsWith('/api/') || /^\/events\/[a-z0-9-]+\/?$/.test(url.pathname) || /^\/badge\/[a-f0-9]{20}\/?$/.test(url.pathname)) {
     const chunks = [];
     for await (const c of req) chunks.push(c);
     const r = await handler(new Request(url, { method: req.method, headers: req.headers, body: ['GET', 'HEAD'].includes(req.method) ? undefined : Buffer.concat(chunks) }));

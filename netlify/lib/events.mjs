@@ -89,6 +89,20 @@ export function createEvents({ getStore, json }) {
   const regs = () => getStore('regs');
   const images = () => getStore('images');
   const meta = () => getStore('meta');
+  const badges = () => getStore('badges');            // badge token -> { e: event id, r: registration id }
+  // every registration gets a private badge token; the QR code on the badge holds it
+  async function ensureTk(e, r) { if (r.tk) return false; r.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(r.tk, { e: e.id, r: r.id }); return true; }
+  async function byBadge(tk) {
+    const ix = await badges().get(tk, { type: 'json' }); if (!ix) return null;
+    const e = await events().get(ix.e, { type: 'json' }); if (!e) return null;
+    const doc = (await regs().get(e.id, { type: 'json' })) || { list: [] };
+    const r = doc.list.find((x) => x.id === ix.r); return r ? { e, doc, r } : null;
+  }
+  const checkinInfo = (e, doc, r) => ({
+    event: { id: e.id, title: e.title, slug: e.slug, start: e.start, tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, mode: e.mode, locationName: e.locationName || '' },
+    reg: { id: r.id, tk: r.tk, ref: r.ref, name: r.name, role: r.role || '', education: r.education || '', seats: r.seats || 1, phone: r.phone, email: r.email, status: r.status, attended: r.attended || '' },
+    counts: { attended: doc.list.filter((x) => calOk(x) && x.attended).reduce((t, x) => t + (x.seats || 1), 0), total: seatsTaken(doc.list) },
+  });
   const getRegs = async (id) => ((await regs().get(id, { type: 'json' })) || { list: [] }).list;
   const all = async () => { const s = events(); const { blobs } = await s.list(); const out = []; for (const b of blobs) { const e = await s.get(b.key, { type: 'json' }); if (e) out.push(e); } return out; };
   const bySlug = async (slug) => (await all()).find((e) => e.slug === slug);
@@ -98,6 +112,7 @@ export function createEvents({ getStore, json }) {
   // send invitation / update / cancellation emails; marks each registration with the result so the admin can see it
   async function calGuests(e, doc, list, kind, origin) {
     const cfg = await calCfg(); if (!cfg || !list.length) return null;
+    for (const r of list) await ensureTk(e, r);
     const messages = list.map((r) => inviteMail(e, r, kind, { origin, organizer: cfg.calEmail, seq: (r.calSeq ?? -1) + 1 }));
     const out = await calPost(cfg, { action: 'mail', messages }, 25000);
     const at = new Date().toISOString(); let sent = 0;
@@ -166,17 +181,18 @@ export function createEvents({ getStore, json }) {
       rl.n += 1; await meta().setJSON(ipKey, rl);
       const ref = 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase();
       const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp, country, education, role, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
+      await ensureTk(e, r);
       doc.list.push(r); await store.setJSON(e.id, doc);
       const s = await evSettings();
       const origin = new URL(req.url).origin;
       const cal = calOk(r) ? await calGuests(e, doc, [r], 'invite', origin) : null;
       // free online events: the joining link is shown right away; paid ones get it after approval
-      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!(cal && cal.ok) });
+      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!(cal && cal.ok), badge: calOk(r) ? `/badge/${r.tk}` : '' });
     }
 
     /* ---------- admin ---------- */
     if (!path.startsWith('/admin/')) return null;
-    if (!path.startsWith('/admin/events') && path !== '/admin/upload') return null;
+    if (!path.startsWith('/admin/events') && !path.startsWith('/admin/checkin/') && path !== '/admin/upload') return null;
     if (!auth || auth.r !== 'admin') return json(401, { error: 'Admin login needed.' });
 
     if (path === '/admin/upload' && method === 'POST') {
@@ -205,7 +221,7 @@ export function createEvents({ getStore, json }) {
     }
     if (path === '/admin/events' && method === 'GET') {
       const out = [];
-      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length } }); }
+      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length, attended: list.filter((r) => calOk(r) && r.attended).reduce((t, r) => t + (r.seats || 1), 0) } }); }
       out.sort((a, b) => toUTC(b.start, b.tz) - toUTC(a.start, a.tz));
       return json(200, { events: out, settings: adminSettings(await rawSettings()) });
     }
@@ -218,13 +234,30 @@ export function createEvents({ getStore, json }) {
       await events().setJSON(e.id, e);
       return json(201, { event: e });
     }
+    m = path.match(/^\/admin\/checkin\/([a-f0-9]{20})$/);
+    if (m) {
+      const f = await byBadge(m[1]);
+      if (!f) return json(404, { error: 'This QR code is not an Aqlyon badge, or the registration was deleted.' });
+      if (method === 'POST') {
+        if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.`, ...checkinInfo(f.e, f.doc, f.r) });
+        const already = !!f.r.attended;
+        f.r.attended = body.attended ? (f.r.attended || new Date().toISOString()) : '';
+        await regs().setJSON(f.e.id, f.doc);
+        return json(200, { ...checkinInfo(f.e, f.doc, f.r), already: body.attended && already });
+      }
+      return json(200, checkinInfo(f.e, f.doc, f.r));
+    }
     m = path.match(/^\/admin\/events\/([a-f0-9]{16})(\/regs(?:\/([a-f0-9]{16}))?)?$/);
     if (m) {
       const store = events(); const e = await store.get(m[1], { type: 'json' });
       if (!e) return json(404, { error: 'Event not found.' });
       if (m[2] && m[2].startsWith('/regs')) {
         const rs = regs(); const doc = (await rs.get(e.id, { type: 'json' })) || { list: [] };
-        if (!m[3] && method === 'GET') return json(200, { regs: doc.list, calendar: !!(await rawSettings()).calUrl });
+        if (!m[3] && method === 'GET') {
+          let changed = false; for (const r of doc.list) if (await ensureTk(e, r)) changed = true;
+          if (changed) await rs.setJSON(e.id, doc);
+          return json(200, { regs: doc.list, calendar: !!(await rawSettings()).calUrl });
+        }
         if (!m[3] && method === 'POST' && body.action === 'invite-all') {
           const skip = new Set(body.skip || []);   // ones that already failed in this round
           const all = doc.list.filter((r) => calOk(r) && !r.cal && !skip.has(r.id)), todo = all.slice(0, 10);
@@ -238,6 +271,8 @@ export function createEvents({ getStore, json }) {
         if (method === 'PATCH') {
           const was = calOk(r);
           if (['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(body.status)) r.status = body.status;
+          if (body.attended !== undefined) { if (body.attended && !calOk(r)) return json(409, { error: 'Only confirmed or approved people can be checked in.' }); r.attended = body.attended ? (r.attended || new Date().toISOString()) : ''; }
+          await ensureTk(e, r);
           r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc);
           let cal = null;
           if (!was && calOk(r)) cal = await calGuests(e, doc, [r], 'invite', new URL(req.url).origin);
@@ -262,6 +297,22 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'DELETE') { await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
     }
     return null;
+  }
+
+  // Badge page: what the participant shows at the entrance (QR code for the admin check-in)
+  async function badge(tk, origin) {
+    const f = await byBadge(tk);
+    const head = (t) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(t)}</title><meta name="robots" content="noindex"><link rel="icon" href="/img/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="/site/site.css"><link rel="stylesheet" href="/site/badge.css"></head>`;
+    if (!f) return new Response(`${head('Badge not found')}<body class="bdgpage"><main class="bdgwrap"><div class="bdgmsg"><h1>Badge not found</h1><p>Check the link, or contact Aqlyon Career Discovery Centre.</p><p><a class="btn" href="/#events">See upcoming events</a></p></div></main></body></html>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    const { e, r } = f;
+    const pe = publicEvent(e, f.doc.list);
+    const data = { tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: r.name, role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
+      event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
+    return new Response(`${head(`${r.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
+<script>window.BADGE=${JSON.stringify(data).replace(/</g, '\\u003c')};</script><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`,
+      { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
   }
 
   // Shareable event page with link-preview tags (WhatsApp, Facebook, LinkedIn show the cover and title)
@@ -301,5 +352,5 @@ export function createEvents({ getStore, json }) {
     return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
   }
 
-  return { routes, page };
+  return { routes, page, badge };
 }

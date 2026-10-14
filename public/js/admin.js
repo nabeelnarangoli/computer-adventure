@@ -3,8 +3,9 @@
    ===================================================================== */
 const root=$('#admin');
 const AAPI={
- token:()=>{try{return sessionStorage.getItem('ca-admin')}catch(e){return null}},
- setToken:t=>{try{t?sessionStorage.setItem('ca-admin',t):sessionStorage.removeItem('ca-admin')}catch(e){}},
+ // "Keep me signed in" stores the login on this device (so badge QR links open straight into check-in)
+ token:()=>{try{return sessionStorage.getItem('ca-admin')||localStorage.getItem('ca-admin')}catch(e){return null}},
+ setToken:(t,keep)=>{try{sessionStorage.removeItem('ca-admin');localStorage.removeItem('ca-admin');if(t)(keep?localStorage:sessionStorage).setItem('ca-admin',t)}catch(e){}},
  async call(path,{method='GET',body}={}){
   const h={'content-type':'application/json'};const t=AAPI.token();if(t)h.authorization='Bearer '+t;
   let r;try{r=await fetch('/api'+path,{method,headers:h,body:body?JSON.stringify(body):undefined})}catch(e){throw new Error('Can\'t reach the server.')}
@@ -25,9 +26,9 @@ function modal(html,onReady){const m=document.createElement('div');m.className='
 function confirmBox(title,text,okLabel,danger){return new Promise(res=>modal(`<h2>${title}</h2><p>${text}</p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn ${danger?'danger':''} ok">${okLabel}</button></div>`,(m,close)=>{$('.ok',m).onclick=()=>{close();res(true)};m.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.target===m)res(false)})}))}
 
 function loginView(msg=''){
- root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Aqlyon Digital Skill Academy</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/academy">Go to the learner site</a></p></div></main>`;
+ root.innerHTML=`<main class="auth"><div class="authcard"><span class="logo big">${SVG.shield.replace('<svg','<svg width="34" height="34"')}</span><h1>Admin panel</h1><p class="lead">Aqlyon Digital Skill Academy</p><form class="authform"><div class="field"><label for="ap">Admin password</label><input id="ap" type="password" autocomplete="current-password" required></div><label class="ck keep"><input type="checkbox" id="keep" checked><span>Keep me signed in on this device <small>(for 2 weeks, handy for scanning badges)</small></span></label><p class="formerr" role="alert">${esc(msg)}</p><button class="btn" type="submit">Log in ${SVG.next}</button></form><p class="small"><a href="/academy">Go to the learner site</a></p></div></main>`;
  $('form').onsubmit=async e=>{e.preventDefault();const b=$('button',e.target);b.disabled=true;$('.formerr').textContent='';
-  try{const d=await AAPI.call('/admin/login',{method:'POST',body:{password:$('#ap').value}});AAPI.setToken(d.token);dashboard()}catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
+  try{const keep=$('#keep').checked;const d=await AAPI.call('/admin/login',{method:'POST',body:{password:$('#ap').value,remember:keep}});AAPI.setToken(d.token,keep);dashboard()}catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
  $('#ap').focus();
 }
 
@@ -36,7 +37,7 @@ async function load(){const [d,st]=await Promise.all([AAPI.call('/admin/users'),
 async function dashboard(){
  root.innerHTML=`<header class="top"><div class="in"><span class="brand"><span class="logo">${SVG.shield.replace('<svg','<svg width="20" height="20"')}</span><span>Admin panel</span></span><a class="userbtn" href="/academy" target="_blank" rel="noopener" style="margin-left:auto">Learner site ↗</a><button type="button" class="userbtn" id="alo">${SVG.logout}<span>Log out</span></button></div></header><div class="wrap admtabwrap"></div><main class="wrap adm"><p class="lead" style="margin-top:20px">Loading…</p></main>`;
  $('#alo').onclick=()=>{AAPI.setToken(null);loginView()};
- showTab(location.hash==='#events'?'events':'learners');
+ const h=location.hash;showTab(h.startsWith('#checkin/')||h.startsWith('#scan')?'checkin':h==='#events'?'events':'learners');
 }
 function render(){
  const main=$('.adm');const now=Date.now();
