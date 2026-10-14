@@ -31,7 +31,7 @@ function renderEvents(){
  main.innerHTML=`<div class="admhead"><h1>Events</h1><button type="button" class="btn" id="newev">＋ New event</button></div>
  <details class="evset"><summary><b>Event settings</b> · WhatsApp for approvals: ${esc(EVSET.whatsapp)} · Google Sheet: ${EVSET.sheetUrl?'connected':'not connected'}</summary>
   <form class="mform evsetform"><div class="field"><label for="es-wa">WhatsApp number for paid registrations</label><input id="es-wa" value="${esc(EVSET.whatsapp)}" inputmode="tel"><small class="small">Visitors who register for a paid event send their details to this number for payment and approval. Include the country code.</small></div>
-  <div class="field"><label for="es-sh">Google Sheet for all registrations (optional)</label><input id="es-sh" value="${esc(EVSET.sheetUrl)}" placeholder="https://script.google.com/macros/s/…/exec"><small class="small">Every registration is also added as a row in this sheet. Each event can use its own sheet instead. <button type="button" class="linkbtn sheethelp">How to connect a Google Sheet</button></small></div>
+  <div class="field"><label for="es-sh">Google Sheet for all registrations (optional)</label><input id="es-sh" value="${esc(EVSET.sheetUrl)}" placeholder="https://script.google.com/macros/s/…/exec"><small class="small">Every registration is also added as a row in this sheet. Each event can use its own sheet instead. <button type="button" class="linkbtn sheethelp">How to connect a Google Sheet and Calendar</button></small></div>
   <p class="formerr"></p><button class="btn sm" type="submit">Save settings</button></form></details>
  <h2 class="evh">Upcoming</h2>${up.length?`<div class="evlist">${up.map(card).join('')}</div>`:`<div class="empty"><p>No upcoming events. Press <b>＋ New event</b> to add one. It appears on the website under <b>Upcoming events</b>.</p></div>`}
  ${past.length?`<h2 class="evh">Past</h2><div class="evlist past">${past.map(card).join('')}</div>`:''}`;
@@ -69,7 +69,7 @@ function eventForm(e){
   <div class="m-paid"><div class="f3"><div class="field"><label for="ef-price">Price per person *</label><input id="ef-price" type="number" min="0" step="0.01" value="${e.price||''}"></div><div class="field"><label for="ef-cur">Currency</label><select id="ef-cur">${EV_CUR.map(c=>`<option ${e.currency===c?'selected':''}>${c}</option>`).join('')}</select></div></div><p class="small">Visitors register, then send their details to you on WhatsApp (${esc(EVSET.whatsapp)}) for payment. You approve them under <b>Registrations</b>.</p></div></fieldset>
  <fieldset class="qset"><legend>Registration</legend><div class="rrow">${r('regMode','form',e.regMode,'Our registration form')}${r('regMode','link',e.regMode,'External link')}${r('regMode','none',e.regMode,'No registration')}</div>
   <div class="m-form"><div class="f3"><div class="field"><label for="ef-cap">Total seats <small>(0 = no limit)</small></label><input id="ef-cap" type="number" min="0" value="${e.capacity||0}"></div><div class="field"><label for="ef-max">Seats one person can book</label><input id="ef-max" type="number" min="1" max="20" value="${e.maxSeats||1}"></div></div>
-   <div class="field"><label for="ef-sheet">Google Sheet for this event <small>(optional)</small></label><div class="inrow"><input id="ef-sheet" maxlength="600" value="${esc(e.sheetUrl||'')}" placeholder="${EVSET.sheetUrl?'Uses the sheet from Event settings':'https://script.google.com/macros/s/…/exec'}">${isNew?'':'<button type="button" class="btn ghost sm testsheet">Test</button>'}</div><small class="small"><button type="button" class="linkbtn sheethelp">How to connect a Google Sheet</button></small></div></div>
+   <div class="field"><label for="ef-sheet">Google Sheet for this event <small>(optional)</small></label><div class="inrow"><input id="ef-sheet" maxlength="600" value="${esc(e.sheetUrl||'')}" placeholder="${EVSET.sheetUrl?'Uses the sheet from Event settings':'https://script.google.com/macros/s/…/exec'}">${isNew?'':'<button type="button" class="btn ghost sm testsheet">Test</button>'}</div><small class="small"><button type="button" class="linkbtn sheethelp">How to connect a Google Sheet and Calendar</button></small></div></div>
   <div class="m-link"><div class="field"><label for="ef-link">Registration link *</label><input id="ef-link" maxlength="600" value="${esc(e.regLink||'')}" placeholder="https://forms.gle/…"></div></div>
   <label class="ck"><input type="checkbox" id="ef-open" ${e.regOpen?'checked':''}><span><b>Registration is open</b>: the Register button shows until you untick this.</span></label></fieldset>
  <label class="ck"><input type="checkbox" id="ef-pub" ${e.published?'checked':''}><span><b>Show on the website</b>: untick to keep it as a hidden draft.</span></label>
@@ -92,23 +92,62 @@ function eventForm(e){
  });
 }
 
-function sheetHelp(){
- const code=`function doPost(e) {
-  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+const SHEET_SCRIPT=`// Aqlyon events: adds each registration to this sheet and invites the person to the
+// event in your Google Calendar (Google emails the invitation and reminds them).
+var COLS = ['registeredAt','event','eventDate','ref','name','email','phone','whatsapp','country','education','role','seats','paid','status'];
+
+function doPost(e) {
   var d = JSON.parse(e.postData.contents);
-  var cols = ['registeredAt','event','eventDate','ref','name','email','phone','country','seats','paid','status','note'];
-  if (sheet.getLastRow() === 0) sheet.appendRow(cols);
-  sheet.appendRow(cols.map(function (c) { return d[c] === undefined ? '' : d[c]; }));
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0];
+  if (sheet.getLastRow() === 0) sheet.appendRow(COLS);
+  if (d.action === 'status') {
+    var rows = sheet.getDataRange().getValues(), refCol = COLS.indexOf('ref'), stCol = COLS.indexOf('status');
+    for (var i = 1; i < rows.length; i++) if (rows[i][refCol] === d.ref) sheet.getRange(i + 1, stCol + 1).setValue(d.status);
+  } else {
+    sheet.appendRow(COLS.map(function (c) { return d[c] === undefined ? '' : d[c]; }));
+  }
+  if (d.calendar && d.email) {
+    if (d.status === 'confirmed' || d.status === 'approved') invite(d.calendar, d.email);
+    if (d.status === 'cancelled' || d.status === 'rejected') uninvite(d.calendar, d.email);
+  }
   return ContentService.createTextOutput('ok');
+}
+
+function calendarEvent(c) {
+  var props = PropertiesService.getScriptProperties(), key = 'ev_' + c.id, id = props.getProperty(key);
+  if (id) { try { var ev = Calendar.Events.get('primary', id); if (ev.status !== 'cancelled') return ev; } catch (x) {} }
+  var created = Calendar.Events.insert({
+    summary: c.title, description: c.description, location: c.location,
+    start: { dateTime: c.start }, end: { dateTime: c.end },
+    guestsCanSeeOtherGuests: false, guestsCanInviteOthers: false, attendees: [],
+    reminders: { useDefault: false, overrides: [{ method: 'email', minutes: 1440 }, { method: 'popup', minutes: 60 }] }
+  }, 'primary');
+  props.setProperty(key, created.id);
+  return created;
+}
+function invite(c, email) {
+  var ev = calendarEvent(c), list = ev.attendees || [];
+  if (list.some(function (a) { return a.email === email; })) return;
+  list.push({ email: email });
+  Calendar.Events.patch({ attendees: list }, 'primary', ev.id, { sendUpdates: 'all' });
+}
+function uninvite(c, email) {
+  var ev = calendarEvent(c), list = (ev.attendees || []).filter(function (a) { return a.email !== email; });
+  Calendar.Events.patch({ attendees: list }, 'primary', ev.id, { sendUpdates: 'all' });
 }`;
- modal(`<h2>Connect a Google Sheet</h2><p>Every new registration is added as a row in your sheet automatically.</p>
- <ol class="steps2"><li>Create a new Google Sheet (sheets.new) and give it a name, like <b>Event registrations</b>.</li>
+function sheetHelp(){
+ const code=SHEET_SCRIPT;
+ modal(`<h2>Connect a Google Sheet and Calendar</h2><p>Every registration is added to your sheet, and the person is invited to the event in your Google Calendar. Google emails them the invitation, and their calendar reminds them before the event (email 1 day before, notification 1 hour before). Guests can't see each other.</p>
+ <ol class="steps2"><li>Create a new Google Sheet (sheets.new) with the Google account whose calendar should hold the events. Name it, for example <b>Event registrations</b>.</li>
  <li>In the sheet, click <b>Extensions → Apps Script</b>.</li>
  <li>Delete what is there and paste this code, then press <b>Save</b>:<pre class="creds">${esc(code)}</pre><button type="button" class="btn ghost sm cpcode">Copy code</button></li>
+ <li>On the left, next to <b>Services</b>, click <b>＋</b>, choose <b>Google Calendar API</b> and click <b>Add</b>.</li>
  <li>Click <b>Deploy → New deployment</b>. Choose type <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Click <b>Deploy</b> and allow access when Google asks.</li>
- <li>Copy the <b>Web app URL</b> (it starts with https://script.google.com/macros/s/ and ends with /exec) and paste it in <b>Event settings</b> (for all events) or in one event's form.</li>
- <li>Open the event and press <b>Test</b>: a test row appears in the sheet.</li></ol>
- <p class="small">Registrations are always saved here in the admin panel too, so nothing is lost if the sheet is not connected.</p><div class="mrow"><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{$('.cpcode',m).onclick=()=>copy(code)});
+ <li>Copy the <b>Web app URL</b> (starts with https://script.google.com/macros/s/ and ends with /exec) and paste it in <b>Event settings</b> (for all events) or in one event's form.</li>
+ <li>Open an event and press <b>Test</b>: a test row appears in the sheet.</li></ol>
+ <p class="small"><b>Free events</b>: people are invited as soon as they register. <b>Paid events</b>: they are invited when you press Approve, and removed if you reject or cancel. Registrations are always saved in this admin panel too.</p>
+ <p class="small">Already connected before? Paste the new code, add the Google Calendar API service, then <b>Deploy → Manage deployments → Edit → Version: New version → Deploy</b>. The link stays the same.</p>
+ <div class="mrow"><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{m.querySelector('.modal').classList.add('wide');$('.cpcode',m).onclick=()=>copy(code)});
 }
 
 async function regsView(e){
@@ -116,16 +155,16 @@ async function regsView(e){
  const ST={pending:['Waiting for approval','warn'],approved:['Approved','ok'],confirmed:['Confirmed','ok'],rejected:['Rejected','no'],cancelled:['Cancelled','muted']};
  const where=e.mode==='online'?(e.onlineUrl?`Join online: ${e.onlineUrl}`:'We will send the online joining link before the event.'):`Venue: ${e.locationName}${e.mapUrl?' · Map: '+e.mapUrl:''}`;
  const confirmMsg=r=>`Hello ${r.name.split(' ')[0]}, your registration for "${e.title}" is confirmed. ✅\nRef: ${r.ref} · Seats: ${r.seats}\nWhen: ${evDate(e)}\n${where}\nEvent page: ${evLink(e)}\n– Aqlyon Career Discovery Centre`;
- const csv=()=>{const cols=['ref','name','email','phone','country','seats','status','note','at'];const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;const t=[cols.join(','),...regs.map(r=>cols.map(c=>q(r[c])).join(','))].join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+t],{type:'text/csv'}));a.download=`${e.slug}-registrations.csv`;a.click()};
+ const csv=()=>{const cols=['ref','name','email','phone','whatsapp','country','education','role','seats','status','at'];const q=v=>`"${String(v??'').replace(/"/g,'""')}"`;const t=[cols.join(','),...regs.map(r=>cols.map(c=>q(r[c])).join(','))].join('\r\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+t],{type:'text/csv'}));a.download=`${e.slug}-registrations.csv`;a.click()};
  const html=()=>`<h2>Registrations</h2><p class="small"><b>${esc(e.title)}</b> · ${esc(evDate(e))} · ${regs.length} registration${regs.length===1?'':'s'} · ${regs.filter(r=>!['rejected','cancelled'].includes(r.status)).reduce((t,r)=>t+r.seats,0)} seats${e.capacity?' of '+e.capacity:''}</p>
- ${regs.length?`<div class="regtbl">${regs.slice().reverse().map(r=>{const [sl,sc]=ST[r.status]||[r.status,''];return `<div class="regrow"><div><b>${esc(r.name)}</b> <span class="chipx ${sc}">${sl}</span><small>${esc(r.ref)} · ${r.seats} seat${r.seats>1?'s':''} · ${new Date(r.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</small><small><a href="${waLink(r.phone,'')}" target="_blank" rel="noopener">${esc(r.phone)}</a> · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a>${r.note?' · “'+esc(r.note)+'”':''}</small></div>
-  <div class="regact">${r.status==='pending'?`<button type="button" class="btn sm" data-r="approved" data-id="${r.id}">Approve</button><button type="button" class="btn sm ghost" data-r="rejected" data-id="${r.id}">Reject</button>`:''}${['approved','confirmed'].includes(r.status)?`<a class="btn sm ghost" target="_blank" rel="noopener" href="${waLink(r.phone,confirmMsg(r))}">Send details on WhatsApp</a><button type="button" class="btn sm ghost" data-r="cancelled" data-id="${r.id}">Cancel</button>`:''}${['rejected','cancelled'].includes(r.status)?`<button type="button" class="btn sm ghost" data-r="${e.paid?'pending':'confirmed'}" data-id="${r.id}">Restore</button>`:''}</div></div>`}).join('')}</div>`:'<p class="empty">No registrations yet.</p>'}
+ ${regs.length?`<div class="regtbl">${regs.slice().reverse().map(r=>{const [sl,sc]=ST[r.status]||[r.status,''];return `<div class="regrow"><div><b>${esc(r.name)}</b> <span class="chipx ${sc}">${sl}</span><small>${esc(r.ref)} · ${r.seats} seat${r.seats>1?'s':''} · ${new Date(r.at).toLocaleString('en-GB',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})}</small><small>📞 ${esc(r.phone)} · WhatsApp <a href="${waLink(r.whatsapp||r.phone,'')}" target="_blank" rel="noopener">${esc(r.whatsapp||r.phone)}</a> · <a href="mailto:${esc(r.email)}">${esc(r.email)}</a></small><small>${[r.role,r.education,r.country].filter(Boolean).map(esc).join(' · ')}${r.note?' · “'+esc(r.note)+'”':''}</small></div>
+  <div class="regact">${r.status==='pending'?`<button type="button" class="btn sm" data-r="approved" data-id="${r.id}">Approve</button><button type="button" class="btn sm ghost" data-r="rejected" data-id="${r.id}">Reject</button>`:''}${['approved','confirmed'].includes(r.status)?`<a class="btn sm ghost" target="_blank" rel="noopener" href="${waLink(r.whatsapp||r.phone,confirmMsg(r))}">Send details on WhatsApp</a><button type="button" class="btn sm ghost" data-r="cancelled" data-id="${r.id}">Cancel</button>`:''}${['rejected','cancelled'].includes(r.status)?`<button type="button" class="btn sm ghost" data-r="${e.paid?'pending':'confirmed'}" data-id="${r.id}">Restore</button>`:''}</div></div>`}).join('')}</div>`:'<p class="empty">No registrations yet.</p>'}
  <div class="mrow">${regs.length?'<button type="button" class="btn ghost csv" style="margin-right:auto">Download CSV (Excel)</button>':''}<button type="button" class="btn" data-close>Close</button></div>`;
  modal(html(),(m)=>{m.querySelector('.modal').classList.add('wide');
   const bind=()=>{const c=$('.csv',m);if(c)c.onclick=csv;
    $$('[data-r]',m).forEach(b=>b.onclick=async()=>{const st=b.dataset.r;try{const d=await AAPI.call(`/admin/events/${e.id}/regs/${b.dataset.id}`,{method:'PATCH',body:{status:st}});regs=regs.map(x=>x.id===d.reg.id?d.reg:x);
      $('.modal',m).innerHTML=html();bind();toast(st==='approved'?'Approved. Now send the joining details on WhatsApp.':'Updated');
-     if(st==='approved'){e.onlineUrl=d.onlineUrl||e.onlineUrl;window.open(waLink(d.reg.phone,confirmMsg(d.reg)),'_blank','noopener')}
+     if(st==='approved'){e.onlineUrl=d.onlineUrl||e.onlineUrl;window.open(waLink(d.reg.whatsapp||d.reg.phone,confirmMsg(d.reg)),'_blank','noopener')}
      loadEvents()}catch(err){toast(err.message,true)}})};
   bind()});
 }

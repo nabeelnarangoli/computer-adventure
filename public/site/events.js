@@ -45,7 +45,7 @@ const gdate=ms=>{const d=new Date(ms);return `${d.getUTCFullYear()}${z(d.getUTCM
 const endMs=E.endUTC||E.startUTC+2*3600e3;
 const where=E.mode==='online'?'Online':E.locationName;
 const gcal=(x='')=>`https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(E.title)}&dates=${gdate(E.startUTC)}/${gdate(endMs)}&details=${encodeURIComponent((E.summary||'')+'\n\n'+url+(x?'\n'+x:''))}&location=${encodeURIComponent(where)}`;
-const ics=(extra='')=>{const t=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Aqlyon//Events//EN','BEGIN:VEVENT',`UID:${E.slug}@aqlyon`,`DTSTAMP:${gdate(Date.now())}`,`DTSTART:${gdate(E.startUTC)}`,`DTEND:${gdate(endMs)}`,`SUMMARY:${E.title.replace(/[,;]/g,'\\$&')}`,`DESCRIPTION:${((E.summary||'')+' '+url+(extra?' '+extra:'')).replace(/[,;]/g,'\\$&')}`,`LOCATION:${where.replace(/[,;]/g,'\\$&')}`,`URL:${url}`,'END:VEVENT','END:VCALENDAR'].join('\r\n');
+const ics=(extra='')=>{const t=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Aqlyon//Events//EN','BEGIN:VEVENT',`UID:${E.slug}@aqlyon`,`DTSTAMP:${gdate(Date.now())}`,`DTSTART:${gdate(E.startUTC)}`,`DTEND:${gdate(endMs)}`,`SUMMARY:${E.title.replace(/[,;]/g,'\\$&')}`,`DESCRIPTION:${((E.summary||'')+' '+url+(extra?' '+extra:'')).replace(/[,;]/g,'\\$&')}`,`LOCATION:${where.replace(/[,;]/g,'\\$&')}`,`URL:${url}`,'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Tomorrow: '+E.title.replace(/[,;]/g,'\\$&'),'TRIGGER:-P1D','END:VALARM','BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:Starts in 1 hour: '+E.title.replace(/[,;]/g,'\\$&'),'TRIGGER:-PT1H','END:VALARM','END:VEVENT','END:VCALENDAR'].join('\r\n');
  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'text/calendar'}));a.download=E.slug+'.ics';a.click()};
 const yt=yourTime(E);
 const regBtn=()=>{
@@ -58,6 +58,7 @@ root.innerHTML=`<article class="evdetail">
  <div class="evgridd"><div class="evmain">
   <div class="evtags"><span>${E.mode==='online'?'Online event':'In person'}</span><span class="${E.paid?'':'free'}">${esc(price(E))}</span>${E.state==='open'&&E.seatsLeft!==null&&E.seatsLeft<=15?`<span class="st">Only ${E.seatsLeft} seat${E.seatsLeft===1?'':'s'} left</span>`:''}</div>
   <h1>${esc(E.title)}</h1>${E.summary?`<p class="lead">${esc(E.summary)}</p>`:''}
+  <div class="toprow">${regBtn().replace('id="regbtn"','id="regbtn2"')}<button type="button" class="btn line sharebig">${ICON.share} Share event</button></div>
   <div class="evbody">${paras(E.details)}</div>
  </div>
  <aside class="evside"><div class="evbox">
@@ -77,10 +78,13 @@ root.innerHTML=`<article class="evdetail">
  </aside></div></article>`;
 const toast=m=>{const t=document.createElement('div');t.className='evtoast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)};
 $('#icsb').onclick=()=>ics();
+const shareNow=async()=>{if(navigator.share){try{await navigator.share({title:E.title,text:(E.summary||E.title)+' · '+fmtDay(E),url});return}catch(e){if(e.name==='AbortError')return}}
+ const box=$('.evbox.share');box.scrollIntoView({behavior:'smooth',block:'center'});box.classList.add('flash');setTimeout(()=>box.classList.remove('flash'),1600)};
+$$('.sharebig').forEach(b=>b.onclick=shareNow);
 $$('[data-s]').forEach(b=>b.onclick=async()=>{if(b.dataset.s==='copy'){try{await navigator.clipboard.writeText(url);toast('Link copied')}catch(e){prompt('Copy this link',url)}}else{try{await navigator.share({title:E.title,text:E.summary||E.title,url})}catch(e){}}});
 
 /* ---------- registration ---------- */
-const rb=$('#regbtn');if(!rb)return;
+const rb=$('#regbtn');if(!rb)return;const rb2=$('#regbtn2');if(rb2)rb2.onclick=()=>rb.click();
 const guess=typeof guessCountry==='function'?guessCountry():'AE';
 const cOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${c[1]}</option>`).join('');
 const ccOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${flagOf(c[0])} +${c[2]} · ${c[1]}</option>`).join('');
@@ -90,10 +94,12 @@ rb.onclick=()=>{
  <form class="rgf" novalidate>
   <label>Full name<input name="name" required maxlength="80" autocomplete="name"></label>
   <label>Email<input name="email" type="email" required maxlength="80" autocomplete="email"></label>
-  <label>Country<select name="country" autocomplete="country">${cOpts(guess)}</select></label>
-  <label>Mobile number (WhatsApp)<span class="tel"><select name="cc" aria-label="Country code">${ccOpts(guess)}</select><input name="mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></span></label>
+  <label>Mobile number<span class="tel"><select name="cc" aria-label="Mobile country code">${ccOpts(guess)}</select><input name="mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></span></label>
+  <div class="lbl">WhatsApp number<label class="same"><input type="checkbox" name="same" checked> Same as mobile</label><span class="tel wa"><select name="wcc" aria-label="WhatsApp country code" disabled>${ccOpts(guess)}</select><input name="wmob" type="tel" inputmode="tel" required maxlength="18" disabled aria-label="WhatsApp number"></span></div>
+  <label>Country<select name="country" required autocomplete="country">${cOpts(guess)}</select></label>
+  <label>Education level<select name="education" required><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>
+  <label>I am a<select name="role" required><option value="">Choose…</option><option>Student</option><option>Parent</option></select></label>
   ${E.maxSeats>1?`<label>Number of people<select name="seats">${Array.from({length:Math.min(E.maxSeats,E.seatsLeft??E.maxSeats)},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label>`:''}
-  <label>Anything we should know? <small>(optional)</small><textarea name="note" rows="2" maxlength="500"></textarea></label>
   <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
   ${E.paid?`<p class="small paidnote">After you register, you'll send your details to us on WhatsApp to pay <b>${esc(price(E))}</b> per person. Your seat is confirmed once payment is approved.</p>`:''}
   <p class="err" role="alert"></p>
@@ -102,28 +108,37 @@ rb.onclick=()=>{
  document.body.appendChild(m);document.body.style.overflow='hidden';
  const close=()=>{m.remove();document.body.style.overflow=''};
  $('.x',m).onclick=close;m.addEventListener('click',e=>{if(e.target===m)close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
- const f=$('form',m);let ccT=false;f.country.onchange=()=>{if(!ccT)f.cc.value=f.country.value};f.cc.onchange=()=>ccT=true;f.name.focus();
+ const f=$('form',m);let ccT=false;
+ const syncWa=()=>{const same=f.same.checked;f.wcc.disabled=f.wmob.disabled=same;if(same){f.wcc.value=f.cc.value;f.wmob.value=f.mob.value}else if(!f.wmob.value)f.wmob.focus()};
+ f.country.onchange=()=>{if(!ccT){f.cc.value=f.country.value;syncWa()}};f.cc.onchange=()=>{ccT=true;syncWa()};f.mob.oninput=syncWa;f.same.onchange=syncWa;f.name.focus();
  f.onsubmit=async ev=>{ev.preventDefault();const err=$('.err',m);err.textContent='';
-  const email=f.email.value.trim(),mob=f.mob.value.replace(/[\s\-().]/g,'').replace(/^0+/,''),dial=(COUNTRIES.find(c=>c[0]===f.cc.value)||[])[2];
+  const num=v=>v.replace(/[\s\-().]/g,'').replace(/^0+/,''),dialOf=cc=>(COUNTRIES.find(c=>c[0]===cc)||[])[2];
+  const email=f.email.value.trim(),mob=num(f.mob.value),dial=dialOf(f.cc.value),wmob=f.same.checked?mob:num(f.wmob.value),wdial=f.same.checked?dial:dialOf(f.wcc.value);
   if(!f.name.value.trim())return err.textContent='Please enter your name.';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return err.textContent='Please enter a valid email address.';
   if(!/^\d{6,14}$/.test(mob))return err.textContent='Please enter a valid mobile number (without the country code).';
+  if(!/^\d{6,14}$/.test(wmob))return err.textContent='Please enter a valid WhatsApp number (without the country code).';
+  if(!f.education.value)return err.textContent='Please choose your education level.';
+  if(!f.role.value)return err.textContent='Please choose whether you are a student or a parent.';
   const b=$('button[type=submit]',f);b.disabled=true;b.textContent='Registering…';
-  const body={name:f.name.value.trim(),email,country:f.country.value,phone:'+'+dial+' '+mob,seats:f.seats?f.seats.value:1,note:f.note.value,website:f.website.value};
+  const body={name:f.name.value.trim(),email,country:f.country.value,phone:'+'+dial+' '+mob,whatsapp:'+'+wdial+' '+wmob,education:f.education.value,role:f.role.value,seats:f.seats?f.seats.value:1,website:f.website.value};
   let d;try{const r=await fetch(`/api/events/${E.slug}/register`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong. Please try again.')}
   catch(x){err.textContent=x.message;b.disabled=false;b.textContent=E.paid?'Register and continue to payment':'Register';return}
   const dlg=$('.evdlg',m);
   if(d.status==='pending'){
-   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
+   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}\nWhatsApp: ${body.whatsapp}\nEducation: ${body.education} · ${body.role}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
    const wa=`https://wa.me/${String(d.whatsapp).replace(/[^\d]/g,'')}?text=${encodeURIComponent(msg)}`;
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">1/2</span><h2>One more step: payment</h2><p>Your place is reserved. Send your details to us on WhatsApp and we'll share how to pay <b>${esc(d.currency+' '+d.total)}</b>. Your seat is confirmed once payment is approved.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p><a class="btn solid lg wa" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><p class="small">WhatsApp didn't open? Message <b>${esc(d.whatsapp)}</b> with your reference.</p></div>`;
    window.open(wa,'_blank','noopener');
   }else{
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">✓</span><h2>You're registered!</h2><p>See you at <b>${esc(E.title)}</b>, ${esc(fmtDay(E))}, ${esc(timeLine(E))}.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p>
     ${d.onlineUrl?`<p class="join">Joining link: <a href="${esc(d.onlineUrl)}" target="_blank" rel="noopener">${esc(d.onlineUrl)}</a><br><small>Save it now. It's also added to your calendar file.</small></p>`:E.mode==='online'?'<p>We\'ll send you the joining link before the event.</p>':E.mapUrl?`<p><a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions to ${esc(E.locationName)} ↗</a></p>`:''}
-    <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Calendar file</button></div>
+    <p class="small remind">📅 A calendar file is downloading. Open it to add this event to your calendar, with reminders 1 day and 1 hour before.${d.calendar?' We\'ve also sent a calendar invitation to your email.':''}</p>
+    <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download again</button><button type="button" class="btn line sharebig">${ICON.share} Share</button></div>
     <p class="small">Tell a friend: <a href="https://wa.me/?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p></div>`;
+   $$('.sharebig',dlg).forEach(b=>b.onclick=shareNow);
    $('.icsd',dlg).onclick=()=>ics(d.onlineUrl?'Join: '+d.onlineUrl:'');
+   setTimeout(()=>ics(d.onlineUrl?'Join: '+d.onlineUrl:''),600);   // reminder: 1 day and 1 hour before
   }
   $('.x',dlg).onclick=close;
  };

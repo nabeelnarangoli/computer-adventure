@@ -10,6 +10,8 @@ export const TZS = {
   'Europe/London': { label: 'UK', name: 'UK time', off: 0 },
 };
 const CURRENCIES = ['AED', 'INR', 'USD', 'SAR', 'QAR', 'OMR'];
+export const EDUCATION = ['SSLC', 'Plus Two', 'Bachelors', 'Masters', 'PhD', 'Other'];
+export const ROLES = ['Student', 'Parent'];
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const slugify = (s) => String(s).toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'event';
@@ -68,6 +70,14 @@ function publicEvent(e, list) {
   };
 }
 
+// one row for the Google Sheet; the Apps Script also uses the calendar fields to invite the person
+function sheetRow(e, r, action) {
+  const start = toUTC(e.start, e.tz), end = e.end ? toUTC(e.end, e.tz) : start + 2 * 3600_000;
+  const ok = r.status === 'confirmed' || r.status === 'approved';
+  const join = e.mode === 'online' && ok && e.onlineUrl ? `\nJoin online: ${e.onlineUrl}` : '';
+  return { action, registeredAt: r.at, event: e.title, eventDate: `${e.start.replace('T', ' ')} ${(TZS[e.tz] || {}).label || ''}`, ref: r.ref, name: r.name, email: r.email, phone: r.phone, whatsapp: r.whatsapp || '', country: r.country, education: r.education || '', role: r.role || '', seats: r.seats, paid: e.paid ? `${e.currency} ${e.price * r.seats}` : 'Free', status: r.status,
+    calendar: { id: e.id, title: e.title, start: new Date(start).toISOString(), end: new Date(end).toISOString(), location: e.mode === 'online' ? 'Online' : [e.locationName, e.mapUrl].filter(Boolean).join(' · '), description: `${e.summary || ''}${join}\nYour reference: ${r.ref}\nAqlyon Career Discovery Centre` } };
+}
 async function postToSheet(url, row) {
   if (!url) return false;
   try {
@@ -121,11 +131,17 @@ export function createEvents({ getStore, json }) {
       const email = String(body.email || '').trim().toLowerCase().slice(0, 80);
       const phone = String(body.phone || '').trim().slice(0, 24);
       const country = String(body.country || '').trim().toUpperCase().slice(0, 2);
-      const note = String(body.note || '').trim().slice(0, 500);
+      const whatsapp = String(body.whatsapp || '').trim().slice(0, 24);
+      const education = EDUCATION.includes(body.education) ? body.education : '';
+      const role = ROLES.includes(body.role) ? body.role : '';
       const seats = Math.min(e.maxSeats || 1, Math.max(1, parseInt(body.seats, 10) || 1));
       if (!name) return json(400, { error: 'Please enter your name.' });
       if (!EMAIL_RE.test(email)) return json(400, { error: 'Please enter a valid email address.' });
       if (!/^\+\d{1,4} \d{6,14}$/.test(phone)) return json(400, { error: 'Please enter a valid mobile number.' });
+      if (!/^\+\d{1,4} \d{6,14}$/.test(whatsapp)) return json(400, { error: 'Please enter a valid WhatsApp number.' });
+      if (!/^[A-Z]{2}$/.test(country)) return json(400, { error: 'Please choose your country.' });
+      if (!education) return json(400, { error: 'Please choose your education level.' });
+      if (!role) return json(400, { error: 'Please choose whether you are a student or a parent.' });
       if (e.capacity && seatsTaken(doc.list) + seats > e.capacity) return json(409, { error: `Only ${e.capacity - seatsTaken(doc.list)} seat(s) left.` });
       const dup = doc.list.find((r) => r.status !== 'cancelled' && r.status !== 'rejected' && (r.email === email || r.phone === phone));
       if (dup) return json(409, { error: 'You are already registered for this event with this email or mobile number.', ref: dup.ref });
@@ -136,13 +152,13 @@ export function createEvents({ getStore, json }) {
       if (rl.n >= 10) return json(429, { error: 'Too many registrations from here. Please try again in an hour.' });
       rl.n += 1; await meta().setJSON(ipKey, rl);
       const ref = 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-      const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, country, seats, note, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
+      const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp, country, education, role, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
       doc.list.push(r); await store.setJSON(e.id, doc);
       const s = await evSettings();
       const sheet = e.sheetUrl || s.sheetUrl;
-      if (sheet) await postToSheet(sheet, { event: e.title, eventDate: `${e.start.replace('T', ' ')} ${(TZS[e.tz] || {}).label || ''}`, ref, name, email, phone, country, seats, note, status: r.status, paid: e.paid ? `${e.currency} ${e.price * seats}` : 'Free', registeredAt: r.at });
+      if (sheet) await postToSheet(sheet, sheetRow(e, r, 'register'));
       // free online events: the joining link is shown right away; paid ones get it after approval
-      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp });
+      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!sheet && r.status === 'confirmed' });
     }
 
     /* ---------- admin ---------- */
@@ -191,7 +207,7 @@ export function createEvents({ getStore, json }) {
       if (m[2] === '/test-sheet' && method === 'POST') {
         const url = e.sheetUrl || (await evSettings()).sheetUrl;
         if (!url) return json(400, { error: 'No Google Sheet link set for this event or in Events settings.' });
-        const ok = await postToSheet(url, { event: e.title, eventDate: e.start, ref: 'TEST', name: 'Test row from Aqlyon admin', email: '', phone: '', country: '', seats: 0, note: 'You can delete this row.', status: 'test', paid: '', registeredAt: new Date().toISOString() });
+        const ok = await postToSheet(url, { ...sheetRow(e, { at: new Date().toISOString(), ref: 'TEST', name: 'Test row from Aqlyon admin (you can delete it)', email: '', phone: '', whatsapp: '', country: '', seats: 0, status: 'test' }, 'register'), calendar: null });
         return ok ? json(200, { ok: true }) : json(502, { error: 'Could not reach the Google Sheet. Check the link and that the script is deployed for "Anyone".' });
       }
       if (m[2] && m[2].startsWith('/regs')) {
@@ -199,7 +215,13 @@ export function createEvents({ getStore, json }) {
         if (!m[3] && method === 'GET') return json(200, { regs: doc.list });
         const r = doc.list.find((x) => x.id === m[3]);
         if (!r) return json(404, { error: 'Registration not found.' });
-        if (method === 'PATCH') { if (['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(body.status)) r.status = body.status; r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc); return json(200, { reg: r, onlineUrl: e.onlineUrl || '' }); }
+        if (method === 'PATCH') {
+          if (['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(body.status)) r.status = body.status;
+          r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc);
+          const sheet = e.sheetUrl || (await evSettings()).sheetUrl;
+          if (sheet) await postToSheet(sheet, sheetRow(e, r, 'status'));
+          return json(200, { reg: r, onlineUrl: e.onlineUrl || '' });
+        }
         if (method === 'DELETE') { doc.list = doc.list.filter((x) => x.id !== r.id); await rs.setJSON(e.id, doc); return json(200, { ok: true }); }
       }
       if (!m[2] && method === 'PATCH') {
