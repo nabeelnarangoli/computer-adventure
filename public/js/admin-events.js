@@ -97,6 +97,12 @@ const CAL_SCRIPT=`// Aqlyon events → Google Calendar
 // People who register are added as guests; Google emails them the invitation from this account.
 var SECRET = '__SECRET__';
 
+// Run this once from the editor (choose "authorize" at the top, press Run) so Google asks for Calendar permission.
+function authorize() {
+  Calendar.Calendars.get('primary');
+  Logger.log('Ready. Invitations will be sent from ' + Session.getEffectiveUser().getEmail());
+}
+
 function doPost(e) {
   var out;
   var lock = LockService.getScriptLock();
@@ -179,8 +185,8 @@ async function calSetup(){
   <li>Sign in to Google as <b>aqlyonacademy@gmail.com</b> (the account that should send the invitations). Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a>. Name it <b>Aqlyon events calendar</b>.</li>
   <li>Delete the sample code, paste this code and press <b>Save</b> (💾). It contains this website's private key, so don't share it.<pre class="creds">${esc(code)}</pre><button type="button" class="btn ghost sm cpcode">Copy code</button></li>
   <li>On the left, next to <b>Services</b>, click <b>＋</b>. Choose <b>Google Calendar API</b> and click <b>Add</b>.</li>
+  <li>Give it permission to use your calendar: at the top of the editor choose <b>authorize</b> in the function list and press <b>▶ Run</b>. Click <b>Review permissions</b> → choose aqlyonacademy@gmail.com → if you see "Google hasn't verified this app", click <b>Advanced → Go to Aqlyon events calendar</b> → tick every box → <b>Allow</b>. The log at the bottom then says <b>Ready</b>. (It's your own script, so the warning is normal.)</li>
   <li>Click <b>Deploy → New deployment</b>. Click the ⚙ next to "Select type" and choose <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Click <b>Deploy</b>.</li>
-  <li>Google asks for permission: <b>Authorize access</b> → choose aqlyonacademy@gmail.com → if you see "Google hasn't verified this app", click <b>Advanced → Go to Aqlyon events calendar</b> → <b>Allow</b>. (It's your own script, so this warning is normal.)</li>
   <li>Copy the <b>Web app URL</b> (starts with https://script.google.com/macros/s/ and ends with /exec), paste it below and press <b>Connect</b>. The panel checks the link straight away.</li>
  </ol>
  <form class="mform calform"><div class="field"><label for="cal-url">Web app URL</label><input id="cal-url" value="${esc(st.calUrl)}" placeholder="https://script.google.com/macros/s/…/exec"></div><p class="formerr" role="alert"></p>
@@ -195,7 +201,7 @@ async function calSetup(){
   $('.cpcode',m).onclick=()=>copy(code);
   $('.calform',m).onsubmit=async ev=>{ev.preventDefault();const b=$('button[type=submit]',m);b.disabled=true;b.textContent='Checking…';$('.formerr',m).textContent='';
    try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:$('#cal-url',m).value}});close();toast(EVSET.calUrl?`Google Calendar connected${EVSET.calEmail?' ('+EVSET.calEmail+')':''}`:'Saved');renderEvents()}
-   catch(err){$('.formerr',m).textContent=err.message;b.disabled=false;b.textContent=st.calUrl?'Save':'Connect'}};
+   catch(err){$('.formerr',m).innerHTML=/permission/i.test(err.message)?'<b>Google has not given the script permission to use your calendar yet.</b> In Apps Script, choose <b>authorize</b> (or any function) at the top, press <b>▶ Run</b>, click <b>Review permissions</b> and <b>Allow</b>. Then press Connect again; no need to deploy again.':esc(err.message);b.disabled=false;b.textContent=st.calUrl?'Save':'Connect'}};
   const t=$('.caltest',m);if(t)t.onclick=async()=>{t.disabled=true;try{const d=await AAPI.call('/admin/events/settings',{method:'POST',body:{action:'test'}});toast('Working. Invitations are sent from '+(d.email||'your Google account'))}catch(err){toast(err.message,true)}t.disabled=false};
   const dc=$('.caldis',m);if(dc)dc.onclick=async()=>{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:''}});close();toast('Google Calendar disconnected');renderEvents()};
  });
