@@ -23,7 +23,7 @@ function clean(b, old = {}) {
   const e = { ...old };
   const str = (k, n) => { if (b[k] !== undefined) e[k] = String(b[k] ?? '').trim().slice(0, n); };
   str('title', 120); str('details', 6000); str('summary', 240); str('start', 16); str('end', 16);
-  str('locationName', 160); str('mapUrl', 600); str('onlineUrl', 600); str('regLink', 600); str('sheetUrl', 600); str('cover', 40);
+  str('locationName', 160); str('mapUrl', 600); str('onlineUrl', 600); str('regLink', 600); str('cover', 40);
   if (b.tz !== undefined) e.tz = TZS[b.tz] ? b.tz : 'Asia/Kolkata';
   if (b.mode !== undefined) e.mode = b.mode === 'online' ? 'online' : 'offline';
   if (b.paid !== undefined) e.paid = !!b.paid;
@@ -46,7 +46,6 @@ function validate(e) {
   if (e.mode === 'online' && e.onlineUrl && !isUrl(e.onlineUrl)) return 'The online link must start with https://';
   if (e.regMode === 'link' && !isUrl(e.regLink)) return 'Please add the registration link (starting with https://).';
   if (e.paid && !(e.price > 0)) return 'Paid event: please add the price.';
-  if (e.sheetUrl && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(e.sheetUrl)) return 'The Google Sheet link must be the Apps Script web app URL (https://script.google.com/macros/s/…/exec).';
   return '';
 }
 const ended = (e, now = Date.now()) => (e.end ? toUTC(e.end, e.tz) : toUTC(e.start, e.tz) + 3 * 3600_000) < now;
@@ -58,7 +57,7 @@ function regState(e, list) {
   if (e.regMode === 'form' && e.capacity && seatsTaken(list) >= e.capacity) return 'full';
   return 'open';
 }
-// what visitors may see: never the online joining link or the Sheet link
+// what visitors may see: never the online joining link
 function publicEvent(e, list) {
   const taken = seatsTaken(list);
   return {
@@ -70,23 +69,6 @@ function publicEvent(e, list) {
   };
 }
 
-// one row for the Google Sheet; the Apps Script also uses the calendar fields to invite the person
-function sheetRow(e, r, action) {
-  const start = toUTC(e.start, e.tz), end = e.end ? toUTC(e.end, e.tz) : start + 2 * 3600_000;
-  const ok = r.status === 'confirmed' || r.status === 'approved';
-  const join = e.mode === 'online' && ok && e.onlineUrl ? `\nJoin online: ${e.onlineUrl}` : '';
-  return { action, registeredAt: r.at, event: e.title, eventDate: `${e.start.replace('T', ' ')} ${(TZS[e.tz] || {}).label || ''}`, ref: r.ref, name: r.name, email: r.email, phone: r.phone, whatsapp: r.whatsapp || '', country: r.country, education: r.education || '', role: r.role || '', seats: r.seats, paid: e.paid ? `${e.currency} ${e.price * r.seats}` : 'Free', status: r.status,
-    calendar: { id: e.id, title: e.title, start: new Date(start).toISOString(), end: new Date(end).toISOString(), location: e.mode === 'online' ? 'Online' : [e.locationName, e.mapUrl].filter(Boolean).join(' · '), description: `${e.summary || ''}${join}\nYour reference: ${r.ref}\nAqlyon Career Discovery Centre` } };
-}
-async function postToSheet(url, row) {
-  if (!url) return false;
-  try {
-    const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 6000);
-    await fetch(url, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: JSON.stringify(row), redirect: 'follow', signal: ctl.signal });
-    clearTimeout(t); return true;
-  } catch { return false; }
-}
-
 export function createEvents({ getStore, json }) {
   const events = () => getStore('events');
   const regs = () => getStore('regs');
@@ -95,7 +77,7 @@ export function createEvents({ getStore, json }) {
   const getRegs = async (id) => ((await regs().get(id, { type: 'json' })) || { list: [] }).list;
   const all = async () => { const s = events(); const { blobs } = await s.list(); const out = []; for (const b of blobs) { const e = await s.get(b.key, { type: 'json' }); if (e) out.push(e); } return out; };
   const bySlug = async (slug) => (await all()).find((e) => e.slug === slug);
-  const evSettings = async () => ({ whatsapp: '+919539244342', sheetUrl: '', ...(((await meta().get('settings', { type: 'json' })) || {}).events || {}) });
+  const evSettings = async () => ({ whatsapp: (((await meta().get('settings', { type: 'json' })) || {}).events || {}).whatsapp || '+919539244342' });
 
   async function routes({ path, method, body, req, auth }) {
     /* ---------- public ---------- */
@@ -155,10 +137,8 @@ export function createEvents({ getStore, json }) {
       const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp, country, education, role, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
       doc.list.push(r); await store.setJSON(e.id, doc);
       const s = await evSettings();
-      const sheet = e.sheetUrl || s.sheetUrl;
-      if (sheet) await postToSheet(sheet, sheetRow(e, r, 'register'));
       // free online events: the joining link is shown right away; paid ones get it after approval
-      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!sheet && r.status === 'confirmed' });
+      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp });
     }
 
     /* ---------- admin ---------- */
@@ -179,7 +159,6 @@ export function createEvents({ getStore, json }) {
       if (method === 'PATCH') {
         const cur = await evSettings();
         if (body.whatsapp !== undefined) { const w = String(body.whatsapp).replace(/[^\d+]/g, ''); if (!/^\+\d{8,15}$/.test(w)) return json(400, { error: 'WhatsApp number: include the country code, like +919539244342.' }); cur.whatsapp = w; }
-        if (body.sheetUrl !== undefined) { const u = String(body.sheetUrl).trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec/.test(u)) return json(400, { error: 'The Google Sheet link must be the Apps Script web app URL (https://script.google.com/macros/s/…/exec).' }); cur.sheetUrl = u; }
         all2.events = cur; await meta().setJSON('settings', all2);
         return json(200, cur);
       }
@@ -200,16 +179,10 @@ export function createEvents({ getStore, json }) {
       await events().setJSON(e.id, e);
       return json(201, { event: e });
     }
-    m = path.match(/^\/admin\/events\/([a-f0-9]{16})(\/regs(?:\/([a-f0-9]{16}))?|\/test-sheet)?$/);
+    m = path.match(/^\/admin\/events\/([a-f0-9]{16})(\/regs(?:\/([a-f0-9]{16}))?)?$/);
     if (m) {
       const store = events(); const e = await store.get(m[1], { type: 'json' });
       if (!e) return json(404, { error: 'Event not found.' });
-      if (m[2] === '/test-sheet' && method === 'POST') {
-        const url = e.sheetUrl || (await evSettings()).sheetUrl;
-        if (!url) return json(400, { error: 'No Google Sheet link set for this event or in Events settings.' });
-        const ok = await postToSheet(url, { ...sheetRow(e, { at: new Date().toISOString(), ref: 'TEST', name: 'Test row from Aqlyon admin (you can delete it)', email: '', phone: '', whatsapp: '', country: '', seats: 0, status: 'test' }, 'register'), calendar: null });
-        return ok ? json(200, { ok: true }) : json(502, { error: 'Could not reach the Google Sheet. Check the link and that the script is deployed for "Anyone".' });
-      }
       if (m[2] && m[2].startsWith('/regs')) {
         const rs = regs(); const doc = (await rs.get(e.id, { type: 'json' })) || { list: [] };
         if (!m[3] && method === 'GET') return json(200, { regs: doc.list });
@@ -218,8 +191,6 @@ export function createEvents({ getStore, json }) {
         if (method === 'PATCH') {
           if (['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(body.status)) r.status = body.status;
           r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc);
-          const sheet = e.sheetUrl || (await evSettings()).sheetUrl;
-          if (sheet) await postToSheet(sheet, sheetRow(e, r, 'status'));
           return json(200, { reg: r, onlineUrl: e.onlineUrl || '' });
         }
         if (method === 'DELETE') { doc.list = doc.list.filter((x) => x.id !== r.id); await rs.setJSON(e.id, doc); return json(200, { ok: true }); }
