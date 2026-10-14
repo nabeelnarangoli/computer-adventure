@@ -254,3 +254,17 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .evsub button.on{color:var(--ink);border-bottom-color:var(--accent)}
 .evsub i{font-style:normal;font-size:12px;background:var(--soft);border-radius:99px;padding:2px 8px;margin-left:4px;color:var(--ink)}
 .rbtns{margin:0 0 12px}
+/* bulk selection + import */
+.rtable .selc{width:34px;text-align:center}.rtable .selc input{width:18px;height:18px;accent-color:var(--accent);cursor:pointer}
+.rtable tr.picked td{background:color-mix(in srgb,var(--accent) 9%,var(--surface))}
+.bulkbar{position:sticky;top:8px;z-index:5;display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:#1A1E3A;color:#fff;border-radius:14px;padding:10px 14px;margin:0 0 10px;box-shadow:0 10px 24px -14px rgba(0,0,0,.5)}
+.bulkbar b{margin-right:6px}.bulkbar .btn.ghost{background:rgba(255,255,255,.12);color:#fff;border-color:transparent}.bulkbar .linkbtn{color:#C9C3FF;margin-left:auto}
+.bulkbar .bconf{background:#1FA870;border-color:#1FA870}
+.impstep{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin:14px 0}
+.impfile{cursor:pointer}
+.impcc select{max-width:420px}
+.impmap{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.impmap label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
+.impmap select{font:14px var(--body);padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:inherit}
+.impprev{max-height:380px;overflow:auto}.impprev .rtable{min-width:0}
+.modal.impmodal{max-width:980px}

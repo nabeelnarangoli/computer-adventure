@@ -52,7 +52,8 @@ function validate(e) {
   return '';
 }
 const ended = (e, now = Date.now()) => (e.end ? toUTC(e.end, e.tz) : toUTC(e.start, e.tz) + 3 * 3600_000) < now;
-const seatsTaken = (list) => list.filter((r) => r.status !== 'rejected' && r.status !== 'cancelled').reduce((t, r) => t + (r.seats || 1), 0);
+// seats in use: not rejected/cancelled, and not imported people who are still waiting to be confirmed
+const seatsTaken = (list) => list.filter((r) => r.status !== 'rejected' && r.status !== 'cancelled' && !(r.status === 'pending' && r.source === 'import')).reduce((t, r) => t + (r.seats || 1), 0);
 function regState(e, list) {
   if (ended(e)) return 'ended';
   if (e.regMode === 'none') return 'none';
@@ -345,6 +346,49 @@ export function createEvents({ getStore, json }) {
           let changed = false; for (const r of doc.list) if (await ensureTk(e, r)) changed = true;
           if (changed) await rs.setJSON(e.id, doc);
           return json(200, { regs: doc.list, calendar: !!(await rawSettings()).calUrl });
+        }
+        // import people from a spreadsheet (they arrive as "imported, not confirmed yet")
+        if (!m[3] && method === 'POST' && body.action === 'import') {
+          const rows = Array.isArray(body.rows) ? body.rows.slice(0, 500) : [];
+          const form = formOf(e); const qids = new Set(form.fields.map((f) => f.id));
+          const seenE = new Set(doc.list.filter((r) => !['rejected', 'cancelled'].includes(r.status)).map((r) => r.email));
+          const seenP = new Set(doc.list.filter((r) => !['rejected', 'cancelled'].includes(r.status)).map((r) => r.phone));
+          const added = [], skipped = [];
+          for (const [i, x] of rows.entries()) {
+            const name = String(x.name || '').trim().slice(0, 80), email = String(x.email || '').trim().toLowerCase().slice(0, 80), phone = String(x.phone || '').trim().slice(0, 24);
+            const why = !name ? 'No name' : !EMAIL_RE.test(email) ? 'Email missing or not valid' : !/^\+\d{1,4} \d{5,14}$/.test(phone) ? 'Mobile missing or not valid' : seenE.has(email) ? 'Already registered (same email)' : seenP.has(phone) ? 'Already registered (same mobile)' : '';
+            if (why) { skipped.push({ row: x.row ?? i + 1, name, reason: why }); continue; }
+            seenE.add(email); seenP.add(phone);
+            const answers = {};
+            for (const [k, v] of Object.entries(x.answers || {})) if (qids.has(k) && v !== '' && v != null) answers[k] = Array.isArray(v) ? v.map((y) => String(y).slice(0, 220)).slice(0, 60) : String(v).slice(0, 2000);
+            const r = { id: crypto.randomBytes(8).toString('hex'), ref: 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase(), name, email, phone,
+              whatsapp: /^\+\d{1,4} \d{5,14}$/.test(String(x.whatsapp || '')) ? String(x.whatsapp) : '', country: /^[A-Z]{2}$/.test(String(x.country || '')) ? x.country : '',
+              education: EDUCATION.includes(x.education) ? x.education : String(x.education || '').slice(0, 40), role: ROLES.includes(x.role) ? x.role : '',
+              answers, seats: Math.min(20, Math.max(1, parseInt(x.seats, 10) || 1)), status: 'pending', source: 'import', at: new Date().toISOString() };
+            await ensureTk(e, r); doc.list.push(r); added.push(r.id);
+          }
+          await rs.setJSON(e.id, doc);
+          return json(200, { added: added.length, skipped, regs: doc.list });
+        }
+        // the same change for many people at once (confirm, reject, cancel, check in, delete)
+        if (!m[3] && method === 'POST' && body.action === 'bulk') {
+          const ids = new Set(Array.isArray(body.ids) ? body.ids : []); const op = body.op; let n = 0, skipped = 0;
+          const okStatus = e.paid ? 'approved' : 'confirmed';
+          const toCancel = [];
+          if (op === 'delete') { const before = doc.list.length; doc.list = doc.list.filter((r) => !ids.has(r.id)); n = before - doc.list.length; }
+          else for (const r of doc.list) {
+            if (!ids.has(r.id)) continue;
+            if (op === 'confirm') { if (calOk(r)) { skipped++; continue; } r.status = okStatus; }
+            else if (op === 'reject' || op === 'cancel') { if (calOk(r) && r.cal) toCancel.push(r); r.status = op === 'reject' ? 'rejected' : 'cancelled'; }
+            else if (op === 'checkin') { if (!calOk(r)) { skipped++; continue; } r.attended = r.attended || new Date().toISOString(); r.checkedBy = r.checkedBy || 'admin'; }
+            else if (op === 'uncheckin') r.attended = '';
+            else continue;
+            r.updatedAt = new Date().toISOString(); n++;
+          }
+          await rs.setJSON(e.id, doc);
+          // people who had an invitation get a cancellation email (first 20; the rest keep their calendar entry)
+          if (toCancel.length) await calGuests(e, doc, toCancel.slice(0, 20), 'cancel', new URL(req.url).origin);
+          return json(200, { changed: n, skipped, regs: doc.list });
         }
         if (!m[3] && method === 'POST' && body.action === 'invite-all') {
           const skip = new Set(body.skip || []);   // ones that already failed in this round
