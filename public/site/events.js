@@ -88,6 +88,7 @@ const rb=$('#regbtn');if(!rb)return;const rb2=$('#regbtn2');if(rb2)rb2.onclick=(
 const guess=typeof guessCountry==='function'?guessCountry():'AE';
 const cOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${c[1]}</option>`).join('');
 const ccOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${flagOf(c[0])} +${c[2]} · ${c[1]}</option>`).join('');
+const FORM=E.form||{std:{whatsapp:true,country:true,education:true,role:true},fields:[]},STD=FORM.std,FIELDS=FORM.fields||[];
 rb.onclick=()=>{
  const m=document.createElement('div');m.className='evmodal';m.innerHTML=`<div class="evdlg" role="dialog" aria-modal="true" aria-labelledby="rgh"><button type="button" class="x" aria-label="Close">×</button>
  <h2 id="rgh">Register</h2><p class="small">${esc(E.title)} · ${esc(local(E.start).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}, ${esc(timeLine(E))}</p>
@@ -95,10 +96,11 @@ rb.onclick=()=>{
   <label>Full name<input name="name" required maxlength="80" autocomplete="name"></label>
   <label>Email<input name="email" type="email" required maxlength="80" autocomplete="email"></label>
   <label>Mobile number<span class="tel"><select name="cc" aria-label="Mobile country code">${ccOpts(guess)}</select><input name="mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></span></label>
-  <div class="lbl">WhatsApp number<label class="same"><input type="checkbox" name="same" checked> Same as mobile</label><span class="tel wa"><select name="wcc" aria-label="WhatsApp country code" disabled>${ccOpts(guess)}</select><input name="wmob" type="tel" inputmode="tel" required maxlength="18" disabled aria-label="WhatsApp number"></span></div>
-  <label>Country<select name="country" required autocomplete="country">${cOpts(guess)}</select></label>
-  <label>Education level<select name="education" required><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>
-  <label>I am a<select name="role" required><option value="">Choose…</option><option>Student</option><option>Parent</option></select></label>
+  ${STD.whatsapp?`<div class="lbl">WhatsApp number<label class="same"><input type="checkbox" name="same" checked> Same as mobile</label><span class="tel wa"><select name="wcc" aria-label="WhatsApp country code" disabled>${ccOpts(guess)}</select><input name="wmob" type="tel" inputmode="tel" required maxlength="18" disabled aria-label="WhatsApp number"></span></div>`:''}
+  ${STD.country?`<label>Country<select name="country" required autocomplete="country">${cOpts(guess)}</select></label>`:''}
+  ${STD.education?`<label>Education level<select name="education" required><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>`:''}
+  ${STD.role?`<label>I am a<select name="role" required><option value="">Choose…</option><option>Student</option><option>Parent</option></select></label>`:''}
+  ${FIELDS.map(x=>FF.render(x)).join('')}
   ${E.maxSeats>1?`<label>Number of people<select name="seats">${Array.from({length:Math.min(E.maxSeats,E.seatsLeft??E.maxSeats)},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label>`:''}
   <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
   ${E.paid?`<p class="small paidnote">After you register, you'll send your details to us on WhatsApp to pay <b>${esc(price(E))}</b> per person. Your seat is confirmed once payment is approved.</p>`:''}
@@ -109,24 +111,36 @@ rb.onclick=()=>{
  const close=()=>{m.remove();document.body.style.overflow=''};
  $('.x',m).onclick=close;m.addEventListener('click',e=>{if(e.target===m)close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
  const f=$('form',m);let ccT=false;
- const syncWa=()=>{const same=f.same.checked;f.wcc.disabled=f.wmob.disabled=same;if(same){f.wcc.value=f.cc.value;f.wmob.value=f.mob.value}else if(!f.wmob.value)f.wmob.focus()};
- f.country.onchange=()=>{if(!ccT){f.cc.value=f.country.value;syncWa()}};f.cc.onchange=()=>{ccT=true;syncWa()};f.mob.oninput=syncWa;f.same.onchange=syncWa;f.name.focus();
+ const syncWa=()=>{if(!f.same)return;const same=f.same.checked;f.wcc.disabled=f.wmob.disabled=same;if(same){f.wcc.value=f.cc.value;f.wmob.value=f.mob.value}else if(!f.wmob.value)f.wmob.focus()};
+ if(f.country)f.country.onchange=()=>{if(!ccT){f.cc.value=f.country.value;syncWa()}};f.cc.onchange=()=>{ccT=true;syncWa()};f.mob.oninput=syncWa;if(f.same)f.same.onchange=syncWa;f.name.focus();
+ $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));
  f.onsubmit=async ev=>{ev.preventDefault();const err=$('.err',m);err.textContent='';
   const num=v=>v.replace(/[\s\-().]/g,'').replace(/^0+/,''),dialOf=cc=>(COUNTRIES.find(c=>c[0]===cc)||[])[2];
-  const email=f.email.value.trim(),mob=num(f.mob.value),dial=dialOf(f.cc.value),wmob=f.same.checked?mob:num(f.wmob.value),wdial=f.same.checked?dial:dialOf(f.wcc.value);
+  const email=f.email.value.trim(),mob=num(f.mob.value),dial=dialOf(f.cc.value),same=!f.same||f.same.checked,wmob=same?mob:num(f.wmob.value),wdial=same?dial:dialOf(f.wcc.value);
   if(!f.name.value.trim())return err.textContent='Please enter your name.';
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email))return err.textContent='Please enter a valid email address.';
   if(!/^\d{6,14}$/.test(mob))return err.textContent='Please enter a valid mobile number (without the country code).';
-  if(!/^\d{6,14}$/.test(wmob))return err.textContent='Please enter a valid WhatsApp number (without the country code).';
-  if(!f.education.value)return err.textContent='Please choose your education level.';
-  if(!f.role.value)return err.textContent='Please choose whether you are a student or a parent.';
+  if(STD.whatsapp&&!/^\d{6,14}$/.test(wmob))return err.textContent='Please enter a valid WhatsApp number (without the country code).';
+  if(STD.education&&!f.education.value)return err.textContent='Please choose your education level.';
+  if(STD.role&&!f.role.value)return err.textContent='Please choose whether you are a student or a parent.';
+  $$('.ff.bad',f).forEach(x=>x.classList.remove('bad'));
+  const answers={},files=[];
+  for(const q of FIELDS){const v=FF.read(q,f);const msg=FF.check(q,v);
+   if(msg){const box=$(`[data-f="${q.id}"]`,f);if(box){box.classList.add('bad');box.scrollIntoView({behavior:'smooth',block:'center'})}return err.textContent=msg}
+   if(v instanceof Blob)files.push([q,v]);else if(v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length))answers[q.id]=v}
   const b=$('button[type=submit]',f);b.disabled=true;b.textContent='Registering…';
-  const body={name:f.name.value.trim(),email,country:f.country.value,phone:'+'+dial+' '+mob,whatsapp:'+'+wdial+' '+wmob,education:f.education.value,role:f.role.value,seats:f.seats?f.seats.value:1,website:f.website.value};
+  for(const [q,file] of files){b.textContent='Uploading '+file.name.slice(0,24)+'…';
+   try{const data=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(String(rd.result).split(',')[1]);rd.onerror=rej;rd.readAsDataURL(file)});
+    const type=file.type||(/\.pdf$/i.test(file.name)?'application/pdf':/\.hei[cf]$/i.test(file.name)?'image/heic':'');
+    const r=await fetch(`/api/events/${E.slug}/upload`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,type,data})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Upload failed');answers[q.id]=d.id}
+   catch(x){err.textContent=`"${q.label}": ${x.message}`;b.disabled=false;b.textContent=E.paid?'Register and continue to payment':'Register';return}}
+  b.textContent='Registering…';
+  const body={name:f.name.value.trim(),email,country:f.country?f.country.value:'',phone:'+'+dial+' '+mob,whatsapp:STD.whatsapp?'+'+wdial+' '+wmob:'',education:f.education?f.education.value:'',role:f.role?f.role.value:'',answers,seats:f.seats?f.seats.value:1,website:f.website.value};
   let d;try{const r=await fetch(`/api/events/${E.slug}/register`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong. Please try again.')}
   catch(x){err.textContent=x.message;b.disabled=false;b.textContent=E.paid?'Register and continue to payment':'Register';return}
   const dlg=$('.evdlg',m);
   if(d.status==='pending'){
-   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}\nWhatsApp: ${body.whatsapp}\nEducation: ${body.education} · ${body.role}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
+   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}${body.whatsapp?`\nWhatsApp: ${body.whatsapp}`:''}${body.education||body.role?`\n${[body.education,body.role].filter(Boolean).join(' · ')}`:''}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
    const wa=`https://wa.me/${String(d.whatsapp).replace(/[^\d]/g,'')}?text=${encodeURIComponent(msg)}`;
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">1/2</span><h2>One more step: payment</h2><p>Your place is reserved. Send your details to us on WhatsApp and we'll share how to pay <b>${esc(d.currency+' '+d.total)}</b>. Your seat is confirmed once payment is approved.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p><a class="btn solid lg wa" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><p class="small">WhatsApp didn't open? Message <b>${esc(d.whatsapp)}</b> with your reference.</p></div>`;
    window.open(wa,'_blank','noopener');

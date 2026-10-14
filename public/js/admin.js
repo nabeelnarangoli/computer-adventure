@@ -22,7 +22,7 @@ const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').r
 const trackName={auto:'Personal',basic:'Basic',advanced:'Advanced',ai:'AI Academy',dm:'Digital Marketing'};
 function toast(msg,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
 function modal(html,onReady){const m=document.createElement('div');m.className='modalbg';m.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(m);
- const close=()=>m.remove();m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
+ const close=()=>m.remove();m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',function k(e){if(!m.isConnected)return document.removeEventListener('keydown',k);if(e.key==='Escape'&&m===[...document.querySelectorAll('.modalbg')].pop()){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
 function confirmBox(title,text,okLabel,danger){return new Promise(res=>modal(`<h2>${title}</h2><p>${text}</p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn ${danger?'danger':''} ok">${okLabel}</button></div>`,(m,close)=>{$('.ok',m).onclick=()=>{close();res(true)};m.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.target===m)res(false)})}))}
 
 function loginView(msg=''){

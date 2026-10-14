@@ -91,3 +91,34 @@
 .rgf select:disabled,.rgf input:disabled{background:#F3F6F4;color:var(--slate)}
 .done .remind{background:var(--mint);border-radius:12px;padding:10px 12px;color:var(--ink)!important}
 .badgecta{display:flex;flex-direction:column;align-items:center;gap:6px;margin:6px 0 14px}.badgecta small{color:var(--slate);font-size:13px}
+/* custom registration questions (form builder) */
+.rgf .ff{border:0;margin:0;padding:0;min-width:0}
+.rgf fieldset.ff{display:flex;flex-direction:column;gap:6px}
+.rgf .ff legend{font-weight:600;font-size:15px;padding:0;margin-bottom:6px;display:flex;flex-direction:column;gap:2px}
+.rgf .flab .req{color:#B42318}
+.rgf .fhelp{font-weight:400;font-size:13px;color:var(--slate)}
+.rgf .opts .opt{flex-direction:row;align-items:center;gap:10px;font-weight:500;padding:9px 12px;border:2px solid var(--line);border-radius:12px;cursor:pointer}
+.rgf .opts .opt:has(input:checked){border-color:var(--green);background:var(--mint)}
+.rgf .opt>input[type=radio],.rgf .opt>input[type=checkbox]{width:20px;height:20px;flex:none;padding:0;accent-color:var(--green)}
+.rgf .opt.oth .othtxt{flex:1;padding:6px 10px;border-width:1.5px}
+.rgf .scale{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.rgf .scale .sl{font-size:13px;color:var(--slate);font-weight:500}
+.rgf .sbtns{display:flex;gap:6px;flex-wrap:wrap}
+.rgf .sbtns label{position:relative}
+.rgf .sbtns input{position:absolute;opacity:0;width:1px;height:1px}
+.rgf .sbtns span{display:grid;place-items:center;width:42px;height:42px;border:2px solid var(--line);border-radius:12px;font-weight:700;cursor:pointer}
+.rgf .sbtns input:checked+span{background:var(--green);border-color:var(--green);color:#fff}
+.rgf .sbtns input:focus-visible+span,.rgf .stars input:focus-visible+label{outline:3px solid var(--sun)}
+.rgf .stars{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end;gap:4px}
+.rgf .stars input{position:absolute;opacity:0;width:1px;height:1px}
+.rgf .stars label{font-size:34px;line-height:1;color:#CFD8D3;cursor:pointer;flex-direction:row}
+.rgf .stars input:checked~label,.rgf .stars label:hover,.rgf .stars label:hover~label{color:#F2B705}
+.rgf .gridwrap{overflow-x:auto}
+.rgf .ffgrid{border-collapse:collapse;font-size:14px;min-width:100%}
+.rgf .ffgrid th{font-weight:600;padding:6px 8px;text-align:center}.rgf .ffgrid tbody th{text-align:left;font-weight:500}
+.rgf .ffgrid td{text-align:center;padding:6px 8px;border-top:1px solid var(--line)}
+.rgf .ffgrid input{width:20px;height:20px;padding:0;accent-color:var(--green)}
+.rgf input[type=file]{padding:9px;font-size:14px}
+.rgf .ffsec{border-top:2px solid var(--line);padding-top:12px;margin-top:4px}.rgf .ffsec h3{margin:0 0 4px;font-size:18px}.rgf .ffsec p{margin:0;color:var(--slate);font-size:14px}
+.rgf .ff.bad input:not([type=radio]):not([type=checkbox]),.rgf .ff.bad select,.rgf .ff.bad textarea{border-color:#B42318}
+.rgf fieldset.ff.bad{outline:2px solid #F3B4AE;outline-offset:6px;border-radius:8px}
+.rgf table.ffgrid{display:table;width:100%}.rgf table.ffgrid thead{display:table-header-group}.rgf table.ffgrid tbody{display:table-row-group}

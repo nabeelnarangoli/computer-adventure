@@ -2,6 +2,7 @@
 // Stores: events (one JSON per event), regs (one JSON per event: {list:[...]}), images (cover photos as base64).
 import crypto from 'node:crypto';
 import { inviteMail } from './invite-mail.mjs';
+import { cleanForm, formOf, checkAnswers } from './form-def.mjs';
 
 export const TZS = {
   'Asia/Kolkata': { label: 'IST', name: 'India time', off: 330 },
@@ -34,6 +35,7 @@ function clean(b, old = {}) {
   if (b.regOpen !== undefined) e.regOpen = !!b.regOpen;
   if (b.published !== undefined) e.published = !!b.published;
   if (b.capacity !== undefined) e.capacity = Math.max(0, parseInt(b.capacity, 10) || 0);
+  if (b.form !== undefined) e.form = cleanForm(b.form);
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
   return e;
 }
@@ -66,7 +68,7 @@ function publicEvent(e, list) {
     start: e.start, end: e.end || '', tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, startUTC: toUTC(e.start, e.tz), endUTC: e.end ? toUTC(e.end, e.tz) : null,
     mode: e.mode, locationName: e.mode === 'offline' ? e.locationName || '' : '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '',
     paid: !!e.paid, price: e.price || 0, currency: e.currency || 'AED', regMode: e.regMode, regLink: e.regMode === 'link' ? e.regLink : '',
-    state: regState(e, list), seatsLeft: e.capacity ? Math.max(0, e.capacity - taken) : null, maxSeats: e.maxSeats || 1,
+    form: formOf(e), state: regState(e, list), seatsLeft: e.capacity ? Math.max(0, e.capacity - taken) : null, maxSeats: e.maxSeats || 1,
   };
 }
 
@@ -89,7 +91,8 @@ export function createEvents({ getStore, json }) {
   const regs = () => getStore('regs');
   const images = () => getStore('images');
   const meta = () => getStore('meta');
-  const badges = () => getStore('badges');            // badge token -> { e: event id, r: registration id }
+  const badges = () => getStore('badges');
+  const uploads = () => getStore('uploads');          // files people attach in registration forms            // badge token -> { e: event id, r: registration id }
   // every registration gets a private badge token; the QR code on the badge holds it
   async function ensureTk(e, r) { if (r.tk) return false; r.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(r.tk, { e: e.id, r: r.id }); return true; }
   async function byBadge(tk) {
@@ -146,6 +149,26 @@ export function createEvents({ getStore, json }) {
       if (!e || !e.published) return json(404, { error: 'Event not found.' });
       return json(200, { event: publicEvent(e, await getRegs(e.id)), whatsapp: (await evSettings()).whatsapp });
     }
+    m = path.match(/^\/events\/([a-z0-9-]{1,80})\/upload$/);
+    if (m && method === 'POST') {
+      const e = await bySlug(m[1]);
+      if (!e || !e.published || e.regMode !== 'form' || regState(e, await getRegs(e.id)) !== 'open') return json(404, { error: 'Registration for this event is not open.' });
+      if (!formOf(e).fields.some((f) => f.type === 'file')) return json(400, { error: 'This form does not take files.' });
+      const okTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif', 'application/pdf'];
+      const type = okTypes.includes(body.type) ? body.type : '';
+      const data = String(body.data || ''); const size = Math.floor(data.length * 3 / 4);
+      if (!type) return json(400, { error: 'Please choose a photo (JPG, PNG, WebP, HEIC) or a PDF.' });
+      if (!data || size > 3 * 1024 * 1024 + 4) return json(400, { error: 'The file is larger than 3 MB.' });
+      const ip = req.headers.get('x-nf-client-connection-ip') || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'local';
+      const ipKey = 'evup-' + crypto.createHash('sha256').update(ip).digest('hex').slice(0, 24);
+      const rl = (await meta().get(ipKey, { type: 'json' })) || { n: 0, since: Date.now() };
+      if (Date.now() - rl.since > 3600_000) { rl.n = 0; rl.since = Date.now(); }
+      if (rl.n >= 20) return json(429, { error: 'Too many uploads from here. Please try again in an hour.' });
+      rl.n += 1; await meta().setJSON(ipKey, rl);
+      const id = crypto.randomBytes(12).toString('hex');
+      await uploads().setJSON(id, { e: e.id, name: String(body.name || 'file').replace(/[^\w.\- ()]/g, '_').slice(0, 100), type, size, data, at: new Date().toISOString() });
+      return json(201, { id });
+    }
     m = path.match(/^\/events\/([a-z0-9-]{1,80})\/register$/);
     if (m && method === 'POST') {
       if (body.website) return json(200, { ok: true });            // honeypot: bots fill hidden fields
@@ -166,10 +189,19 @@ export function createEvents({ getStore, json }) {
       if (!name) return json(400, { error: 'Please enter your name.' });
       if (!EMAIL_RE.test(email)) return json(400, { error: 'Please enter a valid email address.' });
       if (!/^\+\d{1,4} \d{6,14}$/.test(phone)) return json(400, { error: 'Please enter a valid mobile number.' });
-      if (!/^\+\d{1,4} \d{6,14}$/.test(whatsapp)) return json(400, { error: 'Please enter a valid WhatsApp number.' });
-      if (!/^[A-Z]{2}$/.test(country)) return json(400, { error: 'Please choose your country.' });
-      if (!education) return json(400, { error: 'Please choose your education level.' });
-      if (!role) return json(400, { error: 'Please choose whether you are a student or a parent.' });
+      const form = formOf(e), std = form.std;
+      if (std.whatsapp && !/^\+\d{1,4} \d{6,14}$/.test(whatsapp)) return json(400, { error: 'Please enter a valid WhatsApp number.' });
+      if (std.country && !/^[A-Z]{2}$/.test(country)) return json(400, { error: 'Please choose your country.' });
+      if (std.education && !education) return json(400, { error: 'Please choose your education level.' });
+      if (std.role && !role) return json(400, { error: 'Please choose whether you are a student or a parent.' });
+      const uploadsUsed = [];
+      const chk = await checkAnswers(form, body.answers, async (id) => {
+        if (!/^[a-f0-9]{24}$/.test(id)) return null;
+        const u = await uploads().get(id, { type: 'json' });
+        if (!u || u.e !== e.id || u.used) return null;
+        uploadsUsed.push(id); return { id, name: u.name, type: u.type, size: u.size };
+      });
+      if (chk.error) return json(400, { error: chk.error });
       if (e.capacity && seatsTaken(doc.list) + seats > e.capacity) return json(409, { error: `Only ${e.capacity - seatsTaken(doc.list)} seat(s) left.` });
       const dup = doc.list.find((r) => r.status !== 'cancelled' && r.status !== 'rejected' && (r.email === email || r.phone === phone));
       if (dup) return json(409, { error: 'You are already registered for this event with this email or mobile number.', ref: dup.ref });
@@ -180,9 +212,10 @@ export function createEvents({ getStore, json }) {
       if (rl.n >= 10) return json(429, { error: 'Too many registrations from here. Please try again in an hour.' });
       rl.n += 1; await meta().setJSON(ipKey, rl);
       const ref = 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase();
-      const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp, country, education, role, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
+      const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp: std.whatsapp ? whatsapp : '', country: std.country ? country : '', education: std.education ? education : '', role: std.role ? role : '', answers: chk.answers, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
       await ensureTk(e, r);
       doc.list.push(r); await store.setJSON(e.id, doc);
+      for (const id of uploadsUsed) { const u = await uploads().get(id, { type: 'json' }); if (u) { u.used = r.id; await uploads().setJSON(id, u); } }
       const s = await evSettings();
       const origin = new URL(req.url).origin;
       const cal = calOk(r) ? await calGuests(e, doc, [r], 'invite', origin) : null;
@@ -192,7 +225,7 @@ export function createEvents({ getStore, json }) {
 
     /* ---------- admin ---------- */
     if (!path.startsWith('/admin/')) return null;
-    if (!path.startsWith('/admin/events') && !path.startsWith('/admin/checkin/') && path !== '/admin/upload') return null;
+    if (!path.startsWith('/admin/events') && !path.startsWith('/admin/checkin/') && !path.startsWith('/admin/uploads/') && path !== '/admin/upload') return null;
     if (!auth || auth.r !== 'admin') return json(401, { error: 'Admin login needed.' });
 
     if (path === '/admin/upload' && method === 'POST') {
@@ -233,6 +266,12 @@ export function createEvents({ getStore, json }) {
       e.slug = slug; e.createdAt = new Date().toISOString();
       await events().setJSON(e.id, e);
       return json(201, { event: e });
+    }
+    m = path.match(/^\/admin\/uploads\/([a-f0-9]{24})$/);
+    if (m && method === 'GET') {
+      const u = await uploads().get(m[1], { type: 'json' });
+      if (!u) return json(404, { error: 'File not found.' });
+      return new Response(Buffer.from(u.data, 'base64'), { status: 200, headers: { 'content-type': u.type, 'content-disposition': `inline; filename="${u.name.replace(/"/g, '')}"`, 'cache-control': 'private, no-store' } });
     }
     m = path.match(/^\/admin\/checkin\/([a-f0-9]{20})$/);
     if (m) {
@@ -294,7 +333,9 @@ export function createEvents({ getStore, json }) {
         }
         return json(200, { event: n, calendar: cal });
       }
-      if (!m[2] && method === 'DELETE') { await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
+      if (!m[2] && method === 'DELETE') {
+        for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
+        await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
     }
     return null;
   }
@@ -347,7 +388,7 @@ export function createEvents({ getStore, json }) {
 <header class="evtop"><a class="brand" href="/"><img src="/img/aqlyon-q.png" alt="" width="34" height="34"><span><b>Aqlyon</b><small>Career Discovery Centre</small></span></a><a class="evback" href="/#events">All events</a></header>
 <main id="ev" data-slug="${esc(e.slug)}"><noscript><h1>${esc(e.title)}</h1><p>${esc(desc)}</p></noscript></main>
 <script>window.EVENT=${JSON.stringify(pe).replace(/</g, '\\u003c')};</script>
-<script src="/js/countries.js"></script><script src="/site/events.js"></script>
+<script src="/js/countries.js"></script><script src="/js/form-fields.js"></script><script src="/site/events.js"></script>
 </body></html>`;
     return new Response(html, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
   }
