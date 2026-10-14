@@ -21,8 +21,13 @@ const genPin=()=>String(Math.floor(1000+Math.random()*9000));
 const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').replace(/^\.+|\.+$/g,'').slice(0,20);
 const trackName={auto:'Personal',basic:'Basic',advanced:'Advanced',ai:'AI Academy',dm:'Digital Marketing'};
 function toast(msg,bad){const t=document.createElement('div');t.className='toast'+(bad?' bad':'');t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3200)}
+// scroll an element into view inside its popup (scrolling the page would shift the popup)
+function mScroll(el,gap=80){const md=el&&el.closest('.modal');if(!md)return el&&el.scrollIntoView({block:'center'});md.scrollTo({top:md.scrollTop+el.getBoundingClientRect().top-md.getBoundingClientRect().top-gap,behavior:'smooth'})}
 function modal(html,onReady){const m=document.createElement('div');m.className='modalbg';m.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(m);
- const close=()=>m.remove();m.addEventListener('click',e=>{if(e.target===m||e.target.closest('[data-close]'))close()});document.addEventListener('keydown',function k(e){if(!m.isConnected)return document.removeEventListener('keydown',k);if(e.key==='Escape'&&m===[...document.querySelectorAll('.modalbg')].pop()){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
+ const close=()=>m.remove();
+ // clicking outside closes only simple messages; a window with things to fill in closes with its own buttons, so nothing typed is lost
+ let downOut=false;m.addEventListener('pointerdown',e=>{downOut=e.target===m});
+ m.addEventListener('click',e=>{if(e.target.closest('[data-close]'))return close();if(e.target===m&&downOut&&!m.querySelector('input:not([type=checkbox]):not([type=radio]),textarea,select'))close()});document.addEventListener('keydown',function k(e){if(!m.isConnected)return document.removeEventListener('keydown',k);if(e.key==='Escape'&&m===[...document.querySelectorAll('.modalbg')].pop()){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
 function confirmBox(title,text,okLabel,danger){return new Promise(res=>modal(`<h2>${title}</h2><p>${text}</p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn ${danger?'danger':''} ok">${okLabel}</button></div>`,(m,close)=>{$('.ok',m).onclick=()=>{close();res(true)};m.addEventListener('click',e=>{if(e.target.closest('[data-close]')||e.target===m)res(false)})}))}
 
 function loginView(msg=''){

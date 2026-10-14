@@ -19,7 +19,7 @@
 .acts .mini,.mini{background:var(--soft);border:1px solid var(--line)}
 .empty{text-align:center;background:var(--surface);border:2px dashed var(--line);border-radius:22px;padding:40px 20px;margin-top:16px}
 .empty h2{font-size:24px;margin-bottom:6px}.empty p{color:var(--muted)}
-.modalbg{position:fixed;inset:0;background:rgba(10,12,30,.45);display:grid;place-items:center;z-index:200;padding:16px;overflow:auto}
+.modalbg{position:fixed;inset:0;background:rgba(10,12,30,.45);display:grid;place-items:center;z-index:200;padding:16px;overflow:hidden}
 .modal{background:var(--surface);color:var(--ink);border-radius:24px;padding:24px;width:100%;max-width:640px;max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.3)}
 .modal h2{font-size:26px;margin-bottom:10px}.modal h3{font-size:18px;margin:18px 0 6px}
 .mrow{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}
@@ -158,7 +158,7 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .fbcards{display:flex;flex-direction:column;gap:12px;margin:12px 0}
 .fbcard{border:1.5px solid var(--line);border-left:5px solid var(--accent);border-radius:14px;padding:12px;background:var(--surface)}
 .fbcard.sec{border-left-color:#1A1E3A;background:var(--soft)}
-.fbcard.flash{animation:fbflash 1.4s}@keyframes fbflash{0%,40%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 35%,transparent)}}
+.fbcard.fbnew{animation:fbflash 1.4s}@keyframes fbflash{0%,40%{box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 35%,transparent)}}
 .fbtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .fbnum{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--soft);font-weight:700;font-size:13px;flex:none}
 .fbcard input,.fbcard select{font:15px var(--body);padding:9px 11px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;min-width:0}

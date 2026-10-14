@@ -90,6 +90,7 @@ function eventForm(e){
    try{const img=await prepImage(f);const d=await AAPI.call('/admin/upload',{method:'POST',body:{type:img.type,data:img.data}});cover=d.id;pv.innerHTML=`<img src="${img.preview}" alt="">`}catch(err){pv.innerHTML='<span>Upload failed</span>';toast(err.message,true)}};
   const FORM=JSON.parse(JSON.stringify(e.form||{std:{whatsapp:true,country:true,education:true,role:true},fields:[]}));
   formBuilder($('.fbuild',m),FORM,e);
+  $('form',m).addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.tagName==='INPUT'&&!['submit','button','checkbox','radio'].includes(ev.target.type))ev.preventDefault()});   // Enter never saves and closes the form by accident
   const rc=$('.rmcover',m);if(rc)rc.onclick=()=>{cover='';$('.evcprev',m).innerHTML='<span>No cover</span>'};
   const orr=$('.openregs',m);if(orr)orr.onclick=()=>{close();regsView(e)};
   const del=$('.delev',m);if(del)del.onclick=async()=>{close();if(!await confirmBox('Delete event?',`<b>${esc(e.title)}</b> and all its registrations will be deleted. This cannot be undone.`,'Delete event',true))return;await AAPI.call('/admin/events/'+e.id,{method:'DELETE'});toast('Event deleted');await loadEvents();renderEvents()};

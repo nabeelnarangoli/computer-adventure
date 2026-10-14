@@ -41,7 +41,7 @@ function formBuilder(box,FORM,ev){
  };
  const bind=()=>{
   $$('[data-std]',box).forEach(c=>c.onchange=()=>{FORM.std[c.dataset.std]=c.checked;c.closest('.fbchip').classList.toggle('on',c.checked)});
-  $('.fbadd',box).onclick=()=>fbPicker(FORM,added=>{FORM.fields.push(...added);draw();const cs=$$('.fbcard',box);const first=cs[cs.length-added.length];if(first){first.scrollIntoView({behavior:'smooth',block:'center'});first.classList.add('flash');const l=$('.fblabel',first);if(l&&!l.value)l.focus()}});
+  $('.fbadd',box).onclick=()=>fbPicker(FORM,added=>{FORM.fields.push(...added);draw();const cs=$$('.fbcard',box);const first=cs[cs.length-added.length];if(first){mScroll(first);first.classList.add('fbnew');const l=$('.fblabel',first);if(l&&!l.value)l.focus({preventScroll:true})}});
   $('.fbprev',box).onclick=()=>fbPreview(FORM,ev);
   $$('.fbcard',box).forEach(c=>{const i=+c.dataset.i,f=fields()[i];
    $$('[data-k]',c).forEach(inp=>{const k=inp.dataset.k;const up=()=>{let v=inp.type==='checkbox'?inp.checked:inp.value;if(['scaleMin','scaleMax','stars'].includes(k))v=+v;f[k]=v;if(k==='valid')draw()};inp.oninput=up;inp.onchange=up});
@@ -49,9 +49,9 @@ function formBuilder(box,FORM,ev){
     if(FF.OPT_TYPES.includes(t)&&f.options)keep.options=f.options;fields()[i]={...nb,...keep};draw()};
    $$('[data-list]',c).forEach(L=>{const key=L.dataset.list;
     $$('[data-o]',L).forEach(inp=>inp.oninput=()=>{f[key][+inp.dataset.o]=inp.value});
-    $$('[data-o]',L).forEach(inp=>inp.onkeydown=k=>{if(k.key==='Enter'){k.preventDefault();f[key].splice(+inp.dataset.o+1,0,'');draw();const n=$$(`.fbcard[data-i="${i}"] [data-list="${key}"] [data-o]`,box)[+inp.dataset.o+1];if(n)n.focus()}});
+    $$('[data-o]',L).forEach(inp=>inp.onkeydown=k=>{if(k.key==='Enter'){k.preventDefault();f[key].splice(+inp.dataset.o+1,0,'');draw();const n=$$(`.fbcard[data-i="${i}"] [data-list="${key}"] [data-o]`,box)[+inp.dataset.o+1];if(n)n.focus({preventScroll:true})}});
     $$('[data-rmo]',L).forEach(b=>b.onclick=()=>{if(f[key].length<=1)return toast('Keep at least one.',true);f[key].splice(+b.dataset.rmo,1);draw()});
-    $('[data-addo]',L).onclick=()=>{const n=f[key].length+1;f[key].push(key==='options'?'Option '+n:key==='rows'?'Row '+n:'Column '+n);draw();const ins=$$(`.fbcard[data-i="${i}"] [data-list="${key}"] [data-o]`,box);const last=ins[ins.length-1];if(last){last.focus();last.select()}};
+    $('[data-addo]',L).onclick=()=>{const n=f[key].length+1;f[key].push(key==='options'?'Option '+n:key==='rows'?'Row '+n:'Column '+n);draw();const ins=$$(`.fbcard[data-i="${i}"] [data-list="${key}"] [data-o]`,box);const last=ins[ins.length-1];if(last){last.focus({preventScroll:true});last.select()}};
     $('[data-paste]',L).onclick=()=>modal(`<h2>Paste a list</h2><p class="small">One item per line. This replaces the current ${key==='options'?'options':key}.</p><textarea class="pastebox" rows="8">${esc(f[key].join('\n'))}</textarea><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn pasteok">Use this list</button></div>`,(pm,close)=>{const ta=$('.pastebox',pm);ta.focus();$('.pasteok',pm).onclick=()=>{const items=[...new Set(ta.value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!items.length)return toast('The list is empty.',true);f[key]=items.slice(0,key==='options'?50:20);close();draw()}});
    });
    $$('[data-mv]',c).forEach(b=>b.onclick=()=>{const j=i+ +b.dataset.mv;if(j<0||j>=fields().length)return;[fields()[i],fields()[j]]=[fields()[j],fields()[i]];draw()});
@@ -96,7 +96,7 @@ function fbPreview(FORM,ev){
   m.querySelector('.modal').classList.add('wide');const f=$('.pvform',m);
   $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));
   f.onsubmit=x=>{x.preventDefault();$$('.ff.bad',f).forEach(b=>b.classList.remove('bad'));const err=$('.err',f);
-   for(const q of FORM.fields){const msg=FF.check(q,FF.read(q,f,'pv'));if(msg){const b=$(`[data-f="${q.id}"]`,f);if(b){b.classList.add('bad');b.scrollIntoView({block:'center'})}err.textContent=msg;return}}
+   for(const q of FORM.fields){const msg=FF.check(q,FF.read(q,f,'pv'));if(msg){const b=$(`[data-f="${q.id}"]`,f);if(b){b.classList.add('bad');mScroll(b)}err.textContent=msg;return}}
    err.textContent='';toast('All answers look good. This is only a preview, so nothing was saved.')};
  });
 }
