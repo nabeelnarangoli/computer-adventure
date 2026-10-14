@@ -36,6 +36,7 @@ function clean(b, old = {}) {
   if (b.published !== undefined) e.published = !!b.published;
   if (b.capacity !== undefined) e.capacity = Math.max(0, parseInt(b.capacity, 10) || 0);
   if (b.form !== undefined) e.form = cleanForm(b.form);
+  if (b.share !== undefined) e.share = !!b.share;
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
   return e;
 }
@@ -69,7 +70,7 @@ function publicEvent(e, list) {
     start: e.start, end: e.end || '', tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, startUTC: toUTC(e.start, e.tz), endUTC: e.end ? toUTC(e.end, e.tz) : null,
     mode: e.mode, locationName: e.mode === 'offline' ? e.locationName || '' : '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '',
     paid: !!e.paid, price: e.price || 0, currency: e.currency || 'AED', regMode: e.regMode, regLink: e.regMode === 'link' ? e.regLink : '',
-    form: formOf(e), state: regState(e, list), seatsLeft: e.capacity ? Math.max(0, e.capacity - taken) : null, maxSeats: e.maxSeats || 1,
+    form: formOf(e), share: e.share !== false, state: regState(e, list), seatsLeft: e.capacity ? Math.max(0, e.capacity - taken) : null, maxSeats: e.maxSeats || 1,
   };
 }
 

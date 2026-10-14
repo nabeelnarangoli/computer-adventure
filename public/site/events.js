@@ -58,7 +58,7 @@ root.innerHTML=`<article class="evdetail">
  <div class="evgridd"><div class="evmain">
   <div class="evtags"><span>${E.mode==='online'?'Online event':'In person'}</span><span class="${E.paid?'':'free'}">${esc(price(E))}</span>${E.state==='open'&&E.seatsLeft!==null&&E.seatsLeft<=15?`<span class="st">Only ${E.seatsLeft} seat${E.seatsLeft===1?'':'s'} left</span>`:''}</div>
   <h1>${esc(E.title)}</h1>${E.summary?`<p class="lead">${esc(E.summary)}</p>`:''}
-  <div class="toprow">${regBtn().replace('id="regbtn"','id="regbtn2"')}<button type="button" class="btn line sharebig">${ICON.share} Share event</button></div>
+  <div class="toprow">${regBtn().replace('id="regbtn"','id="regbtn2"')}${E.share!==false?`<button type="button" class="btn line sharebig">${ICON.share} Share event</button>`:''}</div>
   <div class="evbody">${paras(E.details)}</div>
  </div>
  <aside class="evside"><div class="evbox">
@@ -68,13 +68,13 @@ root.innerHTML=`<article class="evdetail">
   <div class="evcta">${regBtn()}</div>
   <div class="evmini"><a class="lnk" href="${gcal()}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="lnk" id="icsb">Download calendar file</button></div>
  </div>
- <div class="evbox share"><b>${ICON.share} Share this event</b><div class="shbtns">
+ ${E.share!==false?`<div class="evbox share"><b>${ICON.share} Share this event</b><div class="shbtns">
   <button type="button" class="shb" data-s="copy">Copy link</button>
   <a class="shb wa" href="https://wa.me/?text=${encodeURIComponent(E.title+' · '+fmtDay(E)+'\n'+url)}" target="_blank" rel="noopener">WhatsApp</a>
   <a class="shb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" target="_blank" rel="noopener">Facebook</a>
   <a class="shb" href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}" target="_blank" rel="noopener">LinkedIn</a>
   <a class="shb" href="https://x.com/intent/post?text=${encodeURIComponent(E.title)}&url=${encodeURIComponent(url)}" target="_blank" rel="noopener">X</a>
-  ${navigator.share?'<button type="button" class="shb" data-s="native">More…</button>':''}</div></div>
+  ${navigator.share?'<button type="button" class="shb" data-s="native">More…</button>':''}</div></div>`:''}
  </aside></div></article>`;
 const toast=m=>{const t=document.createElement('div');t.className='evtoast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)};
 $('#icsb').onclick=()=>ics();
@@ -149,8 +149,8 @@ rb.onclick=()=>{
     ${d.onlineUrl?`<p class="join">Joining link: <a href="${esc(d.onlineUrl)}" target="_blank" rel="noopener">${esc(d.onlineUrl)}</a><br><small>Save it now. It's also in the calendar file below.</small></p>`:E.mode==='online'?'<p>We\'ll send you the joining link before the event.</p>':E.mapUrl?`<p><a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions to ${esc(E.locationName)} ↗</a></p>`:''}
     <p class="small remind">📅 ${d.calendar?'We\'ve emailed your invitation to <b>'+esc(body.email)+'</b>. You can also add':'Add'} the event to your calendar below. The calendar file includes reminders 1 day and 1 hour before.</p>
     ${d.badge&&E.mode!=='online'?`<p class="badgecta"><a class="btn" href="${esc(d.badge)}" target="_blank" rel="noopener">🎫 View my entry badge</a><small>Show its QR code at the entrance.${d.calendar?' We\'ve also emailed it to you.':''}</small></p>`:''}
-    <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download calendar file</button><button type="button" class="btn line sharebig">${ICON.share} Share</button></div>
-    <p class="small">Tell a friend: <a href="https://wa.me/?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p></div>`;
+    <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download calendar file</button>${E.share!==false?`<button type="button" class="btn line sharebig">${ICON.share} Share</button>`:''}</div>
+    ${E.share!==false?`<p class="small">Tell a friend: <a href="https://wa.me/?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p>`:''}</div>`;
    $$('.sharebig',dlg).forEach(b=>b.onclick=shareNow);
    $('.icsd',dlg).onclick=()=>ics(d.onlineUrl?'Join: '+d.onlineUrl:'');
   }
