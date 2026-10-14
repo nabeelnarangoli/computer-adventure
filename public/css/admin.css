@@ -247,3 +247,10 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .stqr{background:#fff;border-radius:12px;padding:6px}.stqr svg{display:block;width:100%;height:auto}
 .stin{width:100%;font:14px var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;margin:6px 0 10px}
 @media (max-width:600px){.stlink{grid-template-columns:1fr}.stqr{max-width:200px}}
+/* one event: header + Registrations / Check-in tabs */
+.evhead h1{margin:6px 0 2px;overflow-wrap:anywhere}.evhead .small{margin:0}
+.evsub{display:flex;gap:6px;margin:14px 0 16px;border-bottom:2px solid var(--line);overflow-x:auto}
+.evsub button{font:700 16px var(--body);padding:10px 16px;border:0;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-2px;cursor:pointer;white-space:nowrap}
+.evsub button.on{color:var(--ink);border-bottom-color:var(--accent)}
+.evsub i{font-style:normal;font-size:12px;background:var(--soft);border-radius:99px;padding:2px 8px;margin-left:4px;color:var(--ink)}
+.rbtns{margin:0 0 12px}

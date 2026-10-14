@@ -10,13 +10,15 @@ const evLink=e=>location.origin+'/events/'+e.slug;
 const STATE_LABEL={open:['Registration open','ok'],closed:['Registration closed','no'],full:['Fully booked','no'],ended:['Ended','muted'],none:['Info only','muted']};
 const waLink=(num,text)=>`https://wa.me/${String(num).replace(/[^\d]/g,'')}?text=${encodeURIComponent(text)}`;
 
-function adminTabs(active){return `<nav class="admtabs" role="tablist">${[['learners','Learners'],['events','Events'],['checkin','Check-in']].map(([k,t])=>`<button type="button" role="tab" aria-selected="${k===active}" class="${k===active?'on':''}" data-tab="${k}">${t}</button>`).join('')}</nav>`}
-function bindTabs(){$$('[data-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.tab;history.replaceState(null,'',t==='events'?'#events':t==='checkin'?'#scan':location.pathname);showTab(t)})}
+function adminTabs(active){return `<nav class="admtabs" role="tablist">${[['learners','Learners'],['events','Events']].map(([k,t])=>`<button type="button" role="tab" aria-selected="${k===active}" class="${k===active?'on':''}" data-tab="${k}">${t}</button>`).join('')}</nav>`}
+function bindTabs(){$$('[data-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.tab;history.replaceState(null,'',t==='events'?'#events':location.pathname);showTab(t)})}
 async function showTab(t){
- $('.admtabwrap').innerHTML=adminTabs(t);bindTabs();
+ $('.admtabwrap').innerHTML=adminTabs(t==='checkin'?'events':t);bindTabs();
  if(typeof stopScan==='function')stopScan();
- if(t==='checkin')return checkinTab();
- if(t==='events'){$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading events…</p>';await loadEvents();renderEvents()}
+ if(t==='checkin')return checkinRoute();
+ if(t==='events'){$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading events…</p>';await loadEvents();
+  const m=location.hash.match(/^#events\/([a-f0-9]{16})(\/checkin)?/),ev=m&&EVENTS.find(x=>x.id===m[1]);   // reopen the event page after a refresh
+  if(ev)return m[2]?checkinView(ev):regsView(ev);renderEvents()}
  else{$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading learners…</p>';try{await load()}catch(e){return}render()}
 }
 async function loadEvents(){const d=await AAPI.call('/admin/events');EVENTS=d.events;EVSET=d.settings}
@@ -43,7 +45,7 @@ function renderEvents(){
  $$('[data-ev]').forEach(b=>b.onclick=async()=>{const e=EVENTS.find(x=>x.id===b.dataset.id);const a=b.dataset.ev;
   if(a==='edit')return eventForm(e);
   if(a==='regs')return regsView(e);
-  if(a==='scan'){location.hash='#scan/'+e.id;return showTab('checkin')}
+  if(a==='scan')return checkinView(e);
   if(a==='copy')return copy(evLink(e));
   if(a==='toggle'){try{await AAPI.call('/admin/events/'+e.id,{method:'PATCH',body:{regOpen:!e.regOpen}});toast(e.regOpen?'Registration closed':'Registration open');await loadEvents();renderEvents()}catch(err){toast(err.message,true)}}
  });
@@ -199,29 +201,51 @@ function zipStore(files){
  return new Blob([...parts,...cen,new Uint8Array([...u32(0x06054b50),0,0,0,0,...u16(files.length),...u16(files.length),...u32(cl),...u32(off),0,0])],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 }
 /* rows: arrays of strings, numbers, or {d:Date}. title rows on top, then a bold header row with a filter */
-function xlsxBlob(sheetName,titleRows,head,rows,widths){
+// one or more sheets: [{name,titles,head,rows,widths}]; titles are lines above a bold header row with filters
+function xlsxBook(sheets){
  const x=v=>String(v??'').replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
  const col=i=>{let s='';i++;while(i){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=(i-m-1)/26}return s};
  const cell=(v,r,c,st)=>{const ref=col(c)+r;
   if(v&&v.d instanceof Date)return `<c r="${ref}" s="3"><v>${(v.d.getTime()-v.d.getTimezoneOffset()*60000)/86400000+25569}</v></c>`;
   if(typeof v==='number')return `<c r="${ref}"${st?` s="${st}"`:''}><v>${v}</v></c>`;
   return `<c r="${ref}" t="inlineStr"${st?` s="${st}"`:''}><is><t xml:space="preserve">${x(v)}</t></is></c>`};
- let r=0;const out=[];
- titleRows.forEach((t,i)=>{r++;out.push(`<row r="${r}">${cell(t,r,0,i===0?2:0)}</row>`)});
- if(titleRows.length)r++;
- const hr=++r;out.push(`<row r="${hr}">${head.map((h,c)=>cell(h,hr,c,1)).join('')}</row>`);
- rows.forEach(row=>{r++;out.push(`<row r="${r}">${row.map((v,c)=>cell(v,r,c,0)).join('')}</row>`)});
- const last=col(head.length-1);
- const sheet=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"><pane ySplit="${hr}" topLeftCell="A${hr+1}" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><cols>${widths.map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${out.join('')}</sheetData>${rows.length?`<autoFilter ref="A${hr}:${last}${hr+rows.length}"/>`:''}</worksheet>`;
- const name=x(String(sheetName).replace(/[\[\]:*?\/\\]/g,' ').slice(0,31)||'Registrations');
+ const used=new Set();
+ const built=sheets.map((sh,si)=>{
+  let r=0;const out=[];const titles=sh.titles||[];
+  titles.forEach((t,i)=>{r++;out.push(`<row r="${r}">${(Array.isArray(t)?t:[t]).map((v,c)=>cell(v,r,c,i===0&&c===0?2:Array.isArray(t)&&c===0?1:0)).join('')}</row>`)});
+  if(titles.length)r++;
+  let hr=0;
+  if(sh.head&&sh.head.length){hr=++r;out.push(`<row r="${hr}">${sh.head.map((h,c)=>cell(h,hr,c,1)).join('')}</row>`)}
+  (sh.rows||[]).forEach(row=>{r++;out.push(`<row r="${r}">${row.map((v,c)=>cell(v,r,c,0)).join('')}</row>`)});
+  const last=col(Math.max(0,(sh.head||[]).length-1)),filt=hr&&sh.rows&&sh.rows.length;
+  let name=String(sh.name||'Sheet'+(si+1)).replace(/[\[\]:*?\/\\]/g,' ').slice(0,31);while(used.has(name))name=name.slice(0,28)+' '+si;used.add(name);
+  const xml=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheetViews><sheetView workbookViewId="0"${si===0?' tabSelected="1"':''}>${hr?`<pane ySplit="${hr}" topLeftCell="A${hr+1}" activePane="bottomLeft" state="frozen"/>`:''}</sheetView></sheetViews><cols>${(sh.widths||[]).map((w,i)=>`<col min="${i+1}" max="${i+1}" width="${w}" customWidth="1"/>`).join('')}</cols><sheetData>${out.join('')}</sheetData>${filt?`<autoFilter ref="A${hr}:${last}${hr+sh.rows.length}"/>`:''}</worksheet>`;
+  return {name:x(name),raw:name,xml,def:filt?`<definedName name="_xlnm._FilterDatabase" localSheetId="${si}" hidden="1">'${x(name).replace(/'/g,"''")}'!$A$${hr}:$${last}$${hr+sh.rows.length}</definedName>`:''};
+ });
+ const defs=built.map(b=>b.def).join('');
  return zipStore([
-  ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'],
+  ['[Content_Types].xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>${built.map((b,i)=>`<Override PartName="/xl/worksheets/sheet${i+1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('')}<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>`],
   ['_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
-  ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="${name}" sheetId="1" r:id="rId1"/></sheets>${rows.length?`<definedNames><definedName name="_xlnm._FilterDatabase" localSheetId="0" hidden="1">'${name.replace(/'/g,"''")}'!$A$${hr}:$${last}$${hr+rows.length}</definedName></definedNames>`:''}</workbook>`],
-  ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+  ['xl/workbook.xml',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>${built.map((b,i)=>`<sheet name="${b.name}" sheetId="${i+1}" r:id="rId${i+1}"/>`).join('')}</sheets>${defs?`<definedNames>${defs}</definedNames>`:''}</workbook>`],
+  ['xl/_rels/workbook.xml.rels',`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${built.map((b,i)=>`<Relationship Id="rId${i+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i+1}.xml"/>`).join('')}<Relationship Id="rId${built.length+1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`],
   ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="dd mmm yyyy, hh:mm"/></numFmts><fonts count="3"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="14"/><name val="Calibri"/></font></fonts><fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF1A1E3A"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="4"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1"/><xf numFmtId="0" fontId="2" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1" applyAlignment="1"><alignment horizontal="left"/></xf></cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'],
-  ['xl/worksheets/sheet1.xml',sheet]]);
+  ...built.map((b,i)=>[`xl/worksheets/sheet${i+1}.xml`,b.xml])]);
+}
+const xlsxBlob=(sheetName,titles,head,rows,widths)=>xlsxBook([{name:sheetName,titles,head,rows,widths}]);
+const saveBlob=(blob,name)=>{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)};
+
+/* ---------- one event: header with Registrations / Check-in tabs ---------- */
+const evCanCheckin=e=>e.regMode==='form'&&e.mode!=='online';
+function evHeadHTML(e,active){
+ const c=e.counts||{};
+ return `<p class="rback"><button type="button" class="linkbtn backev">← All events</button></p>
+ <div class="evhead"><h1>${esc(e.title)}</h1><p class="small">${esc(evDate(e))}${e.mode==='offline'&&e.locationName?' · '+esc(e.locationName):e.mode==='online'?' · Online':''}</p></div>
+ <nav class="evsub" role="tablist"><button type="button" role="tab" data-sub="regs" class="${active==='regs'?'on':''}" aria-selected="${active==='regs'}">Registrations${c.total!=null?` <i>${c.total}</i>`:''}</button>${evCanCheckin(e)?`<button type="button" role="tab" data-sub="checkin" class="${active==='checkin'?'on':''}" aria-selected="${active==='checkin'}">📷 Check-in${c.seats?` <i>${c.attended||0}/${c.seats}</i>`:''}</button>`:''}</nav>`;
+}
+function bindEvHead(e){
+ $('.backev').onclick=async()=>{if(typeof stopScan==='function')stopScan();history.replaceState(null,'','#events');await loadEvents();renderEvents();scrollTo(0,0)};
+ $$('[data-sub]').forEach(b=>b.onclick=async()=>{if(typeof stopScan==='function')stopScan();try{await loadEvents()}catch(x){}const fresh=EVENTS.find(x=>x.id===e.id)||e;b.dataset.sub==='checkin'?checkinView(fresh):regsView(fresh)});
 }
 
 /* ---------- Registrations page for one event ---------- */
@@ -270,9 +294,8 @@ async function regsView(e){
  const stats=()=>{const act=regs.filter(live),ppl=act.reduce((t,r)=>t+r.seats,0),pend=regs.filter(r=>r.status==='pending').length,stu=act.filter(r=>r.role==='Student').length,par=act.filter(r=>r.role==='Parent').length;
   return `<div class="rstats"><div><b>${regs.length}</b><span>Registrations</span></div><div><b>${ppl}${e.capacity?`<small> / ${e.capacity}</small>`:''}</b><span>People attending</span></div>${e.paid?`<div class="${pend?'hot':''}"><b>${pend}</b><span>Waiting for approval</span></div>`:''}<div class="chk"><b>${regs.filter(r=>okReg(r)&&r.attended).reduce((t,r)=>t+r.seats,0)}<small> / ${ppl}</small></b><span>Checked in</span></div>${showStd('role')?`<div><b>${stu}</b><span>Students</span></div><div><b>${par}</b><span>Parents</span></div>`:''}</div>`};
  const opts=[['all','All'],['active','Attending'],...(e.paid?[['pending','Waiting for approval'],['approved','Approved'],['rejected','Rejected']]:[['confirmed','Confirmed']]),['cancelled','Cancelled'],['in','Checked in'],['notin','Not checked in yet']];
- main.innerHTML=`<p class="rback"><button type="button" class="linkbtn backev">← All events</button></p>
-  <div class="admhead rhead"><div><h1>Registrations</h1><p class="small"><b>${esc(e.title)}</b> · ${esc(evDate(e))}${e.mode==='offline'&&e.locationName?' · '+esc(e.locationName):e.mode==='online'?' · Online':''}</p></div>
-  <div class="evbtns">${e.mode!=='online'?'<button type="button" class="btn scanev">📷 Check-in</button><button type="button" class="btn ghost staffev">🔗 Helper link</button>':''}<button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost editev">Edit event</button></div></div>
+ main.innerHTML=`${evHeadHTML(e,'regs')}
+  <div class="evbtns rbtns"><button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost editev">Edit event</button></div>
   <div class="calnote"></div>
   <div class="rstatwrap">${stats()}</div>
   <div class="rtools"><input type="search" class="rq" placeholder="Search name, email, mobile or ref" aria-label="Search registrations"><select class="rf" aria-label="Show">${opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></div>
@@ -295,9 +318,7 @@ async function regsView(e){
  $('.rq',main).oninput=ev=>{q=ev.target.value;draw()};
  $('.rf',main).onchange=ev=>{fs=ev.target.value;draw()};
  $('.xls',main).onclick=download;
- $('.backev',main).onclick=async()=>{await loadEvents();renderEvents();scrollTo(0,0)};
- const sf=$('.staffev',main);if(sf)sf.onclick=()=>staffLinkView(EVENTS.find(x=>x.id===e.id)||e);
- const sc=$('.scanev',main);if(sc)sc.onclick=()=>{location.hash='#scan/'+e.id;showTab('checkin')};
+ bindEvHead(e);history.replaceState(null,'','#events/'+e.id);
  $('.editev',main).onclick=()=>eventForm(EVENTS.find(x=>x.id===e.id)||e);
  note();bind();scrollTo(0,0);
 }

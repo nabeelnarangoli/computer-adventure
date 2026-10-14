@@ -37,7 +37,7 @@ async function load(){const [d,st]=await Promise.all([AAPI.call('/admin/users'),
 async function dashboard(){
  root.innerHTML=`<header class="top"><div class="in"><span class="brand"><span class="logo">${SVG.shield.replace('<svg','<svg width="20" height="20"')}</span><span>Admin panel</span></span><a class="userbtn" href="/academy" target="_blank" rel="noopener" style="margin-left:auto">Learner site ↗</a><button type="button" class="userbtn" id="alo">${SVG.logout}<span>Log out</span></button></div></header><div class="wrap admtabwrap"></div><main class="wrap adm"><p class="lead" style="margin-top:20px">Loading…</p></main>`;
  $('#alo').onclick=()=>{AAPI.setToken(null);loginView()};
- const h=location.hash;showTab(h.startsWith('#checkin/')||h.startsWith('#scan')?'checkin':h==='#events'?'events':'learners');
+ const h=location.hash;showTab(h.startsWith('#checkin/')||h.startsWith('#scan')?'checkin':h.startsWith('#events')?'events':'learners');
 }
 function render(){
  const main=$('.adm');const now=Date.now();
