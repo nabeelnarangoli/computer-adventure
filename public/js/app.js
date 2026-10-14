@@ -97,16 +97,23 @@ const slugUser=n=>n.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g,'.').r
 function registerView(){
  app.innerHTML=`<main class="auth"><div class="authpair">${mascot('wave',{say:'Hello! Pick a username and a PIN. That\'s all.'})}<div class="authcard wide"><span class="logo big">${SVG.laptop.replace('<svg','<svg width="34" height="34"')}</span><h1>Create your account</h1><p class="lead">It takes one minute. Then you can start learning straight away.</p>
  <form class="authform regform"><div class="field"><label for="r-name">Your name</label><input id="r-name" required maxlength="40" autocomplete="name"></div>
+ <div class="field"><label for="r-email">Email</label><input id="r-email" type="email" required maxlength="80" autocomplete="email" autocapitalize="none" spellcheck="false"></div>
+ <div class="field"><label for="r-country">Country</label><select id="r-country" required autocomplete="country">${COUNTRIES.map(c=>`<option value="${c[0]}">${c[1]}</option>`).join('')}</select></div>
+ <div class="field"><label for="r-mob">Mobile number</label><div class="inrow telrow"><select id="r-cc" aria-label="Country code" autocomplete="tel-country-code">${COUNTRIES.map(c=>`<option value="${c[0]}">${flagOf(c[0])} +${c[2]} · ${c[1]}</option>`).join('')}</select><input id="r-mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></div><small class="small">The code follows your country. Change it if your number is from somewhere else.</small></div>
  <div class="field"><label for="r-user">Username</label><input id="r-user" required maxlength="24" autocapitalize="none" spellcheck="false" autocomplete="username"><small class="small">Small letters, numbers, dot, dash or underscore. You use it to log in.</small></div>
  <div class="field"><label for="r-pin">PIN</label><div class="inrow"><input id="r-pin" required minlength="4" maxlength="20" autocomplete="new-password" value="${genPin()}"><button type="button" class="btn ghost sm gen">New PIN</button></div><small class="small">4 to 20 characters. Adults: use a longer password.</small></div>
  <fieldset class="qset"><legend>Who is learning?</legend><label class="ck"><input type="radio" name="kind" value="child" checked><span><b>A child</b>: playful wording</span></label><label class="ck"><input type="radio" name="kind" value="adult"><span><b>An adult</b>: plain wording</span></label></fieldset>
  <div class="field"><label for="r-lang">Subtitle language</label><select id="r-lang">${LANGS.map(l=>`<option value="${l.code}">${l.code?l.name+' · '+l.native:l.name}</option>`).join('')}</select><small class="small">English stays the main text. This language shows underneath.</small></div>
  <p class="formerr" role="alert"></p><button class="btn" type="submit">Create my account ${SVG.next}</button></form>
  <button type="button" class="linkbtn back">${SVG.back} I already have an account</button></div></div></main>`;
- const nm=$('#r-name'),us=$('#r-user');let touched=false;us.oninput=()=>touched=true;nm.oninput=()=>{if(!touched)us.value=slugUser(nm.value.split(' ')[0]||'')};
+ const nm=$('#r-name'),us=$('#r-user'),co=$('#r-country'),cc=$('#r-cc');let ccTouched=false;
+ co.value=cc.value=guessCountry();co.onchange=()=>{if(!ccTouched)cc.value=co.value};cc.onchange=()=>{ccTouched=true};let touched=false;us.oninput=()=>touched=true;nm.oninput=()=>{if(!touched)us.value=slugUser(nm.value.split(' ')[0]||'')};
  $('.gen').onclick=()=>$('#r-pin').value=genPin();$('.back').onclick=()=>{setSubLang('');loginView()};$('#r-lang').onchange=e=>setSubLang(e.target.value);nm.focus();
  $('.regform').onsubmit=async e=>{e.preventDefault();const b=$('button[type=submit]',e.target);b.disabled=true;$('.formerr').textContent='';
-  const body={name:nm.value.trim(),username:us.value.trim().toLowerCase(),pin:$('#r-pin').value,kind:$('input[name=kind]:checked').value,lang:$('#r-lang').value};
+  const em=$('#r-email').value.trim(),mob=$('#r-mob').value.replace(/[\s\-().]/g,'').replace(/^0+/,'');const dial=(COUNTRIES.find(c=>c[0]===cc.value)||[])[2];
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(em)){$('.formerr').textContent='Please enter a valid email address.';b.disabled=false;return $('#r-email').focus()}
+  if(!/^\d{6,14}$/.test(mob)){$('.formerr').textContent='Please enter a valid mobile number (digits only, without the country code).';b.disabled=false;return $('#r-mob').focus()}
+  const body={email:em,country:co.value,phone:'+'+dial+' '+mob,name:nm.value.trim(),username:us.value.trim().toLowerCase(),pin:$('#r-pin').value,kind:$('input[name=kind]:checked').value,lang:$('#r-lang').value};
   try{const d=await API.call('/register',{method:'POST',body});API.setToken(d.token);USER=d.user;PROG={done:{}};applyContext();registeredView(body)}
   catch(err){$('.formerr').textContent=err.message;b.disabled=false}};
 }

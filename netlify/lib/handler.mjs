@@ -58,7 +58,7 @@ export function createHandler({ getStore, env }) {
       return p;
     } catch { return null; }
   };
-  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, lang: u.lang || '', self: !!u.selfRegistered, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null, certs: u.certs || {} });
+  const publicUser = (u) => ({ username: u.username, name: u.name, kind: u.kind, lang: u.lang || '', self: !!u.selfRegistered, active: u.active !== false, createdAt: u.createdAt, lastSeen: u.lastSeen || null, certs: u.certs || {}, email: u.email || '', country: u.country || '', phone: u.phone || '' });
   const summary = (p) => {
     if (!p) return { started: false };
     const done = typeof p.planDone === 'number' ? p.planDone : Object.keys(p.done || {}).length;
@@ -142,9 +142,16 @@ export function createHandler({ getStore, env }) {
         const rl = (await meta.get(ipKey, { type: 'json' })) || { n: 0, since: Date.now() };
         if (Date.now() - rl.since > 3600_000) { rl.n = 0; rl.since = Date.now(); }
         if (rl.n >= 5) return json(429, { error: 'Too many new accounts from here. Please try again in an hour.' });
+        const email = String(body.email || '').trim().toLowerCase().slice(0, 80);
+        const country = String(body.country || '').trim().toUpperCase();
+        const phone = String(body.phone || '').trim().slice(0, 24);
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return json(400, { error: 'Please enter a valid email address.' });
+        if (!/^[A-Z]{2}$/.test(country)) return json(400, { error: 'Please choose your country.' });
+        if (!/^\+\d{1,4} \d{6,14}$/.test(phone)) return json(400, { error: 'Please enter a valid mobile number.' });
         const r = await newUser(users, body);
         if (r.error) return json(r.status || 400, { error: r.error });
         const u = r.u;
+        u.email = email; u.country = country; u.phone = phone;
         u.selfRegistered = true; u.lastSeen = u.createdAt;
         await users.setJSON(u.username, u);
         rl.n += 1; await meta.setJSON(ipKey, rl);

@@ -45,3 +45,4 @@
 .regtoggle span{display:flex;flex-direction:column;gap:2px}.regtoggle small{color:var(--muted);font-size:14px}
 .selfreg{color:var(--accent);font-weight:700}
 .aiprog{display:block;color:var(--aqg,#1FA870)!important}
+.ucontact{display:block;margin-top:2px}.ucontact a{color:inherit}

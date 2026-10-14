@@ -44,12 +44,12 @@ function render(){
  const active=USERS.filter(u=>u.lastSeen&&now-new Date(u.lastSeen)<7*864e5).length;
  const lessons=USERS.reduce((s,u)=>s+(u.summary.done||0),0);
  const started=USERS.filter(u=>u.summary.total);const avg=started.length?Math.round(started.reduce((s,u)=>s+Math.min(1,u.summary.done/u.summary.total),0)/started.length*100):0;
- const list=USERS.filter(u=>!FILTER||(u.name+' '+u.username).toLowerCase().includes(FILTER));
+ const list=USERS.filter(u=>!FILTER||(u.name+' '+u.username+' '+(u.email||'')+' '+(u.phone||'')).toLowerCase().includes(FILTER));
  main.innerHTML=`<div class="admhead"><h1>Learners</h1><button type="button" class="btn" id="add">＋ Add a learner</button></div>
  <div class="statgrid"><div><b>${USERS.length}</b><span>learners</span></div><div><b>${active}</b><span>active in the last 7 days</span></div><div><b>${lessons}</b><span>lessons completed in total</span></div><div><b>${avg}%</b><span>average course progress</span></div></div>
  <div class="tipbox signin">Learners sign in at <b class="url">${esc(location.origin)}/academy</b> <button type="button" class="mini cpurl">Copy link</button></div>
  <label class="regtoggle"><input type="checkbox" id="allowreg" ${SETTINGS.allowRegister?'checked':''}><span><b>Let people create their own account</b><small>Shows a "Create an account" button on the learner sign-in page. New sign-ups appear here and you can manage them like any learner.</small></span></label>
- <div class="field" style="max-width:360px;margin-top:18px"><label for="flt">Search</label><input id="flt" placeholder="Name or username" value="${esc(FILTER)}"></div>
+ <div class="field" style="max-width:360px;margin-top:18px"><label for="flt">Search</label><input id="flt" placeholder="Name, username, email or phone" value="${esc(FILTER)}"></div>
  ${USERS.length?`<div class="utable" role="table"><div class="urow uhead" role="row"><span>Learner</span><span>Computer · course</span><span>Level</span><span>Progress</span><span>Last active</span><span></span></div>${list.map(rowHTML).join('')||'<p class="small" style="padding:16px">No learners match your search.</p>'}</div>`:`<div class="empty"><h2>No learners yet</h2><p>Add your first learner: give them a username and a PIN, then send them the sign-in link above.</p><button type="button" class="btn" id="add2">＋ Add a learner</button></div>`}`;
  $('#add').onclick=addLearner;const a2=$('#add2');if(a2)a2.onclick=addLearner;
  $('.cpurl').onclick=()=>copy(location.origin+'/academy');
@@ -58,7 +58,7 @@ function render(){
  $$('[data-act]').forEach(b=>b.onclick=()=>act(b.dataset.act,b.dataset.u));
 }
 function rowHTML(u){const s=u.summary;const pct=s.total?Math.round(Math.min(1,s.done/s.total)*100):0;
- return `<div class="urow ${u.active?'':'inactive'}" role="row"><span class="uname"><b>${esc(u.name)}</b><small>@${esc(u.username)} · ${u.kind==='child'?'Child':'Adult'}${u.lang?' · '+esc(langName(u.lang).split(' · ')[0]):''}${u.self?' · <span class="selfreg">signed up</span>':''}${u.active?'':' · <em>switched off</em>'}</small></span>
+ return `<div class="urow ${u.active?'':'inactive'}" role="row"><span class="uname"><b>${esc(u.name)}</b><small>@${esc(u.username)} · ${u.kind==='child'?'Child':'Adult'}${u.lang?' · '+esc(langName(u.lang).split(' · ')[0]):''}${u.self?' · <span class="selfreg">signed up</span>':''}${u.active?'':' · <em>switched off</em>'}</small>${u.email||u.phone?`<small class="ucontact">${u.country?`${flagOf(u.country)} ${esc((COUNTRIES.find(c=>c[0]===u.country)||[,u.country])[1])} · `:''}${u.phone?`<a href="tel:${esc(u.phone.replace(/\s/g,''))}">${esc(u.phone)}</a> · `:''}${u.email?`<a href="mailto:${esc(u.email)}">${esc(u.email)}</a>`:''}</small>`:''}</span>
  <span>${s.started&&s.platform?`${s.platform==='win'?'Windows':'Mac'} · ${trackName[s.track]||'–'}`:'<span class="muted">Not started</span>'}</span>
  <span>${s.level?`<span class="chip2">${esc(s.level)}</span>`:'–'}</span>
  <span class="prog2"><span class="pbar"><i style="width:${pct}%"></i></span><small>${s.done||0} / ${s.total||0} lessons</small>${PROG_KEYS.filter(k=>s.prog?.[k]?.started).map(k=>`<small class="aiprog">${PROGRAMMES[k].name}: ${s.prog[k].passed} / ${s.prog[k].total}${u.certs?.[k]?' · <b>certified</b>':''}</small>`).join('')}</span>

@@ -964,3 +964,5 @@ li>.sub{margin-bottom:.2em}
 .read.speaking .rd-stop{display:inline-flex}
 .read.speaking{background:#E0463E;border-color:#E0463E;color:#fff}
 .read .sq{display:inline-block;width:11px;height:11px;border-radius:2px;background:currentColor}
+.inrow.telrow select{flex:none;width:7.4em;padding-right:4px;min-width:0;text-overflow:ellipsis}
+.authform select{width:100%;padding:12px 14px;border-radius:14px;border:2px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
