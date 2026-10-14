@@ -4,7 +4,7 @@
    ===================================================================== */
 const EV_TZ=[['Asia/Kolkata','India time (IST)'],['Asia/Dubai','UAE time (GST)'],['Asia/Riyadh','Saudi time (AST)'],['Asia/Qatar','Qatar time (AST)'],['Europe/London','UK time']];
 const EV_CUR=['AED','INR','USD','SAR','QAR','OMR'];
-let EVENTS=[],EVSET={whatsapp:'+919539244342'};
+let EVENTS=[],EVSET={whatsapp:'+919539244342',calUrl:'',calEmail:''};
 const evDate=e=>{try{const d=new Date(e.start+':00');return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',hour12:true})+' '+((EV_TZ.find(t=>t[0]===e.tz)||[])[1]||'').replace(/.*\((.*)\)/,'$1')}catch(x){return e.start}};
 const evLink=e=>location.origin+'/events/'+e.slug;
 const STATE_LABEL={open:['Registration open','ok'],closed:['Registration closed','no'],full:['Fully booked','no'],ended:['Ended','muted'],none:['Info only','muted']};
@@ -29,12 +29,14 @@ function renderEvents(){
   <div class="evbtns"><button type="button" class="btn sm" data-ev="edit" data-id="${e.id}">Edit</button>${e.regMode==='form'?`<button type="button" class="btn sm ghost" data-ev="regs" data-id="${e.id}">Registrations</button>`:''}${e.regMode!=='none'&&e.state!=='ended'?`<button type="button" class="btn sm ghost" data-ev="toggle" data-id="${e.id}">${e.regOpen?'Close registration':'Open registration'}</button>`:''}<button type="button" class="btn sm ghost" data-ev="copy" data-id="${e.id}">Copy link</button><a class="btn sm ghost" href="/events/${esc(e.slug)}" target="_blank" rel="noopener">View page ↗</a></div></div></article>`};
  const t=e=>Date.parse(e.start+':00');const up=EVENTS.filter(e=>e.state!=='ended').sort((a,b)=>t(a)-t(b)),past=EVENTS.filter(e=>e.state==='ended').sort((a,b)=>t(b)-t(a));
  main.innerHTML=`<div class="admhead"><h1>Events</h1><button type="button" class="btn" id="newev">＋ New event</button></div>
+ <div class="calbar ${EVSET.calUrl?'on':''}"><span class="calic">📅</span><div><b>Google Calendar ${EVSET.calUrl?'connected':'not connected'}</b><small>${EVSET.calUrl?`Invitations are sent from ${esc(EVSET.calEmail||'your Google account')}. Each event gets its own calendar entry with the event name.`:'Connect it so everyone who registers gets a calendar invitation by email, with reminders.'}</small></div><button type="button" class="btn sm ${EVSET.calUrl?'ghost':''} calsetup">${EVSET.calUrl?'Settings':'Connect Google Calendar'}</button></div>
  <details class="evset"><summary><b>Event settings</b> · WhatsApp for approvals: ${esc(EVSET.whatsapp)}</summary>
   <form class="mform evsetform"><div class="field"><label for="es-wa">WhatsApp number for paid registrations</label><input id="es-wa" value="${esc(EVSET.whatsapp)}" inputmode="tel"><small class="small">Visitors who register for a paid event send their details to this number for payment and approval. Include the country code.</small></div>
   <p class="formerr"></p><button class="btn sm" type="submit">Save settings</button></form></details>
  <h2 class="evh">Upcoming</h2>${up.length?`<div class="evlist">${up.map(card).join('')}</div>`:`<div class="empty"><p>No upcoming events. Press <b>＋ New event</b> to add one. It appears on the website under <b>Upcoming events</b>.</p></div>`}
  ${past.length?`<h2 class="evh">Past</h2><div class="evlist past">${past.map(card).join('')}</div>`:''}`;
  $('#newev').onclick=()=>eventForm();
+ $('.calsetup').onclick=calSetup;
  $('.evsetform').onsubmit=async ev=>{ev.preventDefault();const f=ev.target;try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{whatsapp:$('#es-wa').value}});toast('Settings saved');renderEvents()}catch(err){$('.formerr',f).textContent=err.message}};
  $$('[data-ev]').forEach(b=>b.onclick=async()=>{const e=EVENTS.find(x=>x.id===b.dataset.id);const a=b.dataset.ev;
   if(a==='edit')return eventForm(e);
@@ -85,10 +87,119 @@ function eventForm(e){
   const del=$('.delev',m);if(del)del.onclick=async()=>{close();if(!await confirmBox('Delete event?',`<b>${esc(e.title)}</b> and all its registrations will be deleted. This cannot be undone.`,'Delete event',true))return;await AAPI.call('/admin/events/'+e.id,{method:'DELETE'});toast('Event deleted');await loadEvents();renderEvents()};
   $('form',m).onsubmit=async ev=>{ev.preventDefault();const v=n=>(m.querySelector(`input[name=${n}]:checked`)||{}).value;const btn=$('button[type=submit]',m);btn.disabled=true;
    const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked};
-   try{await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(isNew?'Event created':'Event saved');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
+   try{const sv=await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(sv.calendar==='ok'?'Event saved. Calendar invitation updated for all guests.':sv.calendar?'Event saved, but the calendar was not updated: '+sv.calendar:isNew?'Event created':'Event saved',!!sv.calendar&&sv.calendar!=='ok');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
  });
 }
 
+
+const CAL_SCRIPT=`// Aqlyon events → Google Calendar
+// Each website event becomes ONE event in this Google account's calendar, titled with the event name.
+// People who register are added as guests; Google emails them the invitation from this account.
+var SECRET = '__SECRET__';
+
+function doPost(e) {
+  var out;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(25000);
+  try {
+    var d = JSON.parse(e.postData.contents);
+    if (d.secret !== SECRET) out = { ok: false, error: 'Wrong key. Copy the code again from the admin panel.' };
+    else if (d.action === 'ping') { Calendar.Calendars.get('primary'); out = { ok: true, email: Session.getEffectiveUser().getEmail() }; }
+    else if (d.action === 'sync') { upsert(d.event, true); out = { ok: true }; }
+    else if (d.action === 'invite') out = guests(d.event, d.emails, true);
+    else if (d.action === 'uninvite') out = guests(d.event, d.emails, false);
+    else out = { ok: false, error: 'Unknown action' };
+  } catch (err) {
+    out = { ok: false, error: String(err && err.message || err) };
+  } finally {
+    lock.releaseLock();
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// find the calendar event made for this website event (by its id, never by name)
+function find(id) {
+  var props = PropertiesService.getScriptProperties(), saved = props.getProperty('ev_' + id);
+  if (saved) { try { var ev = Calendar.Events.get('primary', saved); if (ev.status !== 'cancelled') return ev; } catch (x) {} }
+  var list = Calendar.Events.list('primary', { privateExtendedProperty: 'aqlyonId=' + id, showDeleted: false, maxResults: 1 });
+  if (list.items && list.items.length) { props.setProperty('ev_' + id, list.items[0].id); return list.items[0]; }
+  return null;
+}
+
+function body(c) {
+  return {
+    summary: c.title,
+    description: c.description,
+    location: c.location,
+    start: { dateTime: c.start, timeZone: c.timeZone },
+    end: { dateTime: c.end, timeZone: c.timeZone }
+  };
+}
+
+// create the event, or bring its name, time, place and details up to date
+function upsert(c, notify) {
+  var ev = find(c.id), b = body(c);
+  if (!ev) {
+    b.attendees = [];
+    b.guestsCanSeeOtherGuests = false;
+    b.guestsCanInviteOthers = false;
+    b.extendedProperties = { private: { aqlyonId: c.id } };
+    b.reminders = { useDefault: false, overrides: [{ method: 'email', minutes: 1440 }, { method: 'popup', minutes: 60 }] };
+    ev = Calendar.Events.insert(b, 'primary', { sendUpdates: 'none' });
+    PropertiesService.getScriptProperties().setProperty('ev_' + c.id, ev.id);
+    return ev;
+  }
+  var same = ev.summary === b.summary && (ev.location || '') === (b.location || '') && (ev.description || '') === (b.description || '') &&
+    new Date(ev.start.dateTime).getTime() === new Date(c.start).getTime() && new Date(ev.end.dateTime).getTime() === new Date(c.end).getTime();
+  if (same) return ev;
+  var hasGuests = (ev.attendees || []).length > 0;
+  return Calendar.Events.patch(b, 'primary', ev.id, { sendUpdates: notify && hasGuests ? 'all' : 'none' });
+}
+
+function guests(c, emails, add) {
+  var ev = upsert(c, true), list = ev.attendees || [];
+  var have = {}; list.forEach(function (a) { have[String(a.email).toLowerCase()] = true; });
+  var want = {}; (emails || []).forEach(function (m) { want[String(m).toLowerCase()] = true; });
+  var next;
+  if (add) { next = list.slice(); Object.keys(want).forEach(function (m) { if (!have[m]) next.push({ email: m }); }); }
+  else next = list.filter(function (a) { return !want[String(a.email).toLowerCase()]; });
+  if (next.length !== list.length) Calendar.Events.patch({ attendees: next }, 'primary', ev.id, { sendUpdates: 'all' });
+  return { ok: true, guests: next.length };
+}
+`;
+
+/* ---------- Connect Google Calendar: step-by-step, the code (with this site's private key), paste the link, test ---------- */
+async function calSetup(){
+ let st;try{st=await AAPI.call('/admin/events/settings')}catch(err){return toast(err.message,true)}
+ const code=CAL_SCRIPT.replace('__SECRET__',st.calSecret);
+ modal(`<h2>Connect Google Calendar</h2>
+ <p>Everyone who registers gets a <b>Google Calendar invitation by email</b>, sent from your Google account. Each event on the website becomes <b>its own calendar entry, titled with the event name</b>, so invitations for different events never mix. Guests can't see each other.</p>
+ ${st.calUrl?`<p class="calok">✅ Connected${st.calEmail?` to <b>${esc(st.calEmail)}</b>`:''}.</p>`:''}
+ <ol class="steps2">
+  <li>Sign in to Google as <b>aqlyonacademy@gmail.com</b> (the account that should send the invitations). Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a>. Name it <b>Aqlyon events calendar</b>.</li>
+  <li>Delete the sample code, paste this code and press <b>Save</b> (💾). It contains this website's private key, so don't share it.<pre class="creds">${esc(code)}</pre><button type="button" class="btn ghost sm cpcode">Copy code</button></li>
+  <li>On the left, next to <b>Services</b>, click <b>＋</b>. Choose <b>Google Calendar API</b> and click <b>Add</b>.</li>
+  <li>Click <b>Deploy → New deployment</b>. Click the ⚙ next to "Select type" and choose <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Click <b>Deploy</b>.</li>
+  <li>Google asks for permission: <b>Authorize access</b> → choose aqlyonacademy@gmail.com → if you see "Google hasn't verified this app", click <b>Advanced → Go to Aqlyon events calendar</b> → <b>Allow</b>. (It's your own script, so this warning is normal.)</li>
+  <li>Copy the <b>Web app URL</b> (starts with https://script.google.com/macros/s/ and ends with /exec), paste it below and press <b>Connect</b>. The panel checks the link straight away.</li>
+ </ol>
+ <form class="mform calform"><div class="field"><label for="cal-url">Web app URL</label><input id="cal-url" value="${esc(st.calUrl)}" placeholder="https://script.google.com/macros/s/…/exec"></div><p class="formerr" role="alert"></p>
+ <div class="mrow">${st.calUrl?'<button type="button" class="btn danger caldis" style="margin-right:auto">Disconnect</button><button type="button" class="btn ghost caltest">Test</button>':''}<button type="button" class="btn ghost" data-close>Close</button><button class="btn" type="submit">${st.calUrl?'Save':'Connect'}</button></div></form>
+ <h3>Good to know</h3>
+ <ul class="steps2 small"><li><b>Free events:</b> the invitation goes out as soon as someone registers. <b>Paid events:</b> when you press Approve. Rejecting or cancelling removes them and Google tells them.</li>
+ <li><b>Changing an event</b> (name, date, time or place) updates the calendar entry, and Google emails every guest the change.</li>
+ <li><b>Reminders:</b> each guest's Google Calendar reminds them with their own reminder settings (usually a notification before the event). The calendar file people download after registering also adds reminders 1 day and 1 hour before. People can also use <b>Add to Google Calendar</b> on the event page at any time.</li>
+ <li>People who registered <b>before</b> you connected: open the event's <b>Registrations</b> and press <b>Send calendar invites</b>.</li>
+ <li>If you change the code later: <b>Deploy → Manage deployments → ✏ Edit → Version: New version → Deploy</b>. The link stays the same.</li></ul>`,(m,close)=>{
+  m.querySelector('.modal').classList.add('wide');
+  $('.cpcode',m).onclick=()=>copy(code);
+  $('.calform',m).onsubmit=async ev=>{ev.preventDefault();const b=$('button[type=submit]',m);b.disabled=true;b.textContent='Checking…';$('.formerr',m).textContent='';
+   try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:$('#cal-url',m).value}});close();toast(EVSET.calUrl?`Google Calendar connected${EVSET.calEmail?' ('+EVSET.calEmail+')':''}`:'Saved');renderEvents()}
+   catch(err){$('.formerr',m).textContent=err.message;b.disabled=false;b.textContent=st.calUrl?'Save':'Connect'}};
+  const t=$('.caltest',m);if(t)t.onclick=async()=>{t.disabled=true;try{const d=await AAPI.call('/admin/events/settings',{method:'POST',body:{action:'test'}});toast('Working. Invitations are sent from '+(d.email||'your Google account'))}catch(err){toast(err.message,true)}t.disabled=false};
+  const dc=$('.caldis',m);if(dc)dc.onclick=async()=>{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:''}});close();toast('Google Calendar disconnected');renderEvents()};
+ });
+}
 
 /* ---------- Excel (.xlsx) download, built in the browser: a small zip (stored) with the sheet XML ---------- */
 const CRC_T=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
@@ -137,7 +248,9 @@ const regTime=at=>new Date(at).toLocaleString('en-GB',{day:'numeric',month:'shor
 
 async function regsView(e){
  const main=$('.adm');main.innerHTML='<p class="lead" style="margin-top:20px">Loading registrations…</p>';
- let regs=[];try{regs=(await AAPI.call(`/admin/events/${e.id}/regs`)).regs}catch(err){toast(err.message,true);return renderEvents()}
+ let regs=[],calOn=false;try{const d=await AAPI.call(`/admin/events/${e.id}/regs`);regs=d.regs;calOn=d.calendar}catch(err){toast(err.message,true);return renderEvents()}
+ const notInvited=()=>regs.filter(r=>['confirmed','approved'].includes(r.status)&&!r.cal).length;
+ const calCell=r=>!['confirmed','approved'].includes(r.status)?'<span class="muted">–</span>':r.cal?'<span class="calyes" title="Invited '+esc(regTime(r.cal))+'">✓ Invited</span>':r.calErr?'<span class="calno" title="'+esc(r.calErr)+'">Not sent</span>':'<span class="muted">Not yet</span>';
  let q='',fs='all';
  const live=r=>!['rejected','cancelled'].includes(r.status);
  const where=e.mode==='online'?(e.onlineUrl?`Join online: ${e.onlineUrl}`:'We will send the online joining link before the event.'):`Venue: ${e.locationName}${e.mapUrl?' · Map: '+e.mapUrl:''}`;
@@ -155,26 +268,31 @@ async function regsView(e){
  const table=()=>{const list=shown();
   if(!regs.length)return '<div class="empty"><p>No registrations yet. They appear here as soon as someone registers on the event page.</p></div>';
   if(!list.length)return '<div class="empty"><p>No registrations match your search.</p></div>';
-  return `<div class="rtwrap"><table class="rtable"><thead><tr><th>#</th><th>Ref</th><th>Name</th><th>Email</th><th>Mobile</th><th>WhatsApp</th><th>Country</th><th>Education</th><th>Student / Parent</th><th>People</th><th>Status</th><th>Registered on</th><th>Actions</th></tr></thead><tbody>${list.map(({r,n})=>{const [sl,sc]=REG_ST[r.status]||[r.status,''];return `<tr class="${live(r)?'':'off'}"><td>${n}</td><td class="mono">${esc(r.ref)}</td><td><b>${esc(r.name)}</b></td><td><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></td><td><a href="tel:${esc(r.phone)}">${esc(r.phone)}</a></td><td><a href="${waLink(r.whatsapp||r.phone,'')}" target="_blank" rel="noopener">${esc(r.whatsapp||r.phone)}</a></td><td>${esc(countryName(r.country))}</td><td>${esc(r.education||'')}</td><td>${esc(r.role||'')}</td><td class="num">${r.seats}</td><td><span class="chipx ${sc}">${sl}</span></td><td class="nowrap">${esc(regTime(r.at))}</td><td><div class="regact">${acts(r)}</div></td></tr>`}).join('')}</tbody></table></div>`};
+  return `<div class="rtwrap"><table class="rtable"><thead><tr><th>#</th><th>Ref</th><th>Name</th><th>Email</th><th>Mobile</th><th>WhatsApp</th><th>Country</th><th>Education</th><th>Student / Parent</th><th>People</th><th>Status</th>${calOn?'<th>Calendar</th>':''}<th>Registered on</th><th>Actions</th></tr></thead><tbody>${list.map(({r,n})=>{const [sl,sc]=REG_ST[r.status]||[r.status,''];return `<tr class="${live(r)?'':'off'}"><td>${n}</td><td class="mono">${esc(r.ref)}</td><td><b>${esc(r.name)}</b></td><td><a href="mailto:${esc(r.email)}">${esc(r.email)}</a></td><td><a href="tel:${esc(r.phone)}">${esc(r.phone)}</a></td><td><a href="${waLink(r.whatsapp||r.phone,'')}" target="_blank" rel="noopener">${esc(r.whatsapp||r.phone)}</a></td><td>${esc(countryName(r.country))}</td><td>${esc(r.education||'')}</td><td>${esc(r.role||'')}</td><td class="num">${r.seats}</td><td><span class="chipx ${sc}">${sl}</span></td>${calOn?`<td class="nowrap">${calCell(r)}</td>`:''}<td class="nowrap">${esc(regTime(r.at))}</td><td><div class="regact">${acts(r)}</div></td></tr>`}).join('')}</tbody></table></div>`};
  const stats=()=>{const act=regs.filter(live),ppl=act.reduce((t,r)=>t+r.seats,0),pend=regs.filter(r=>r.status==='pending').length,stu=act.filter(r=>r.role==='Student').length,par=act.filter(r=>r.role==='Parent').length;
   return `<div class="rstats"><div><b>${regs.length}</b><span>Registrations</span></div><div><b>${ppl}${e.capacity?`<small> / ${e.capacity}</small>`:''}</b><span>People attending</span></div>${e.paid?`<div class="${pend?'hot':''}"><b>${pend}</b><span>Waiting for approval</span></div>`:''}<div><b>${stu}</b><span>Students</span></div><div><b>${par}</b><span>Parents</span></div></div>`};
  const opts=[['all','All'],['active','Attending'],...(e.paid?[['pending','Waiting for approval'],['approved','Approved'],['rejected','Rejected']]:[['confirmed','Confirmed']]),['cancelled','Cancelled']];
  main.innerHTML=`<p class="rback"><button type="button" class="linkbtn backev">← All events</button></p>
   <div class="admhead rhead"><div><h1>Registrations</h1><p class="small"><b>${esc(e.title)}</b> · ${esc(evDate(e))}${e.mode==='offline'&&e.locationName?' · '+esc(e.locationName):e.mode==='online'?' · Online':''}</p></div>
   <div class="evbtns"><button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost editev">Edit event</button></div></div>
+  <div class="calnote"></div>
   <div class="rstatwrap">${stats()}</div>
   <div class="rtools"><input type="search" class="rq" placeholder="Search name, email, mobile or ref" aria-label="Search registrations"><select class="rf" aria-label="Show">${opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></div>
   <div class="rtbody">${table()}</div>`;
  const bind=()=>$$('[data-r]',main).forEach(b=>b.onclick=async()=>{const st=b.dataset.r;b.disabled=true;
   try{const d=await AAPI.call(`/admin/events/${e.id}/regs/${b.dataset.id}`,{method:'PATCH',body:{status:st}});regs=regs.map(x=>x.id===d.reg.id?d.reg:x);
-   toast(st==='approved'?'Approved. Now send the joining details on WhatsApp.':'Updated');
+   toast((st==='approved'?'Approved. Now send the joining details on WhatsApp.':'Updated')+(d.calendar&&d.calendar!=='ok'?' Calendar invitation not sent: '+d.calendar:d.calendar==='ok'?(st==='approved'||st==='confirmed'?' Calendar invitation sent.':' Removed from the calendar.'):''),!!d.calendar&&d.calendar!=='ok');
    if(st==='approved'){e.onlineUrl=d.onlineUrl||e.onlineUrl;window.open(waLink(d.reg.whatsapp||d.reg.phone,confirmMsg(d.reg)),'_blank','noopener')}
    draw();loadEvents()}catch(err){b.disabled=false;toast(err.message,true)}});
- const draw=()=>{$('.rtbody',main).innerHTML=table();$('.rstatwrap',main).innerHTML=stats();bind()};
+ const note=()=>{const n=notInvited(),el=$('.calnote',main);
+  el.innerHTML=!calOn?`<p class="small">📅 Calendar invitations are off. <button type="button" class="linkbtn gocal">Connect Google Calendar</button> so people get an invitation by email.</p>`:n?`<div class="calbar"><span class="calic">📅</span><div><b>${n} ${n===1?'person has':'people have'} no calendar invitation yet</b><small>For example people who registered before Google Calendar was connected, or when Google did not answer.</small></div><button type="button" class="btn sm invall">Send calendar invites</button></div>`:'';
+  const g=$('.gocal',el);if(g)g.onclick=calSetup;
+  const iv=$('.invall',el);if(iv)iv.onclick=async()=>{iv.disabled=true;iv.textContent='Sending…';try{const d=await AAPI.call(`/admin/events/${e.id}/regs`,{method:'POST',body:{action:'invite-all'}});regs=d.regs;toast(`Calendar invitations sent to ${d.invited} ${d.invited===1?'person':'people'}`)}catch(err){toast(err.message,true);try{regs=(await AAPI.call(`/admin/events/${e.id}/regs`)).regs}catch(x){}}draw()}};
+ const draw=()=>{$('.rtbody',main).innerHTML=table();$('.rstatwrap',main).innerHTML=stats();note();bind()};
  $('.rq',main).oninput=ev=>{q=ev.target.value;draw()};
  $('.rf',main).onchange=ev=>{fs=ev.target.value;draw()};
  $('.xls',main).onclick=download;
  $('.backev',main).onclick=async()=>{await loadEvents();renderEvents();scrollTo(0,0)};
  $('.editev',main).onclick=()=>eventForm(EVENTS.find(x=>x.id===e.id)||e);
- bind();scrollTo(0,0);
+ note();bind();scrollTo(0,0);
 }

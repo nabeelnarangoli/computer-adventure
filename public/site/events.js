@@ -133,7 +133,7 @@ rb.onclick=()=>{
   }else{
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">✓</span><h2>You're registered!</h2><p>See you at <b>${esc(E.title)}</b>, ${esc(fmtDay(E))}, ${esc(timeLine(E))}.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p>
     ${d.onlineUrl?`<p class="join">Joining link: <a href="${esc(d.onlineUrl)}" target="_blank" rel="noopener">${esc(d.onlineUrl)}</a><br><small>Save it now. It's also added to your calendar file.</small></p>`:E.mode==='online'?'<p>We\'ll send you the joining link before the event.</p>':E.mapUrl?`<p><a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions to ${esc(E.locationName)} ↗</a></p>`:''}
-    <p class="small remind">📅 A calendar file is downloading. Open it to add this event to your calendar, with reminders 1 day and 1 hour before.</p>
+    <p class="small remind">📅 A calendar file is downloading. Open it to add this event to your calendar, with reminders 1 day and 1 hour before.${d.calendar?' We\'ve also sent a Google Calendar invitation to <b>'+esc(body.email)+'</b>.':''}</p>
     <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download again</button><button type="button" class="btn line sharebig">${ICON.share} Share</button></div>
     <p class="small">Tell a friend: <a href="https://wa.me/?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p></div>`;
    $$('.sharebig',dlg).forEach(b=>b.onclick=shareNow);

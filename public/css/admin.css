@@ -100,3 +100,11 @@
 .regact{display:flex;gap:6px;flex-wrap:wrap}
 .rtools .rf{min-width:0}
 @media (max-width:700px){.rhead .evbtns{width:100%}.rstats>div{min-width:0;flex:1 1 40%}.evcard,.evcover{grid-template-columns:1fr}.f3{grid-template-columns:1fr}}
+.calbar{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin:0 0 12px;flex-wrap:wrap}
+.calbar.on{border-color:#9ED9BB;background:#F1FBF5}
+.calbar>div{flex:1;min-width:200px}.calbar small{display:block;color:var(--muted);font-size:13px}
+.calic{font-size:24px}
+.calok{background:#F1FBF5;border:1px solid #9ED9BB;border-radius:12px;padding:8px 12px}
+.calyes{color:#0B6B43;font-weight:600}.calno{color:#A1262A;font-weight:600;cursor:help}.rtable .muted{color:var(--muted)}
+.calnote:empty{display:none}.calnote{margin:10px 0 0}
+.calform~h3,.modal h3{margin:18px 0 4px;font-size:17px}.modal pre.creds{max-height:220px;overflow:auto}
