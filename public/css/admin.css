@@ -242,3 +242,8 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 @media (max-width:700px){.fbtiles{grid-template-columns:repeat(2,minmax(0,1fr))}.fbtile b{font-size:14px;overflow-wrap:anywhere}
  .fbpickbar{display:grid;grid-template-columns:1fr 1fr;gap:8px}.fbpickbar .fbpicked{grid-column:1/-1;margin:0}.fbpickbar .btn{width:100%}}
 @media (max-width:700px){.modal .mrow.fbpickbar{display:grid;grid-template-columns:1fr 1fr;flex-direction:initial}.modal .fbpickbar .btn{width:100%}.fbtile b{overflow-wrap:normal;hyphens:auto;font-size:13.5px}.fbtile{padding-left:46px}}
+/* helper check-in link */
+.stlink{display:grid;grid-template-columns:170px minmax(0,1fr);gap:16px;align-items:center;background:var(--soft);border-radius:16px;padding:14px;margin:12px 0}
+.stqr{background:#fff;border-radius:12px;padding:6px}.stqr svg{display:block;width:100%;height:auto}
+.stin{width:100%;font:14px var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:inherit;margin:6px 0 10px}
+@media (max-width:600px){.stlink{grid-template-columns:1fr}.stqr{max-width:200px}}

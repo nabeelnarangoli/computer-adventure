@@ -112,6 +112,17 @@ export function createEvents({ getStore, json }) {
   const rawSettings = async () => (((await meta().get('settings', { type: 'json' })) || {}).events || {});
   const evSettings = async () => ({ whatsapp: (await rawSettings()).whatsapp || '+919539244342' });
   const calCfg = async () => { const s = await rawSettings(); return s.calUrl ? { calUrl: s.calUrl, calSecret: s.calSecret, calEmail: s.calEmail } : null; };
+  // check-in link for helpers: works for one event, until 2 days after it ends, without the admin password
+  const p4 = (r) => String(r.phone || '').replace(/\D/g, '').slice(-4);
+  const staffView = (info) => ({ ...info, reg: { ...info.reg, phone: '••• ' + p4(info.reg), email: undefined, education: undefined } });
+  async function staffEvent(key) {
+    const ix = await meta().get('staff-' + key, { type: 'json' }); if (!ix) return { error: 'This check-in link is not valid. Ask the organiser for the current link.' };
+    const e = await events().get(ix.e, { type: 'json' });
+    if (!e || !e.staffOn || e.staffKey !== key) return { error: 'This check-in link has been turned off or replaced. Ask the organiser for the current link.' };
+    const endMs = e.end ? toUTC(e.end, e.tz) : toUTC(e.start, e.tz) + 3 * 3600_000;
+    if (Date.now() > endMs + 2 * 864e5) return { error: 'This check-in link has expired because the event is over.' };
+    return { e };
+  }
   // send invitation / update / cancellation emails; marks each registration with the result so the admin can see it
   async function calGuests(e, doc, list, kind, origin) {
     const cfg = await calCfg(); if (!cfg || !list.length) return null;
@@ -148,6 +159,29 @@ export function createEvents({ getStore, json }) {
       const e = await bySlug(m[1]);
       if (!e || !e.published) return json(404, { error: 'Event not found.' });
       return json(200, { event: publicEvent(e, await getRegs(e.id)), whatsapp: (await evSettings()).whatsapp });
+    }
+    m = path.match(/^\/staff\/([a-f0-9]{24})(?:\/badge\/([a-f0-9]{20}))?$/);
+    if (m) {
+      const st = await staffEvent(m[1]); if (st.error) return json(403, { error: st.error });
+      const e = st.e;
+      if (!m[2] && method === 'GET') {
+        const list = await getRegs(e.id);
+        return json(200, { event: { id: e.id, title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, locationName: e.locationName || '', mode: e.mode },
+          regs: list.map((r) => ({ id: r.id, tk: r.tk, ref: r.ref, name: r.name, role: r.role || '', seats: r.seats || 1, status: r.status, attended: r.attended || '', phone: '••• ' + p4(r), p4: p4(r) })) });
+      }
+      if (m[2]) {
+        const f = await byBadge(m[2]);
+        if (!f) return json(404, { error: 'This QR code is not an Aqlyon badge, or the registration was deleted.' });
+        if (f.e.id !== e.id) return json(409, { error: `This badge is for another event: ${f.e.title}.` });
+        if (method === 'POST') {
+          if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.` });
+          f.r.attended = body.attended ? (f.r.attended || new Date().toISOString()) : '';
+          f.r.checkedBy = body.attended ? 'helper link' : '';
+          await regs().setJSON(f.e.id, f.doc);
+        }
+        return json(200, staffView(checkinInfo(f.e, f.doc, f.r)));
+      }
+      return json(405, { error: 'Not allowed.' });
     }
     m = path.match(/^\/events\/([a-z0-9-]{1,80})\/upload$/);
     if (m && method === 'POST') {
@@ -281,10 +315,25 @@ export function createEvents({ getStore, json }) {
         if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.`, ...checkinInfo(f.e, f.doc, f.r) });
         const already = !!f.r.attended;
         f.r.attended = body.attended ? (f.r.attended || new Date().toISOString()) : '';
+        f.r.checkedBy = body.attended ? 'admin' : '';
         await regs().setJSON(f.e.id, f.doc);
         return json(200, { ...checkinInfo(f.e, f.doc, f.r), already: body.attended && already });
       }
       return json(200, checkinInfo(f.e, f.doc, f.r));
+    }
+    m = path.match(/^\/admin\/events\/([a-f0-9]{16})\/staff$/);
+    if (m && method === 'POST') {
+      const e = await events().get(m[1], { type: 'json' }); if (!e) return json(404, { error: 'Event not found.' });
+      if (body.on) {
+        if (!e.staffKey || body.reset) {
+          if (e.staffKey) await meta().delete('staff-' + e.staffKey);
+          e.staffKey = crypto.randomBytes(12).toString('hex');
+          await meta().setJSON('staff-' + e.staffKey, { e: e.id });
+        }
+        e.staffOn = true;
+      } else e.staffOn = false;
+      await events().setJSON(e.id, e);
+      return json(200, { on: e.staffOn, key: e.staffKey || '' });
     }
     m = path.match(/^\/admin\/events\/([a-f0-9]{16})(\/regs(?:\/([a-f0-9]{16}))?)?$/);
     if (m) {
@@ -335,6 +384,7 @@ export function createEvents({ getStore, json }) {
       }
       if (!m[2] && method === 'DELETE') {
         for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
+        if (e.staffKey) await meta().delete('staff-' + e.staffKey);
         await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
     }
     return null;

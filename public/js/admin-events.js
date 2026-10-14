@@ -272,7 +272,7 @@ async function regsView(e){
  const opts=[['all','All'],['active','Attending'],...(e.paid?[['pending','Waiting for approval'],['approved','Approved'],['rejected','Rejected']]:[['confirmed','Confirmed']]),['cancelled','Cancelled'],['in','Checked in'],['notin','Not checked in yet']];
  main.innerHTML=`<p class="rback"><button type="button" class="linkbtn backev">← All events</button></p>
   <div class="admhead rhead"><div><h1>Registrations</h1><p class="small"><b>${esc(e.title)}</b> · ${esc(evDate(e))}${e.mode==='offline'&&e.locationName?' · '+esc(e.locationName):e.mode==='online'?' · Online':''}</p></div>
-  <div class="evbtns">${e.mode!=='online'?'<button type="button" class="btn scanev">📷 Check-in</button>':''}<button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost editev">Edit event</button></div></div>
+  <div class="evbtns">${e.mode!=='online'?'<button type="button" class="btn scanev">📷 Check-in</button><button type="button" class="btn ghost staffev">🔗 Helper link</button>':''}<button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost editev">Edit event</button></div></div>
   <div class="calnote"></div>
   <div class="rstatwrap">${stats()}</div>
   <div class="rtools"><input type="search" class="rq" placeholder="Search name, email, mobile or ref" aria-label="Search registrations"><select class="rf" aria-label="Show">${opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></div>
@@ -296,6 +296,7 @@ async function regsView(e){
  $('.rf',main).onchange=ev=>{fs=ev.target.value;draw()};
  $('.xls',main).onclick=download;
  $('.backev',main).onclick=async()=>{await loadEvents();renderEvents();scrollTo(0,0)};
+ const sf=$('.staffev',main);if(sf)sf.onclick=()=>staffLinkView(EVENTS.find(x=>x.id===e.id)||e);
  const sc=$('.scanev',main);if(sc)sc.onclick=()=>{location.hash='#scan/'+e.id;showTab('checkin')};
  $('.editev',main).onclick=()=>eventForm(EVENTS.find(x=>x.id===e.id)||e);
  note();bind();scrollTo(0,0);
