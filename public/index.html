@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/site/site.css">
+<link rel="stylesheet" href="/site/events.css">
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"EducationalOrganization","name":"Aqlyon Career Discovery Centre","telephone":["+919539244342","+917034142256"],"address":{"@type":"PostalAddress","streetAddress":"First Floor, Muhyiddin Building, Old Bus Stand Approach Rd, behind Municipal Shopping Complex","addressLocality":"Koyilandy","addressRegion":"Kerala","postalCode":"673305","addressCountry":"IN"},"knowsLanguage":["ml","en","hi","ar"]}</script>
 </head>
 <body>
@@ -157,6 +158,16 @@
  </div>
 </section>
 
+<!-- ============ UPCOMING EVENTS (managed in the admin panel) ============ -->
+<section class="events" id="events">
+ <div class="wrap">
+  <div class="evtitle"><div><p class="kicker">What's on</p><h2>Upcoming events</h2><p class="sub">Career talks, workshops and webinars, at our centre and online. Register in a minute.</p></div></div>
+  <div class="evgrid" aria-live="polite"><div class="evskel"></div><div class="evskel"></div><div class="evskel"></div></div>
+  <p class="evnone" hidden>New events are announced here soon. Want to talk to a counsellor now? <a href="#contact">Book a consultation</a>.</p>
+  <details class="evpast" hidden><summary>Past events</summary><div class="evgrid small"></div></details>
+ </div>
+</section>
+
 <!-- ============ CONTACT ============ -->
 <section class="contact" id="contact">
  <div class="wrap">
@@ -198,5 +209,6 @@
  </div>
 </footer>
 <script src="/site/site.js"></script>
+<script src="/site/events.js"></script>
 </body>
 </html>

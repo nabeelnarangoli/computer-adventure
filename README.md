@@ -103,3 +103,11 @@ A second Aqlyon programme (`#dm`), Beginner to Intermediate, built on the same s
 - `/` is the company website: `public/index.html`, `public/site/site.css`, `public/site/site.js`.
 - The learning app moved to `/academy` (`public/academy.html`). Every "Aqlyon Academy" button on the website opens it. Admin stays at `/admin`.
 - The "Book a consultation" form uses Netlify Forms (form name `consultation`). In Netlify: Forms → enable form detection, then add an email notification so requests reach you. `/thanks` is the fallback page.
+
+## Upcoming events (website + admin)
+- Admin panel → **Events** tab: create events with name, summary, details, cover photo (resized in the browser), date/time and time zone, offline (location + Google Maps link) or online (private joining link), free or paid (price + currency), and registration: our form, an external link, or none. Optional seat limit and seats per person. Registration stays open until you untick it.
+- Website: **Upcoming events** section after Aqlyon Academy (past events folded below). Each event has a shareable page at `/events/<slug>` with link-preview tags, Event schema, add-to-calendar and share buttons.
+- Free events: registration is confirmed straight away; online events show the joining link after registering.
+- Paid events: the registration is saved as *waiting for approval* and the visitor is sent to WhatsApp (number in Event settings) with their details and reference. Approve in **Registrations**; this opens WhatsApp to the attendee with the confirmation and joining link.
+- Google Sheet (optional): Apps Script web app URL in Event settings (all events) or per event; every registration is appended as a row. Setup steps and the script are in the admin (How to connect a Google Sheet). Registrations are always kept in the admin too, with CSV export.
+- Storage: Netlify Blobs stores `events`, `regs`, `images`. Functions: `api` (`/api/*`) and `event-page` (`/events/*`).

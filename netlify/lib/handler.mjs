@@ -2,6 +2,7 @@
 // Runs inside a Netlify Function (production) or the local dev server (dev-server.mjs).
 // Storage is any object with get(key,{type:'json'}), setJSON(key,value), delete(key), list().
 import crypto from 'node:crypto';
+import { createEvents } from './events.mjs';
 
 const USER_RE = /^[a-z0-9._-]{3,24}$/;
 const KINDS = ['child', 'adult'];
@@ -85,11 +86,14 @@ export function createHandler({ getStore, env }) {
   };
   const getSettings = async (meta) => ({ allowRegister: true, ...((await meta.get('settings', { type: 'json' })) || {}) });
 
+  const EV = createEvents({ getStore, json });
   return async function handle(req) {
     const { admin, secret } = cfg();
     if (!admin) return json(500, { error: 'The server is not set up yet. Add an ADMIN_PASSWORD environment variable in Netlify and redeploy.' });
 
     const url = new URL(req.url);
+    const pm = url.pathname.match(/^\/events\/([a-z0-9-]{1,80})\/?$/);
+    if (pm && req.method === 'GET') return EV.page(pm[1], url.origin);
     const path = url.pathname.replace(/^\/api/, '').replace(/\/+$/, '') || '/';
     const method = req.method.toUpperCase();
     const users = getStore('users');
@@ -99,12 +103,14 @@ export function createHandler({ getStore, env }) {
     let body = {};
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
       const text = await req.text();
-      if (text.length > MAX_BODY) return json(413, { error: 'Too much data.' });
+      if (text.length > (path === '/admin/upload' ? 2_600_000 : MAX_BODY)) return json(413, { error: 'Too much data.' });
       try { body = text ? JSON.parse(text) : {}; } catch { return json(400, { error: 'Invalid JSON.' }); }
     }
     const auth = verify((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), secret);
 
     try {
+      const evr = await EV.routes({ path, method, body, req, auth });
+      if (evr) return evr;
       /* ---------- learner ---------- */
       if (path === '/login' && method === 'POST') {
         const username = String(body.username || '').trim().toLowerCase();
