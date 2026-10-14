@@ -107,3 +107,46 @@ function importView(e,regs,onDone){
   }
  });
 }
+
+/* ---------- WhatsApp send lists: share selected people with a helper who sends the confirmations ---------- */
+const slUrl=k=>`${location.origin}/send#${k}`;
+function slShare(e,l){
+ const qr=t=>{if(typeof qrcode!=='function')return '';const q=qrcode(0,'M');q.addData(t);q.make();const n=q.getModuleCount();let p='';for(let y=0;y<n;y++)for(let x=0;x<n;x++)if(q.isDark(y,x))p+=`M${x+3} ${y+3}h1v1h-1z`;return `<svg viewBox="0 0 ${n+6} ${n+6}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${p}"/></svg>`};
+ const msg=`Hi! Please send the WhatsApp confirmations for "${e.title}" (${l.total} people).\nOpen this link on your phone and tap "Send on WhatsApp" for each person:\n${slUrl(l.key)}\nPlease don't share this link.`;
+ modal(`<h2>WhatsApp list ready: ${esc(l.name)}</h2><p>Send this link to the helper who will send the messages. They see only the <b>${l.total}</b> people on this list, tap <b>Send on WhatsApp</b> for each one, and you can follow the progress under Registrations.</p>
+ <div class="stlink"><div class="stqr">${qr(slUrl(l.key))}</div><div><input class="stin" readonly value="${esc(slUrl(l.key))}" aria-label="List link"><div class="evbtns"><button type="button" class="btn sm slcp">Copy link</button><a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Send link on WhatsApp</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${esc(slUrl(l.key))}">Open ↗</a></div></div></div>
+ <p class="small">The link works until 2 days after the event. You can turn it off or delete it any time.</p><div class="mrow"><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{m.querySelector('.modal').classList.add('wide');$('.slcp',m).onclick=()=>copy(slUrl(l.key))});
+}
+function slCreate(e,regs,ids,after){
+ const okR=r=>['confirmed','approved'].includes(r.status);
+ const picked=regs.filter(r=>ids.includes(r.id)),good=picked.filter(okR),left=picked.length-good.length;
+ if(!good.length)return toast('Select confirmed people first. Only confirmed or approved people get a confirmation message.',true);
+ const TZN={'Asia/Kolkata':'India time','Asia/Dubai':'UAE time','Asia/Riyadh':'Saudi time','Asia/Qatar':'Qatar time','Europe/London':'UK time'};
+ const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};
+ const utc=l=>Date.parse(l+':00Z')-(OFF[e.tz]??330)*60000,tz=e.tz||'Asia/Kolkata',tf=ms=>new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'numeric',minute:'2-digit',hour12:true}).format(ms);
+ const when=`${new Intl.DateTimeFormat('en-GB',{timeZone:tz,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(utc(e.start))}, ${tf(utc(e.start))}${e.end?' – '+tf(utc(e.end)):''} (${TZN[tz]||''})`;   // same wording as the server
+ const ev={title:e.title,when,venue:e.mode==='online'?'Online':e.locationName||'',mapUrl:e.mode==='offline'?e.mapUrl||'':'',join:e.onlineUrl||'',page:evLink(e),mode:e.mode};
+ const sample=good[0],sp={name:sample.name,ref:sample.ref,seats:sample.seats,badge:e.mode!=='online'&&sample.tk?location.origin+'/badge/'+sample.tk:''};
+ const n=(e.sendLists||[]).length+1;
+ modal(`<h2>Share for WhatsApp</h2><p><b>${good.length}</b> ${good.length===1?'person':'people'} will be on this list${left?` (${left} not confirmed ${left===1?'is':'are'} left out)`:''}. A helper opens the link and sends each person this message from their own WhatsApp.</p>
+ <div class="field"><label for="slname">Name of the list <small>(e.g. the helper's name)</small></label><input id="slname" maxlength="60" value="List ${n}"></div>
+ <div class="field"><label for="slmsg">Message</label><div class="watags">${WA_TAGS.filter(([t])=>e.mode==='online'?!['{badge}','{map}'].includes(t):t!=='{join}').map(([t,l])=>`<button type="button" data-tag="${t}" title="Insert ${l}">${t}</button>`).join('')}</div><textarea id="slmsg" class="watpl">${esc(waDefault(e.mode==='online'))}</textarea><small class="small">Words in {curly brackets} are filled in for each person. *Stars* make text bold in WhatsApp.</small></div>
+ <p class="small"><b>Preview</b> for ${esc(sample.name)}:</p><pre class="wapre slprev"></pre>
+ <p class="formerr" role="alert"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn slgo">Create link</button></div>`,(m,close)=>{
+  m.querySelector('.modal').classList.add('wide');const ta=$('#slmsg',m);
+  const prev=()=>{$('.slprev',m).textContent=waFill(ta.value,ev,sp)};ta.oninput=prev;prev();
+  $$('[data-tag]',m).forEach(b=>b.onclick=()=>{const t=b.dataset.tag,s=ta.selectionStart??ta.value.length;ta.value=ta.value.slice(0,s)+t+ta.value.slice(ta.selectionEnd??s);ta.focus();ta.selectionStart=ta.selectionEnd=s+t.length;prev()});
+  $('.slgo',m).onclick=async x=>{x.target.disabled=true;try{const l=await AAPI.call(`/admin/events/${e.id}/sendlists`,{method:'POST',body:{name:$('#slname',m).value,msg:ta.value,ids:good.map(r=>r.id)}});
+   e.sendLists=[...(e.sendLists||[]),l.key];close();slShare(e,l);after&&after()}catch(err){$('.formerr',m).textContent=err.message;x.target.disabled=false}};
+ });
+}
+async function slPanel(e,box){
+ let lists=[];try{lists=(await AAPI.call(`/admin/events/${e.id}/sendlists`)).lists}catch(x){return}
+ if(!lists.length){box.innerHTML='';return}
+ box.innerHTML=`<h3 class="fbph">WhatsApp lists shared with helpers</h3><div class="wlists">${lists.map(l=>`<div class="wlist ${l.on?'':'offl'}"><div><b>${esc(l.name)}</b>${l.on?'':' <span class="chipx muted">Off</span>'}<small>${l.sent} of ${l.total} sent${l.valid<l.total?` · ${l.total-l.valid} no longer confirmed`:''}</small><div class="ckprog"><i style="width:${l.total?Math.round(l.sent/l.total*100):0}%"></i></div></div>
+  <span class="evbtns" style="margin:0"><button type="button" class="btn sm ghost" data-sl="share" data-k="${l.key}">Share link</button><button type="button" class="btn sm ghost" data-sl="${l.on?'off':'on'}" data-k="${l.key}">${l.on?'Turn off':'Turn on'}</button><button type="button" class="btn sm ghost danger" data-sl="del" data-k="${l.key}">Delete</button></span></div>`).join('')}</div>`;
+ $$('[data-sl]',box).forEach(b=>b.onclick=async()=>{const l=lists.find(x=>x.key===b.dataset.k),a=b.dataset.sl;
+  if(a==='share')return slShare(e,l);
+  if(a==='del'&&!await confirmBox('Delete this WhatsApp list?',`The link for <b>${esc(l.name)}</b> stops working. Messages already sent stay marked in Registrations.`,'Delete list',true))return;
+  try{if(a==='del'){await AAPI.call(`/admin/events/${e.id}/sendlists/${l.key}`,{method:'DELETE'});e.sendLists=(e.sendLists||[]).filter(k=>k!==l.key)}else await AAPI.call(`/admin/events/${e.id}/sendlists/${l.key}`,{method:'PATCH',body:{on:a==='on'}});slPanel(e,box)}catch(err){toast(err.message,true)}});
+}

@@ -268,3 +268,15 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .impmap select{font:14px var(--body);padding:8px 10px;border:1.5px solid var(--line);border-radius:10px;background:var(--surface);color:inherit}
 .impprev{max-height:380px;overflow:auto}.impprev .rtable{min-width:0}
 .modal.impmodal{max-width:980px}
+/* WhatsApp send lists */
+.wal{display:flex;flex-direction:column;gap:8px}
+.warow{align-items:center}.warow.done{opacity:.75}.warow.off{opacity:.55}
+.btn.wabtn{background:#25D366;border-color:#25D366;color:#073B1F;white-space:nowrap}
+.waacts{display:flex;align-items:center;gap:8px}
+.wapre{white-space:pre-wrap;font:14px/1.5 var(--body);background:#DCF8C6;color:#0B2A12;border-radius:12px;padding:12px;margin:10px 0 0}
+.wlists{display:flex;flex-direction:column;gap:8px;margin:0 0 12px}
+.wlist{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:10px 14px}
+.wlist.offl{opacity:.6}.wlist>div{flex:1;min-width:180px}.wlist small{display:block;color:var(--muted)}
+.wlist .ckprog{margin-top:6px;max-width:260px}
+.watags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.watags button{font:600 12px var(--body);border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 10px;cursor:pointer;color:inherit}
+.watpl{width:100%;font:15px/1.45 var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;min-height:200px}

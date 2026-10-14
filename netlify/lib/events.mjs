@@ -1,7 +1,7 @@
 // Upcoming events: storage, public API, admin API, registrations and the shareable event page.
 // Stores: events (one JSON per event), regs (one JSON per event: {list:[...]}), images (cover photos as base64).
 import crypto from 'node:crypto';
-import { inviteMail } from './invite-mail.mjs';
+import { inviteMail, whenText } from './invite-mail.mjs';
 import { cleanForm, formOf, checkAnswers } from './form-def.mjs';
 
 export const TZS = {
@@ -93,7 +93,18 @@ export function createEvents({ getStore, json }) {
   const images = () => getStore('images');
   const meta = () => getStore('meta');
   const badges = () => getStore('badges');
-  const uploads = () => getStore('uploads');          // files people attach in registration forms            // badge token -> { e: event id, r: registration id }
+  const uploads = () => getStore('uploads');
+  const sendlists = () => getStore('sendlists');      // WhatsApp send lists shared with helpers: key -> {e, name, ids, msg, on, sent}
+  const slSummary = (l, doc) => ({ key: l.key, name: l.name, on: l.on, msg: l.msg, createdAt: l.createdAt, total: l.ids.length,
+    sent: l.ids.filter((id) => l.sent[id]).length, valid: l.ids.filter((id) => calOk(doc.list.find((r) => r.id === id))).length });
+  async function sendList(key) {
+    const l = await sendlists().get(key, { type: 'json' });
+    if (!l || !l.on) return { error: 'This WhatsApp list has been turned off or deleted. Ask the organiser for a new link.' };
+    const e = await events().get(l.e, { type: 'json' }); if (!e) return { error: 'This event no longer exists.' };
+    const endMs = e.end ? toUTC(e.end, e.tz) : toUTC(e.start, e.tz) + 3 * 3600_000;
+    if (Date.now() > endMs + 2 * 864e5) return { error: 'This WhatsApp list has expired because the event is over.' };
+    return { l, e };
+  }          // files people attach in registration forms            // badge token -> { e: event id, r: registration id }
   // every registration gets a private badge token; the QR code on the badge holds it
   async function ensureTk(e, r) { if (r.tk) return false; r.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(r.tk, { e: e.id, r: r.id }); return true; }
   async function byBadge(tk) {
@@ -160,6 +171,28 @@ export function createEvents({ getStore, json }) {
       const e = await bySlug(m[1]);
       if (!e || !e.published) return json(404, { error: 'Event not found.' });
       return json(200, { event: publicEvent(e, await getRegs(e.id)), whatsapp: (await evSettings()).whatsapp });
+    }
+    m = path.match(/^\/send\/([a-f0-9]{24})(?:\/([a-f0-9]{16}))?$/);
+    if (m) {
+      const sl = await sendList(m[1]); if (sl.error) return json(403, { error: sl.error });
+      const { l, e } = sl; const rs = regs(); const doc = (await rs.get(e.id, { type: 'json' })) || { list: [] };
+      const origin = new URL(req.url).origin;
+      if (!m[2] && method === 'GET') {
+        const people = [];
+        for (const id of l.ids) { const r = doc.list.find((x) => x.id === id); if (!r) continue; if (await ensureTk(e, r)) await rs.setJSON(e.id, doc);
+          people.push({ id: r.id, name: r.name, ref: r.ref, phone: r.phone, whatsapp: r.whatsapp || r.phone, seats: r.seats || 1, role: r.role || '', ok: calOk(r), status: r.status, badge: calOk(r) && e.mode !== 'online' ? `${origin}/badge/${r.tk}` : '', sent: (l.sent[id] || {}).at || '' }); }
+        return json(200, { list: { name: l.name, msg: l.msg }, event: { title: e.title, slug: e.slug, mode: e.mode, when: whenText(e), venue: e.mode === 'online' ? 'Online' : e.locationName || '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '', join: e.mode === 'online' ? e.onlineUrl || '' : '', page: `${origin}/events/${e.slug}` }, people });
+      }
+      if (m[2] && method === 'POST') {
+        if (!l.ids.includes(m[2])) return json(404, { error: 'This person is not on this list.' });
+        const r = doc.list.find((x) => x.id === m[2]); if (!r) return json(404, { error: 'Registration not found.' });
+        const at = body.sent ? new Date().toISOString() : '';
+        if (at) l.sent[m[2]] = { at }; else delete l.sent[m[2]];
+        await sendlists().setJSON(l.key, l);
+        r.wa = at ? { at, by: l.name } : null; await rs.setJSON(e.id, doc);
+        return json(200, { sent: at });
+      }
+      return json(405, { error: 'Not allowed.' });
     }
     m = path.match(/^\/staff\/([a-f0-9]{24})(?:\/badge\/([a-f0-9]{20}))?$/);
     if (m) {
@@ -322,12 +355,34 @@ export function createEvents({ getStore, json }) {
       }
       return json(200, checkinInfo(f.e, f.doc, f.r));
     }
+    m = path.match(/^\/admin\/events\/([a-f0-9]{16})\/sendlists(?:\/([a-f0-9]{24}))?$/);
+    if (m) {
+      const e = await events().get(m[1], { type: 'json' }); if (!e) return json(404, { error: 'Event not found.' });
+      const doc = (await regs().get(e.id, { type: 'json' })) || { list: [] };
+      const keys = e.sendLists || [];
+      if (!m[2] && method === 'GET') { const out = []; for (const k of keys) { const l = await sendlists().get(k, { type: 'json' }); if (l) out.push(slSummary(l, doc)); } return json(200, { lists: out.reverse() }); }
+      if (!m[2] && method === 'POST') {
+        const ids = [...new Set((Array.isArray(body.ids) ? body.ids : []))].filter((id) => doc.list.some((r) => r.id === id && calOk(r))).slice(0, 1000);
+        if (!ids.length) return json(400, { error: 'Select confirmed people first. Only confirmed or approved people get a confirmation message.' });
+        const l = { key: crypto.randomBytes(12).toString('hex'), e: e.id, name: String(body.name || '').trim().slice(0, 60) || `List ${keys.length + 1}`, msg: String(body.msg || '').slice(0, 1500), ids, on: true, sent: {}, createdAt: new Date().toISOString() };
+        await sendlists().setJSON(l.key, l); e.sendLists = [...keys, l.key]; await events().setJSON(e.id, e);
+        return json(201, slSummary(l, doc));
+      }
+      if (m[2]) {
+        if (!keys.includes(m[2])) return json(404, { error: 'List not found.' });
+        const l = await sendlists().get(m[2], { type: 'json' }); if (!l) return json(404, { error: 'List not found.' });
+        if (method === 'PATCH') { if (body.on !== undefined) l.on = !!body.on; if (body.name !== undefined) l.name = String(body.name).trim().slice(0, 60) || l.name; if (body.msg !== undefined) l.msg = String(body.msg).slice(0, 1500); await sendlists().setJSON(l.key, l); return json(200, slSummary(l, doc)); }
+        if (method === 'DELETE') { await sendlists().delete(l.key); e.sendLists = keys.filter((k) => k !== l.key); await events().setJSON(e.id, e); return json(200, { ok: true }); }
+      }
+      return json(405, { error: 'Not allowed.' });
+    }
     m = path.match(/^\/admin\/events\/([a-f0-9]{16})\/staff$/);
     if (m && method === 'POST') {
       const e = await events().get(m[1], { type: 'json' }); if (!e) return json(404, { error: 'Event not found.' });
       if (body.on) {
         if (!e.staffKey || body.reset) {
           if (e.staffKey) await meta().delete('staff-' + e.staffKey);
+        for (const k of e.sendLists || []) await sendlists().delete(k);
           e.staffKey = crypto.randomBytes(12).toString('hex');
           await meta().setJSON('staff-' + e.staffKey, { e: e.id });
         }
