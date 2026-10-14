@@ -108,3 +108,4 @@
 .calyes{color:#0B6B43;font-weight:600}.calno{color:#A1262A;font-weight:600;cursor:help}.rtable .muted{color:var(--muted)}
 .calnote:empty{display:none}.calnote{margin:10px 0 0}
 .calform~h3,.modal h3{margin:18px 0 4px;font-size:17px}.modal pre.creds{max-height:220px;overflow:auto}
+.calbar.warn{border-color:#E9B949;background:#FFF8E3}.calwarn{background:#FFF8E3;border:1px solid #E9B949;border-radius:12px;padding:8px 12px}

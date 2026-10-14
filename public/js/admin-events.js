@@ -29,7 +29,7 @@ function renderEvents(){
   <div class="evbtns"><button type="button" class="btn sm" data-ev="edit" data-id="${e.id}">Edit</button>${e.regMode==='form'?`<button type="button" class="btn sm ghost" data-ev="regs" data-id="${e.id}">Registrations</button>`:''}${e.regMode!=='none'&&e.state!=='ended'?`<button type="button" class="btn sm ghost" data-ev="toggle" data-id="${e.id}">${e.regOpen?'Close registration':'Open registration'}</button>`:''}<button type="button" class="btn sm ghost" data-ev="copy" data-id="${e.id}">Copy link</button><a class="btn sm ghost" href="/events/${esc(e.slug)}" target="_blank" rel="noopener">View page ↗</a></div></div></article>`};
  const t=e=>Date.parse(e.start+':00');const up=EVENTS.filter(e=>e.state!=='ended').sort((a,b)=>t(a)-t(b)),past=EVENTS.filter(e=>e.state==='ended').sort((a,b)=>t(b)-t(a));
  main.innerHTML=`<div class="admhead"><h1>Events</h1><button type="button" class="btn" id="newev">＋ New event</button></div>
- <div class="calbar ${EVSET.calUrl?'on':''}"><span class="calic">📅</span><div><b>Google Calendar ${EVSET.calUrl?'connected':'not connected'}</b><small>${EVSET.calUrl?`Invitations are sent from ${esc(EVSET.calEmail||'your Google account')}. Each event gets its own calendar entry with the event name.`:'Connect it so everyone who registers gets a calendar invitation by email, with reminders.'}</small></div><button type="button" class="btn sm ${EVSET.calUrl?'ghost':''} calsetup">${EVSET.calUrl?'Settings':'Connect Google Calendar'}</button></div>
+ <div class="calbar ${EVSET.calUrl&&!EVSET.calNeedsUpdate?'on':EVSET.calNeedsUpdate?'warn':''}"><span class="calic">📅</span><div><b>Calendar invitations ${EVSET.calNeedsUpdate?'need a quick update':EVSET.calUrl?'on':'off'}</b><small>${EVSET.calNeedsUpdate?'Switch to our own invitation email (“Invitation from Aqlyon Academy: event name”). Takes 2 minutes.':EVSET.calUrl?`Emailed from ${esc(EVSET.calEmail||'your Google account')} as “Invitation from Aqlyon Academy: <i>event name</i>”, with the event attached for their calendar.`:'Connect so everyone who registers gets an invitation email with the event for their calendar.'}</small></div><button type="button" class="btn sm ${EVSET.calUrl&&!EVSET.calNeedsUpdate?'ghost':''} calsetup">${EVSET.calNeedsUpdate?'Update now':EVSET.calUrl?'Settings':'Connect'}</button></div>
  <details class="evset"><summary><b>Event settings</b> · WhatsApp for approvals: ${esc(EVSET.whatsapp)}</summary>
   <form class="mform evsetform"><div class="field"><label for="es-wa">WhatsApp number for paid registrations</label><input id="es-wa" value="${esc(EVSET.whatsapp)}" inputmode="tel"><small class="small">Visitors who register for a paid event send their details to this number for payment and approval. Include the country code.</small></div>
   <p class="formerr"></p><button class="btn sm" type="submit">Save settings</button></form></details>
@@ -87,20 +87,21 @@ function eventForm(e){
   const del=$('.delev',m);if(del)del.onclick=async()=>{close();if(!await confirmBox('Delete event?',`<b>${esc(e.title)}</b> and all its registrations will be deleted. This cannot be undone.`,'Delete event',true))return;await AAPI.call('/admin/events/'+e.id,{method:'DELETE'});toast('Event deleted');await loadEvents();renderEvents()};
   $('form',m).onsubmit=async ev=>{ev.preventDefault();const v=n=>(m.querySelector(`input[name=${n}]:checked`)||{}).value;const btn=$('button[type=submit]',m);btn.disabled=true;
    const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked};
-   try{const sv=await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(sv.calendar==='ok'?'Event saved. Calendar invitation updated for all guests.':sv.calendar?'Event saved, but the calendar was not updated: '+sv.calendar:isNew?'Event created':'Event saved',!!sv.calendar&&sv.calendar!=='ok');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
+   try{const sv=await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(sv.calendar==='ok'?'Event saved. Updated invitation emailed to everyone invited.':sv.calendar?'Event saved, but the updated invitation was not emailed: '+sv.calendar:isNew?'Event created':'Event saved',!!sv.calendar&&sv.calendar!=='ok');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
  });
 }
 
 
-const CAL_SCRIPT=`// Aqlyon events → Google Calendar
-// Each website event becomes ONE event in this Google account's calendar, titled with the event name.
-// People who register are added as guests; Google emails them the invitation from this account.
+const CAL_SCRIPT=`// Aqlyon Academy event invitations
+// Sends the invitation emails prepared by the website from this Gmail account, with the event attached
+// as a calendar invitation. Subject: "Invitation from Aqlyon Academy: <event name>".
 var SECRET = '__SECRET__';
+var VERSION = 2;
 
-// Run this once from the editor (choose "authorize" at the top, press Run) so Google asks for Calendar permission.
+// Run this once from the editor (choose "authorize" at the top, press Run) and allow sending email.
 function authorize() {
-  Calendar.Calendars.get('primary');
-  Logger.log('Ready. Invitations will be sent from ' + Session.getEffectiveUser().getEmail());
+  var left = MailApp.getRemainingDailyQuota();
+  Logger.log('Ready. Emails are sent from ' + Session.getEffectiveUser().getEmail() + '. Emails left today: ' + left);
 }
 
 function doPost(e) {
@@ -110,10 +111,8 @@ function doPost(e) {
   try {
     var d = JSON.parse(e.postData.contents);
     if (d.secret !== SECRET) out = { ok: false, error: 'Wrong key. Copy the code again from the admin panel.' };
-    else if (d.action === 'ping') { Calendar.Calendars.get('primary'); out = { ok: true, email: Session.getEffectiveUser().getEmail() }; }
-    else if (d.action === 'sync') { upsert(d.event, true); out = { ok: true }; }
-    else if (d.action === 'invite') out = guests(d.event, d.emails, true);
-    else if (d.action === 'uninvite') out = guests(d.event, d.emails, false);
+    else if (d.action === 'ping') out = { ok: true, version: VERSION, email: Session.getEffectiveUser().getEmail(), quota: MailApp.getRemainingDailyQuota() };
+    else if (d.action === 'mail') out = send(d.messages || []);
     else out = { ok: false, error: 'Unknown action' };
   } catch (err) {
     out = { ok: false, error: String(err && err.message || err) };
@@ -123,87 +122,59 @@ function doPost(e) {
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// find the calendar event made for this website event (by its id, never by name)
-function find(id) {
-  var props = PropertiesService.getScriptProperties(), saved = props.getProperty('ev_' + id);
-  if (saved) { try { var ev = Calendar.Events.get('primary', saved); if (ev.status !== 'cancelled') return ev; } catch (x) {} }
-  var list = Calendar.Events.list('primary', { privateExtendedProperty: 'aqlyonId=' + id, showDeleted: false, maxResults: 1 });
-  if (list.items && list.items.length) { props.setProperty('ev_' + id, list.items[0].id); return list.items[0]; }
-  return null;
-}
-
-function body(c) {
-  return {
-    summary: c.title,
-    description: c.description,
-    location: c.location,
-    start: { dateTime: c.start, timeZone: c.timeZone },
-    end: { dateTime: c.end, timeZone: c.timeZone }
-  };
-}
-
-// create the event, or bring its name, time, place and details up to date
-function upsert(c, notify) {
-  var ev = find(c.id), b = body(c);
-  if (!ev) {
-    b.attendees = [];
-    b.guestsCanSeeOtherGuests = false;
-    b.guestsCanInviteOthers = false;
-    b.extendedProperties = { private: { aqlyonId: c.id } };
-    b.reminders = { useDefault: false, overrides: [{ method: 'email', minutes: 1440 }, { method: 'popup', minutes: 60 }] };
-    ev = Calendar.Events.insert(b, 'primary', { sendUpdates: 'none' });
-    PropertiesService.getScriptProperties().setProperty('ev_' + c.id, ev.id);
-    return ev;
-  }
-  var same = ev.summary === b.summary && (ev.location || '') === (b.location || '') && (ev.description || '') === (b.description || '') &&
-    new Date(ev.start.dateTime).getTime() === new Date(c.start).getTime() && new Date(ev.end.dateTime).getTime() === new Date(c.end).getTime();
-  if (same) return ev;
-  var hasGuests = (ev.attendees || []).length > 0;
-  return Calendar.Events.patch(b, 'primary', ev.id, { sendUpdates: notify && hasGuests ? 'all' : 'none' });
-}
-
-function guests(c, emails, add) {
-  var ev = upsert(c, true), list = ev.attendees || [];
-  var have = {}; list.forEach(function (a) { have[String(a.email).toLowerCase()] = true; });
-  var want = {}; (emails || []).forEach(function (m) { want[String(m).toLowerCase()] = true; });
-  var next;
-  if (add) { next = list.slice(); Object.keys(want).forEach(function (m) { if (!have[m]) next.push({ email: m }); }); }
-  else next = list.filter(function (a) { return !want[String(a.email).toLowerCase()]; });
-  if (next.length !== list.length) Calendar.Events.patch({ attendees: next }, 'primary', ev.id, { sendUpdates: 'all' });
-  return { ok: true, guests: next.length };
+function send(messages) {
+  var results = [];
+  messages.forEach(function (m) {
+    try {
+      if (MailApp.getRemainingDailyQuota() < 1) throw new Error('Gmail daily limit reached. Try again tomorrow.');
+      MailApp.sendEmail({
+        to: m.to,
+        subject: m.subject,
+        body: m.text,
+        htmlBody: m.html,
+        name: 'Aqlyon Academy',
+        attachments: [Utilities.newBlob(m.ics, 'text/calendar; charset=UTF-8; method=' + m.method, 'invite.ics')]
+      });
+      results.push({ ok: true });
+    } catch (err) {
+      results.push({ ok: false, error: String(err && err.message || err) });
+    }
+  });
+  return { ok: true, results: results, quota: MailApp.getRemainingDailyQuota() };
 }
 `;
 
-/* ---------- Connect Google Calendar: step-by-step, the code (with this site's private key), paste the link, test ---------- */
+/* ---------- Calendar invitations: our own email from the academy Gmail, with the event attached ---------- */
 async function calSetup(){
  let st;try{st=await AAPI.call('/admin/events/settings')}catch(err){return toast(err.message,true)}
  const code=CAL_SCRIPT.replace('__SECRET__',st.calSecret);
- modal(`<h2>Connect Google Calendar</h2>
- <p>Everyone who registers gets a <b>Google Calendar invitation by email</b>, sent from your Google account. Each event on the website becomes <b>its own calendar entry, titled with the event name</b>, so invitations for different events never mix. Guests can't see each other.</p>
- ${st.calUrl?`<p class="calok">✅ Connected${st.calEmail?` to <b>${esc(st.calEmail)}</b>`:''}.</p>`:''}
+ const upd=st.calNeedsUpdate;
+ modal(`<h2>Calendar invitations</h2>
+ <p>Everyone who registers gets an email from <b>${esc(st.calEmail||'aqlyonacademy@gmail.com')}</b> with the subject <b>“Invitation from Aqlyon Academy: <i>event name</i>”</b>. It shows their details and reference number and includes the event as a calendar invitation, so Gmail, Outlook and iPhone show <b>Add to calendar</b>. The calendar entry has reminders 1 day and 1 hour before.</p>
+ ${upd?`<p class="calwarn">⚠ <b>Update needed.</b> Invitations are now sent as our own email instead of Google Calendar's “Invitation from an unknown sender”. Follow steps 2, 3, 4 and 6 below once with the same Apps Script project. The web app URL stays the same.</p>`:st.calUrl?`<p class="calok">✅ Connected${st.calEmail?` to <b>${esc(st.calEmail)}</b>`:''}.</p>`:''}
  <ol class="steps2">
-  <li>Sign in to Google as <b>aqlyonacademy@gmail.com</b> (the account that should send the invitations). Open <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a>. Name it <b>Aqlyon events calendar</b>.</li>
-  <li>Delete the sample code, paste this code and press <b>Save</b> (💾). It contains this website's private key, so don't share it.<pre class="creds">${esc(code)}</pre><button type="button" class="btn ghost sm cpcode">Copy code</button></li>
-  <li>On the left, next to <b>Services</b>, click <b>＋</b>. Choose <b>Google Calendar API</b> and click <b>Add</b>.</li>
-  <li>Give it permission to use your calendar: at the top of the editor choose <b>authorize</b> in the function list and press <b>▶ Run</b>. Click <b>Review permissions</b> → choose aqlyonacademy@gmail.com → if you see "Google hasn't verified this app", click <b>Advanced → Go to Aqlyon events calendar</b> → tick every box → <b>Allow</b>. The log at the bottom then says <b>Ready</b>. (It's your own script, so the warning is normal.)</li>
-  <li>Click <b>Deploy → New deployment</b>. Click the ⚙ next to "Select type" and choose <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>. Click <b>Deploy</b>.</li>
-  <li>Copy the <b>Web app URL</b> (starts with https://script.google.com/macros/s/ and ends with /exec), paste it below and press <b>Connect</b>. The panel checks the link straight away.</li>
+  <li>Sign in to Google as <b>aqlyonacademy@gmail.com</b>. Open your Apps Script project <b>Aqlyon events calendar</b> (or create one at <a href="https://script.google.com/home/projects/create" target="_blank" rel="noopener">script.google.com → New project</a>).</li>
+  <li>Select all the code in <b>Code.gs</b>, delete it, paste this code and press <b>Save</b> (💾). It contains this website's private key, so don't share it.<pre class="creds">${esc(code)}</pre><button type="button" class="btn ghost sm cpcode">Copy code</button></li>
+  <li>In the function list at the top (next to <b>Debug</b>), choose <b>authorize</b> and press <b>▶ Run</b>. When Google asks, click <b>Review permissions</b> → aqlyonacademy@gmail.com → <b>Advanced → Go to Aqlyon events calendar</b> → <b>Select all</b> → <b>Continue / Allow</b>. The log says <b>Ready</b>.</li>
+  <li>${st.calUrl?'Click <b>Deploy → Manage deployments → ✏ Edit</b>, set <b>Version: New version</b> and click <b>Deploy</b>.':'Click <b>Deploy → New deployment</b> → ⚙ → <b>Web app</b>. Set <b>Execute as: Me</b> and <b>Who has access: Anyone</b>, then <b>Deploy</b>.'}</li>
+  <li>${st.calUrl?'The web app URL stays the same.':'Copy the <b>Web app URL</b> (starts with https://script.google.com/macros/s/ and ends with /exec) and paste it below.'}</li>
+  <li>Press <b>${st.calUrl?'Save':'Connect'}</b> below. The panel checks the script straight away.</li>
  </ol>
  <form class="mform calform"><div class="field"><label for="cal-url">Web app URL</label><input id="cal-url" value="${esc(st.calUrl)}" placeholder="https://script.google.com/macros/s/…/exec"></div><p class="formerr" role="alert"></p>
  <div class="mrow">${st.calUrl?'<button type="button" class="btn danger caldis" style="margin-right:auto">Disconnect</button><button type="button" class="btn ghost caltest">Test</button>':''}<button type="button" class="btn ghost" data-close>Close</button><button class="btn" type="submit">${st.calUrl?'Save':'Connect'}</button></div></form>
  <h3>Good to know</h3>
- <ul class="steps2 small"><li><b>Free events:</b> the invitation goes out as soon as someone registers. <b>Paid events:</b> when you press Approve. Rejecting or cancelling removes them and Google tells them.</li>
- <li><b>Changing an event</b> (name, date, time or place) updates the calendar entry, and Google emails every guest the change.</li>
- <li><b>Reminders:</b> each guest's Google Calendar reminds them with their own reminder settings (usually a notification before the event). The calendar file people download after registering also adds reminders 1 day and 1 hour before. People can also use <b>Add to Google Calendar</b> on the event page at any time.</li>
- <li>People who registered <b>before</b> you connected: open the event's <b>Registrations</b> and press <b>Send calendar invites</b>.</li>
- <li>If you change the code later: <b>Deploy → Manage deployments → ✏ Edit → Version: New version → Deploy</b>. The link stays the same.</li></ul>`,(m,close)=>{
+ <ul class="steps2 small"><li><b>Free events:</b> the invitation email goes out as soon as someone registers. <b>Paid events:</b> when you press Approve. Rejecting or cancelling sends a short cancellation that removes it from their calendar.</li>
+ <li><b>Changing an event</b> (name, date, time or place) emails an updated invitation to everyone already invited.</li>
+ <li><b>Daily limit:</b> a free Gmail account can send about <b>100 of these emails a day</b>. If the limit is reached, the person shows <b>Not sent</b> in Registrations; press <b>Send calendar invites</b> the next day.</li>
+ <li>On the event page, visitors can also press <b>Add to Google Calendar</b> or <b>Download calendar file</b> themselves.</li>
+ <li>If the code changes later: paste it, then <b>Deploy → Manage deployments → ✏ Edit → Version: New version → Deploy</b>.</li></ul>`,(m,close)=>{
   m.querySelector('.modal').classList.add('wide');
   $('.cpcode',m).onclick=()=>copy(code);
   $('.calform',m).onsubmit=async ev=>{ev.preventDefault();const b=$('button[type=submit]',m);b.disabled=true;b.textContent='Checking…';$('.formerr',m).textContent='';
-   try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:$('#cal-url',m).value}});close();toast(EVSET.calUrl?`Google Calendar connected${EVSET.calEmail?' ('+EVSET.calEmail+')':''}`:'Saved');renderEvents()}
-   catch(err){$('.formerr',m).innerHTML=/permission/i.test(err.message)?'<b>Google has not given the script permission to use your calendar yet.</b> In Apps Script, choose <b>authorize</b> (or any function) at the top, press <b>▶ Run</b>, click <b>Review permissions</b> and <b>Allow</b>. Then press Connect again; no need to deploy again.':esc(err.message);b.disabled=false;b.textContent=st.calUrl?'Save':'Connect'}};
-  const t=$('.caltest',m);if(t)t.onclick=async()=>{t.disabled=true;try{const d=await AAPI.call('/admin/events/settings',{method:'POST',body:{action:'test'}});toast('Working. Invitations are sent from '+(d.email||'your Google account'))}catch(err){toast(err.message,true)}t.disabled=false};
-  const dc=$('.caldis',m);if(dc)dc.onclick=async()=>{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:''}});close();toast('Google Calendar disconnected');renderEvents()};
+   try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:$('#cal-url',m).value}});close();toast(EVSET.calUrl?`Calendar invitations connected${EVSET.calEmail?' ('+EVSET.calEmail+')':''}`:'Saved');renderEvents()}
+   catch(err){$('.formerr',m).innerHTML=/permission|authoriz/i.test(err.message)?'<b>Google has not given the script permission yet.</b> In Apps Script choose <b>authorize</b> at the top, press <b>▶ Run</b>, click <b>Review permissions</b>, tick <b>Select all</b> and allow. Then deploy a new version and press this button again.':esc(err.message);b.disabled=false;b.textContent=st.calUrl?'Save':'Connect'}};
+  const t=$('.caltest',m);if(t)t.onclick=async()=>{t.disabled=true;try{const d=await AAPI.call('/admin/events/settings',{method:'POST',body:{action:'test'}});toast(`Working. Emails are sent from ${d.email||'your Google account'}${d.quota!=null?` · ${d.quota} left today`:''}`)}catch(err){toast(err.message,true)}t.disabled=false};
+  const dc=$('.caldis',m);if(dc)dc.onclick=async()=>{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{calUrl:''}});close();toast('Calendar invitations turned off');renderEvents()};
  });
 }
 
@@ -287,13 +258,17 @@ async function regsView(e){
   <div class="rtbody">${table()}</div>`;
  const bind=()=>$$('[data-r]',main).forEach(b=>b.onclick=async()=>{const st=b.dataset.r;b.disabled=true;
   try{const d=await AAPI.call(`/admin/events/${e.id}/regs/${b.dataset.id}`,{method:'PATCH',body:{status:st}});regs=regs.map(x=>x.id===d.reg.id?d.reg:x);
-   toast((st==='approved'?'Approved. Now send the joining details on WhatsApp.':'Updated')+(d.calendar&&d.calendar!=='ok'?' Calendar invitation not sent: '+d.calendar:d.calendar==='ok'?(st==='approved'||st==='confirmed'?' Calendar invitation sent.':' Removed from the calendar.'):''),!!d.calendar&&d.calendar!=='ok');
+   toast((st==='approved'?'Approved. Now send the joining details on WhatsApp.':'Updated')+(d.calendar&&d.calendar!=='ok'?' Invitation email not sent: '+d.calendar:d.calendar==='ok'?(st==='approved'||st==='confirmed'?' Invitation email sent.':' Cancellation email sent.'):''),!!d.calendar&&d.calendar!=='ok');
    if(st==='approved'){e.onlineUrl=d.onlineUrl||e.onlineUrl;window.open(waLink(d.reg.whatsapp||d.reg.phone,confirmMsg(d.reg)),'_blank','noopener')}
    draw();loadEvents()}catch(err){b.disabled=false;toast(err.message,true)}});
  const note=()=>{const n=notInvited(),el=$('.calnote',main);
-  el.innerHTML=!calOn?`<p class="small">📅 Calendar invitations are off. <button type="button" class="linkbtn gocal">Connect Google Calendar</button> so people get an invitation by email.</p>`:n?`<div class="calbar"><span class="calic">📅</span><div><b>${n} ${n===1?'person has':'people have'} no calendar invitation yet</b><small>For example people who registered before Google Calendar was connected, or when Google did not answer.</small></div><button type="button" class="btn sm invall">Send calendar invites</button></div>`:'';
+  el.innerHTML=!calOn?`<p class="small">📅 Calendar invitations are off. <button type="button" class="linkbtn gocal">Connect them</button> so people get an invitation email with the event for their calendar.</p>`:n?`<div class="calbar"><span class="calic">📅</span><div><b>${n} ${n===1?'person has':'people have'} no invitation email yet</b><small>For example people who registered before invitations were switched on, or when Gmail's daily limit was reached.</small></div><button type="button" class="btn sm invall">Send calendar invites</button></div>`:'';
   const g=$('.gocal',el);if(g)g.onclick=calSetup;
-  const iv=$('.invall',el);if(iv)iv.onclick=async()=>{iv.disabled=true;iv.textContent='Sending…';try{const d=await AAPI.call(`/admin/events/${e.id}/regs`,{method:'POST',body:{action:'invite-all'}});regs=d.regs;toast(`Calendar invitations sent to ${d.invited} ${d.invited===1?'person':'people'}`)}catch(err){toast(err.message,true);try{regs=(await AAPI.call(`/admin/events/${e.id}/regs`)).regs}catch(x){}}draw()}};
+  const iv=$('.invall',el);if(iv)iv.onclick=async()=>{iv.disabled=true;let sent=0,err='',skip=[],left=1;
+   while(left>0){iv.textContent=`Sending… ${sent} sent`;
+    try{const d=await AAPI.call(`/admin/events/${e.id}/regs`,{method:'POST',body:{action:'invite-all',skip}});regs=d.regs;sent+=d.invited;skip=skip.concat(d.failed||[]);left=d.left;if(d.error){err=d.error;if(/limit/i.test(d.error))break}if(!d.invited&&!(d.failed||[]).length)break}
+    catch(x){err=x.message;break}}
+   toast(sent?`Invitations sent to ${sent} ${sent===1?'person':'people'}${err?'. Some were not sent: '+err:''}`:err||'Nothing to send',!!err);draw()}};
  const draw=()=>{$('.rtbody',main).innerHTML=table();$('.rstatwrap',main).innerHTML=stats();note();bind()};
  $('.rq',main).oninput=ev=>{q=ev.target.value;draw()};
  $('.rf',main).onchange=ev=>{fs=ev.target.value;draw()};

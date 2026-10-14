@@ -1,6 +1,7 @@
 // Upcoming events: storage, public API, admin API, registrations and the shareable event page.
 // Stores: events (one JSON per event), regs (one JSON per event: {list:[...]}), images (cover photos as base64).
 import crypto from 'node:crypto';
+import { inviteMail } from './invite-mail.mjs';
 
 export const TZS = {
   'Asia/Kolkata': { label: 'IST', name: 'India time', off: 330 },
@@ -69,25 +70,18 @@ function publicEvent(e, list) {
   };
 }
 
-// Google Calendar (through an Apps Script web app on the academy Google account).
-// One calendar event per website event, titled with the event name; people are added as guests.
-// The description is the same for every guest, so it never holds anyone's personal reference.
-function calEvent(e, origin) {
-  const start = toUTC(e.start, e.tz), end = e.end ? toUTC(e.end, e.tz) : start + 2 * 3600_000;
-  const where = e.mode === 'online' ? 'Online' : [e.locationName, e.mapUrl].filter(Boolean).join(' · ');
-  const lines = [e.summary || '', e.mode === 'online' && e.onlineUrl ? `Join online: ${e.onlineUrl}` : '', e.mode === 'offline' && e.mapUrl ? `Map: ${e.mapUrl}` : '', origin ? `Event page: ${origin}/events/${e.slug}` : '', 'Aqlyon Career Discovery Centre'];
-  return { id: e.id, title: e.title, start: new Date(start).toISOString(), end: new Date(end).toISOString(), timeZone: e.tz || 'Asia/Kolkata', location: where, description: lines.filter(Boolean).join('\n\n') };
-}
-const adminSettings = (s) => ({ whatsapp: s.whatsapp || '+919539244342', calUrl: s.calUrl || '', calEmail: s.calEmail || '', calSecret: s.calSecret || '' });
+// Calendar invitations: our own email from the academy Gmail account (Apps Script mailer), with the
+// event attached as a calendar invitation. Subject: "Invitation from Aqlyon Academy: <event name>".
+const adminSettings = (s) => ({ whatsapp: s.whatsapp || '+919539244342', calUrl: s.calUrl || '', calEmail: s.calEmail || '', calSecret: s.calSecret || '', calNeedsUpdate: !!s.calUrl && !s.calV2 });
 const calOk = (r) => r && (r.status === 'confirmed' || r.status === 'approved');
 async function calPost(cfg, payload, wait = 9000) {
-  if (!cfg || !cfg.calUrl) return { ok: false, error: 'Google Calendar is not connected.' };
+  if (!cfg || !cfg.calUrl) return { ok: false, error: 'Calendar invitations are not connected.' };
   try {
     const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), wait);
     const res = await fetch(process.env.CAL_TEST_URL || cfg.calUrl, { method: 'POST', headers: { 'content-type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ ...payload, secret: cfg.calSecret }), redirect: 'follow', signal: ctl.signal });
     clearTimeout(t);
     const txt = await res.text(); try { return JSON.parse(txt); } catch { return { ok: false, error: 'Google answered with a page instead of data. Check that the web app is deployed with access "Anyone".' }; }
-  } catch (x) { return { ok: false, error: x.name === 'AbortError' ? 'Google Calendar took too long to answer.' : 'Could not reach the Google Calendar script.' }; }
+  } catch (x) { return { ok: false, error: x.name === 'AbortError' ? 'Google took too long to answer.' : 'Could not reach the Apps Script mailer.' }; }
 }
 
 export function createEvents({ getStore, json }) {
@@ -100,15 +94,20 @@ export function createEvents({ getStore, json }) {
   const bySlug = async (slug) => (await all()).find((e) => e.slug === slug);
   const rawSettings = async () => (((await meta().get('settings', { type: 'json' })) || {}).events || {});
   const evSettings = async () => ({ whatsapp: (await rawSettings()).whatsapp || '+919539244342' });
-  const calCfg = async () => { const s = await rawSettings(); return s.calUrl ? { calUrl: s.calUrl, calSecret: s.calSecret } : null; };
-  // invite or remove guests; marks each registration with the result so the admin can see it
-  async function calGuests(e, doc, list, action, origin) {
+  const calCfg = async () => { const s = await rawSettings(); return s.calUrl ? { calUrl: s.calUrl, calSecret: s.calSecret, calEmail: s.calEmail } : null; };
+  // send invitation / update / cancellation emails; marks each registration with the result so the admin can see it
+  async function calGuests(e, doc, list, kind, origin) {
     const cfg = await calCfg(); if (!cfg || !list.length) return null;
-    const out = await calPost(cfg, { action, event: calEvent(e, origin), emails: list.map((r) => r.email) }, 20000);
-    const at = new Date().toISOString();
-    for (const r of list) { if (out.ok) { r.cal = action === 'invite' ? at : ''; r.calErr = ''; } else r.calErr = out.error || 'Calendar error'; }
+    const messages = list.map((r) => inviteMail(e, r, kind, { origin, organizer: cfg.calEmail, seq: (r.calSeq ?? -1) + 1 }));
+    const out = await calPost(cfg, { action: 'mail', messages }, 25000);
+    const at = new Date().toISOString(); let sent = 0;
+    list.forEach((r, i) => {
+      const res = out.ok ? (out.results || [])[i] || { ok: false, error: 'No answer for this email' } : { ok: false, error: out.error || 'Email error' };
+      if (res.ok) { sent++; r.calSeq = (r.calSeq ?? -1) + 1; r.cal = kind === 'cancel' ? '' : at; r.calErr = ''; }
+      else if (kind !== 'cancel') r.calErr = res.error || 'Email error';
+    });
     await regs().setJSON(e.id, doc);
-    return out;
+    return { ok: out.ok && sent === list.length, sent, error: out.ok ? (sent < list.length ? (out.results.find((x) => !x.ok) || {}).error || 'Some emails were not sent' : '') : out.error, quota: out.quota };
   }
 
   async function routes({ path, method, body, req, auth }) {
@@ -195,11 +194,11 @@ export function createEvents({ getStore, json }) {
         if (body.calUrl !== undefined) { const u = String(body.calUrl).trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)) return json(400, { error: 'Paste the Web app URL from Apps Script. It starts with https://script.google.com/macros/s/ and ends with /exec' }); cur.calUrl = u; if (!u) cur.calEmail = ''; }
         if (body.whatsapp !== undefined) { const w = String(body.whatsapp).replace(/[^\d+]/g, ''); if (!/^\+\d{8,15}$/.test(w)) return json(400, { error: 'WhatsApp number: include the country code, like +919539244342.' }); cur.whatsapp = w; }
         if (!cur.calSecret) cur.calSecret = crypto.randomBytes(18).toString('base64url');
-        if (body.calUrl) { const t = await calPost(cur, { action: 'ping' }); if (!t.ok) return json(400, { error: 'The link was not saved. ' + (t.error || 'The script did not answer.') }); cur.calEmail = t.email || ''; }
+        if (body.calUrl) { const t = await calPost(cur, { action: 'ping' }); if (!t.ok) return json(400, { error: 'The link was not saved. ' + (t.error || 'The script did not answer.') }); if (t.version !== 2) return json(400, { error: 'This is the old script. Copy the new code from this window into Apps Script, run authorize, then Deploy → Manage deployments → Edit → New version → Deploy.' }); cur.calEmail = t.email || ''; cur.calQuota = t.quota; cur.calV2 = true; }
         all2.events = cur; await meta().setJSON('settings', all2);
         return json(200, adminSettings(cur));
       }
-      if (method === 'POST' && body.action === 'test') { const cur = await rawSettings(); const t = await calPost(cur, { action: 'ping' }); return t.ok ? json(200, { ok: true, email: t.email || '' }) : json(400, { error: t.error || 'The script did not answer.' }); }
+      if (method === 'POST' && body.action === 'test') { const cur = await rawSettings(); const t = await calPost(cur, { action: 'ping' }); if (t.ok && t.version !== 2) return json(400, { error: 'Apps Script still runs the old code. Paste the new code, run authorize, then Deploy → Manage deployments → Edit → New version → Deploy.' }); return t.ok ? json(200, { ok: true, email: t.email || '', quota: t.quota }) : json(400, { error: t.error || 'The script did not answer.' }); }
       const cur = await rawSettings();
       if (!cur.calSecret) { cur.calSecret = crypto.randomBytes(18).toString('base64url'); all2.events = { ...cur }; await meta().setJSON('settings', all2); }
       return json(200, adminSettings(cur));
@@ -227,11 +226,12 @@ export function createEvents({ getStore, json }) {
         const rs = regs(); const doc = (await rs.get(e.id, { type: 'json' })) || { list: [] };
         if (!m[3] && method === 'GET') return json(200, { regs: doc.list, calendar: !!(await rawSettings()).calUrl });
         if (!m[3] && method === 'POST' && body.action === 'invite-all') {
-          const todo = doc.list.filter((r) => calOk(r) && !r.cal);
-          if (!todo.length) return json(200, { ok: true, invited: 0, regs: doc.list });
+          const skip = new Set(body.skip || []);   // ones that already failed in this round
+          const all = doc.list.filter((r) => calOk(r) && !r.cal && !skip.has(r.id)), todo = all.slice(0, 10);
+          if (!todo.length) return json(200, { ok: true, invited: 0, left: 0, regs: doc.list });
           const out = await calGuests(e, doc, todo, 'invite', new URL(req.url).origin);
-          if (!out) return json(400, { error: 'Connect Google Calendar first (Events → Event settings).' });
-          return out.ok ? json(200, { ok: true, invited: todo.length, regs: doc.list }) : json(502, { error: out.error || 'Google Calendar error', regs: doc.list });
+          if (!out) return json(400, { error: 'Connect calendar invitations first (Events → Connect).' });
+          return json(200, { ok: out.ok, invited: out.sent, failed: todo.filter((r) => !r.cal).map((r) => r.id), left: all.length - todo.length, error: out.error || '', quota: out.quota, regs: doc.list });
         }
         const r = doc.list.find((x) => x.id === m[3]);
         if (!r) return json(404, { error: 'Registration not found.' });
@@ -241,7 +241,7 @@ export function createEvents({ getStore, json }) {
           r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc);
           let cal = null;
           if (!was && calOk(r)) cal = await calGuests(e, doc, [r], 'invite', new URL(req.url).origin);
-          else if (was && !calOk(r) && r.cal) cal = await calGuests(e, doc, [r], 'uninvite', new URL(req.url).origin);
+          else if (was && !calOk(r) && r.cal) cal = await calGuests(e, doc, [r], 'cancel', new URL(req.url).origin);
           return json(200, { reg: r, onlineUrl: e.onlineUrl || '', calendar: cal ? (cal.ok ? 'ok' : cal.error) : '' });
         }
         if (method === 'DELETE') { doc.list = doc.list.filter((x) => x.id !== r.id); await rs.setJSON(e.id, doc); return json(200, { ok: true }); }
@@ -252,7 +252,11 @@ export function createEvents({ getStore, json }) {
         // keep the calendar invitation in step: new name, time or place is sent to every guest
         let cal = '';
         const keys = ['title', 'start', 'end', 'tz', 'mode', 'locationName', 'mapUrl', 'onlineUrl', 'summary'];
-        if (keys.some((k) => (e[k] || '') !== (n[k] || '')) && (await getRegs(e.id)).some((r) => r.cal)) { const c = await calPost(await calCfg(), { action: 'sync', event: calEvent(n, new URL(req.url).origin) }); cal = c.ok ? 'ok' : c.error || 'Calendar error'; }
+        if (keys.some((k) => (e[k] || '') !== (n[k] || ''))) {
+          const doc = (await regs().get(e.id, { type: 'json' })) || { list: [] };
+          const invited = doc.list.filter((r) => calOk(r) && r.cal);
+          if (invited.length) { const c = await calGuests(n, doc, invited.slice(0, 25), 'update', new URL(req.url).origin); cal = c && c.ok ? 'ok' : (c && c.error) || 'Email error'; }
+        }
         return json(200, { event: n, calendar: cal });
       }
       if (!m[2] && method === 'DELETE') { await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
