@@ -46,7 +46,7 @@ function render(){
  </article>`;
  document.title=B.preview?'Badge preview':`${B.name} · ${E.title} · Badge`;
  $('#badge').innerHTML=`${B.preview?'':`<p class="bdgtop"><a href="/events/${esc(E.slug)}"><img src="/img/aqlyon-q.png" alt="" width="28" height="28"><span><b>Aqlyon</b> Career Discovery Centre</span></a></p>`}
- <div class="bstage ${D.size==='tag'?'land':''}">${card}</div>
+ <div class="bstage ${D.size==='tag'?'land':''}"><div class="bdgbox sz-${esc(D.size)}">${card}</div></div>
  ${state==='in'?`<p class="stamp">✓ Checked in · ${esc(at)}</p>`:''}
  ${state==='pending'?`<p class="bdgwarn">Your badge is not active yet. It will work once your registration is approved. Open this page again after you get the confirmation.</p>`:''}
  ${state==='off'?`<p class="bdgwarn bad">This registration is ${esc(B.status)}, so the badge can't be used. Contact Aqlyon Career Discovery Centre if this is a mistake.</p>`:''}
@@ -55,7 +55,7 @@ function render(){
  ${B.preview?`<p class="bdgnote">Preview with sample details · printed size ${esc(sz.name)} (${sz.mm[0]} × ${sz.mm[1]} mm)</p>`:`<p class="bdgnote"><a href="/events/${esc(E.slug)}">Event details</a>${E.mapUrl&&E.mode!=='online'?` · <a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions</a>`:''}</p>`}`;
  // print exactly at the badge size
  let ps=$('#pagesize');if(!ps){ps=document.createElement('style');ps.id='pagesize';document.head.appendChild(ps)}
- ps.textContent=`@page{size:${sz.mm[0]}mm ${sz.mm[1]}mm;margin:0}@media print{.bdg{width:${sz.mm[0]}mm!important;max-width:none!important}}`;
+ ps.textContent=`@page{size:${sz.mm[0]}mm ${sz.mm[1]}mm;margin:0}@media print{.bdgbox{width:${sz.mm[0]}mm!important;max-width:none!important}}`;
  const pr=$('#print');if(pr)pr.onclick=()=>print();
  const sv=$('#save');if(sv)sv.onclick=async()=>{sv.disabled=true;sv.textContent='Preparing…';
   try{const blob=await paint($('.bdg'),Math.round(sz.mm[0]/25.4*300),{qr,N});const name=`${E.slug}-badge-${B.ref}.png`;

@@ -11,11 +11,13 @@
 .bstage{display:flex;justify-content:center}
 
 .bdg{--c:#0D2B22;--ink2:#14201B;--soft:color-mix(in srgb,var(--c) 10%,#fff);
- position:relative;container-type:inline-size;width:min(100%,380px);aspect-ratio:var(--ar,.709);
+ position:relative;container-type:inline-size;width:100%;aspect-ratio:var(--ar,.709);
  display:flex;flex-direction:column;background:#fff;color:var(--ink2);border-radius:5cqw;overflow:hidden;
  box-shadow:0 18px 40px -22px rgba(13,43,34,.45);font-family:var(--body)}
-.bdg.sz-card{width:min(100%,330px)}
-.bstage.land .bdg{width:min(100%,540px)}
+/* the box around the badge is a size container too, so the badge's own corner radius (in cqw) follows the badge width, not the window */
+.bdgbox{container-type:inline-size;width:min(100%,380px)}
+.bdgbox.sz-card{width:min(100%,330px)}
+.bdgbox.sz-tag{width:min(100%,540px)}
 .bdg p,.bdg h1,.bdg h2{margin:0}
 .bhead{position:relative;display:flex;flex-direction:column;gap:1.2cqw;padding:6cqw 7cqw 5cqw}
 .borg{display:flex;align-items:center;gap:2.6cqw;margin-bottom:2cqw;min-height:7cqw}
