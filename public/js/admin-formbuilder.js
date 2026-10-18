@@ -114,7 +114,7 @@ function badgeDesigner(box,e,m){
   <div class="field"><label for="bd-org">Organiser name <small>(shown at the top of the badge)</small></label><input id="bd-org" maxlength="80" value="${esc(D.org)}" placeholder="e.g. KMCC Education Wing"></div>
   <div class="field"><label>Organiser logo</label><div class="bdlogo"><span class="bdlprev">${D.logo?`<img src="/api/img/${D.logo}" alt="">`:'No logo'}</span><input type="file" id="bd-logo" accept="image/png,image/jpeg,image/webp"><button type="button" class="linkbtn bdlrm" ${D.logo?'':'hidden'}>Remove</button></div><small class="small">A PNG with a transparent background looks best.</small></div>
   <div class="field"><label for="bd-size">Badge size <small>(for printing and the saved image)</small></label><select id="bd-size">${BD_SIZES.map(([v,t])=>`<option value="${v}" ${D.size===v?'selected':''}>${t}</option>`).join('')}</select></div>
-  <p class="fbsub">Show on the badge</p><div class="bdchecks">${ck('showTime','Date and time')}${ck('showVenue','Venue')}${ck('showRole','Student / Parent')}${ck('brand','Aqlyon Career Discovery Centre')}</div>
+  <p class="fbsub">Show on the badge</p><div class="bdchecks">${ck('showTime','Date and time')}${ck('showVenue','Venue')}${ck('showRole','Student / Parent')}${ck('brand','Aqlyon (www.aqlyondm.com at the bottom)')}</div>
  </div><div class="bdprev"><iframe title="Badge preview" loading="lazy"></iframe></div></div>`;
  const fr=$('iframe',box);
  const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};

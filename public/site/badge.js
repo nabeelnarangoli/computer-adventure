@@ -42,7 +42,7 @@ function render(){
   ${D.tpl==='classic'?'<div class="bcut"><i class="dot l"></i><i class="ln"></i><i class="dot r"></i></div>':''}
   <div class="bmain"><div class="bwho"><span class="blbl">Participant</span><h2 class="bname">${esc(B.name)}</h2>${chips?`<div class="bchips">${chips}</div>`:''}</div>${qrPart}</div>
   ${D.tpl==='conference'?`<div class="brole">${esc(role?role.toUpperCase():'PARTICIPANT')}</div>`:''}
-  ${hasOrg&&D.brand?`<div class="bfoot"><img class="blogo aq" src="/img/aqlyon-q.png" alt=""><span>Aqlyon Career Discovery Centre</span></div>`:''}
+  ${hasOrg&&D.brand?`<div class="bfoot"><img class="blogo aq" src="/img/aqlyon-q.png" alt=""><span>www.aqlyondm.com</span></div>`:''}
  </article>`;
  document.title=B.preview?'Badge preview':`${B.name} · ${E.title} · Badge`;
  $('#badge').innerHTML=`${B.preview?'':`<p class="bdgtop"><a href="/events/${esc(E.slug)}"><img src="/img/aqlyon-q.png" alt="" width="28" height="28"><span><b>Aqlyon</b> Career Discovery Centre</span></a></p>`}
