@@ -100,3 +100,40 @@ function fbPreview(FORM,ev){
    err.textContent='';toast('All answers look good. This is only a preview, so nothing was saved.')};
  });
 }
+
+/* ---------- badge design for one event: template, colour, organiser name + logo, size, what to show, live preview ---------- */
+const BD_TPLS=[['classic','Classic','Dark header with a ticket cut'],['minimal','Minimal','White with a colour bar'],['bold','Bold','Whole badge in your colour'],['conference','Conference','Lanyard style, big name, role bar']];
+const BD_SIZES=[['a6','A6 · 105 × 148 mm (postcard)'],['card','ID card · 54 × 86 mm (lanyard card)'],['a7','A7 · 74 × 105 mm'],['4x6','4 × 6 in · 102 × 152 mm (photo size)'],['tag','Name tag · 102 × 76 mm (landscape)']];
+const BD_COLORS=['#0D2B22','#1A1E3A','#5B3FD6','#0E5A8A','#0E6E6E','#7A1F2B','#C2560E','#111111'];
+function badgeDesigner(box,e,m){
+ const D=Object.assign({tpl:'classic',color:'#0D2B22',org:'',logo:'',brand:true,size:'a6',showRole:true,showTime:true,showVenue:true},e.badge||{});
+ const ck=(k,t)=>`<label class="fbinl"><input type="checkbox" data-bk="${k}" ${D[k]?'checked':''}> ${t}</label>`;
+ box.innerHTML=`<div class="bdgrid"><div class="bdopts">
+  <p class="fbsub" style="margin-top:0">Template</p><div class="bdtpls">${BD_TPLS.map(([v,t,d])=>`<label class="bdtpl"><input type="radio" name="bdtpl" value="${v}" ${D.tpl===v?'checked':''}><span><b>${t}</b><small>${d}</small></span></label>`).join('')}</div>
+  <p class="fbsub">Colour</p><div class="bdcols">${BD_COLORS.map(c=>`<button type="button" class="bdcol ${D.color.toLowerCase()===c.toLowerCase()?'on':''}" data-col="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}<label class="bdcustom" title="Pick any colour"><input type="color" value="${D.color}" aria-label="Custom colour"><span>Other</span></label></div>
+  <div class="field"><label for="bd-org">Organiser name <small>(shown at the top of the badge)</small></label><input id="bd-org" maxlength="80" value="${esc(D.org)}" placeholder="e.g. KMCC Education Wing"></div>
+  <div class="field"><label>Organiser logo</label><div class="bdlogo"><span class="bdlprev">${D.logo?`<img src="/api/img/${D.logo}" alt="">`:'No logo'}</span><input type="file" id="bd-logo" accept="image/png,image/jpeg,image/webp"><button type="button" class="linkbtn bdlrm" ${D.logo?'':'hidden'}>Remove</button></div><small class="small">A PNG with a transparent background looks best.</small></div>
+  <div class="field"><label for="bd-size">Badge size <small>(for printing and the saved image)</small></label><select id="bd-size">${BD_SIZES.map(([v,t])=>`<option value="${v}" ${D.size===v?'selected':''}>${t}</option>`).join('')}</select></div>
+  <p class="fbsub">Show on the badge</p><div class="bdchecks">${ck('showTime','Date and time')}${ck('showVenue','Venue')}${ck('showRole','Student / Parent')}${ck('brand','Aqlyon Career Discovery Centre')}</div>
+ </div><div class="bdprev"><iframe title="Badge preview" loading="lazy"></iframe></div></div>`;
+ const fr=$('iframe',box);
+ const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};
+ const ev=()=>{const tz=$('#ef-tz',m).value,u=l=>l?Date.parse(l+':00Z')-(OFF[tz]??330)*60000:null;const mode=(m.querySelector('input[name=mode]:checked')||{}).value;
+  return {title:$('#ef-title',m).value||'Your event name',tz,startUTC:u($('#ef-start',m).value)||Date.now()+7*864e5,endUTC:u($('#ef-end',m).value),mode,locationName:$('#ef-loc',m).value||'Event venue'}};
+ let t=0;const show=()=>{clearTimeout(t);t=setTimeout(()=>{const h='#'+encodeURIComponent(JSON.stringify({design:{...D,logo:D.logo?'/api/img/'+D.logo:''},event:ev()}));
+  if(fr.src&&fr.contentWindow&&fr.contentWindow.location.pathname==='/badge/preview')fr.contentWindow.location.hash=h;else fr.src='/badge/preview'+h},120)};
+ fr.onload=()=>{try{const d=fr.contentDocument;const fit=()=>{fr.style.height=(d.documentElement.scrollHeight+4)+'px'};fit();new ResizeObserver(fit).observe(d.body)}catch(x){}};
+ $$('input[name=bdtpl]',box).forEach(r=>r.onchange=()=>{D.tpl=r.value;show()});
+ $$('.bdcol',box).forEach(b=>b.onclick=()=>{D.color=b.dataset.col;$$('.bdcol',box).forEach(x=>x.classList.toggle('on',x===b));$('.bdcustom input',box).value=D.color;show()});
+ $('.bdcustom input',box).oninput=x=>{D.color=x.target.value;$$('.bdcol',box).forEach(b=>b.classList.remove('on'));show()};
+ $('#bd-org',box).oninput=x=>{D.org=x.target.value;show()};
+ $('#bd-size',box).onchange=x=>{D.size=x.target.value;show()};
+ $$('[data-bk]',box).forEach(c=>c.onchange=()=>{D[c.dataset.bk]=c.checked;show()});
+ $('#bd-logo',box).onchange=async x=>{const f=x.target.files[0];if(!f)return;const pv=$('.bdlprev',box);pv.textContent='Uploading…';
+  try{const img=await prepImage(f);const d=await AAPI.call('/admin/upload',{method:'POST',body:{type:img.type,data:img.data}});D.logo=d.id;pv.innerHTML=`<img src="${img.preview}" alt="">`;$('.bdlrm',box).hidden=false;show()}catch(err){pv.textContent='Upload failed';toast(err.message,true)}};
+ $('.bdlrm',box).onclick=()=>{D.logo='';$('.bdlprev',box).textContent='No logo';$('.bdlrm',box).hidden=true;$('#bd-logo',box).value='';show()};
+ // the preview follows the event's name, date and venue as they are typed
+ ['#ef-title','#ef-start','#ef-end','#ef-tz','#ef-loc'].forEach(s=>{const i=$(s,m);if(i)i.addEventListener('input',show)});$$('input[name=mode]',m).forEach(r=>r.addEventListener('change',show));
+ show();
+ return D;
+}

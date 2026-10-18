@@ -21,6 +21,22 @@ const isUrl = (s) => /^https?:\/\/[^\s]+$/i.test(String(s || ''));
 // local date-time string + time zone -> UTC milliseconds
 export const toUTC = (local, tz) => { if (!local) return NaN; const off = (TZS[tz] || TZS['Asia/Kolkata']).off; return Date.parse(local + ':00Z') - off * 60_000; };
 
+// badge design per event: template, colour, organiser name and logo, printed size, what to show
+export const BADGE_TPLS = ['classic', 'minimal', 'bold', 'conference'];
+export const BADGE_SIZES = ['a6', 'card', 'a7', '4x6', 'tag'];
+export function cleanBadge(b = {}) {
+  const bool = (v, d) => (v === undefined ? d : !!v);
+  return {
+    tpl: BADGE_TPLS.includes(b.tpl) ? b.tpl : 'classic',
+    color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#0D2B22',
+    org: String(b.org || '').trim().slice(0, 80),
+    logo: /^[a-f0-9]{24}$/.test(b.logo || '') ? b.logo : '',
+    brand: bool(b.brand, true), size: BADGE_SIZES.includes(b.size) ? b.size : 'a6',
+    showRole: bool(b.showRole, true), showTime: bool(b.showTime, true), showVenue: bool(b.showVenue, true),
+  };
+}
+const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
+
 function clean(b, old = {}) {
   const e = { ...old };
   const str = (k, n) => { if (b[k] !== undefined) e[k] = String(b[k] ?? '').trim().slice(0, n); };
@@ -37,6 +53,7 @@ function clean(b, old = {}) {
   if (b.capacity !== undefined) e.capacity = Math.max(0, parseInt(b.capacity, 10) || 0);
   if (b.form !== undefined) e.form = cleanForm(b.form);
   if (b.share !== undefined) e.share = !!b.share;
+  if (b.badge !== undefined) e.badge = cleanBadge(b.badge);
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
   return e;
 }
@@ -485,21 +502,22 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'DELETE') {
         for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
         if (e.staffKey) await meta().delete('staff-' + e.staffKey);
-        await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); return json(200, { ok: true }); }
+        await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); if (e.badge && e.badge.logo) await images().delete(e.badge.logo); return json(200, { ok: true }); }
     }
     return null;
   }
 
   // Badge page: what the participant shows at the entrance (QR code for the admin check-in)
   async function badge(tk, origin) {
-    const f = await byBadge(tk);
+    const f = tk === 'preview' ? null : await byBadge(tk);
     const head = (t) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(t)}</title><meta name="robots" content="noindex"><link rel="icon" href="/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/site/site.css"><link rel="stylesheet" href="/site/badge.css"></head>`;
+    if (tk === 'preview') return new Response(`${head('Badge preview')}<body class="bdgpage pv"><main class="bdgwrap" id="badge"></main><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' } });
     if (!f) return new Response(`${head('Badge not found')}<body class="bdgpage"><main class="bdgwrap"><div class="bdgmsg"><h1>Badge not found</h1><p>Check the link, or contact Aqlyon Career Discovery Centre.</p><p><a class="btn" href="/#events">See upcoming events</a></p></div></main></body></html>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
     const { e, r } = f;
     const pe = publicEvent(e, f.doc.list);
-    const data = { tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: r.name, role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
+    const data = { design: badgeDesign(e), tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: r.name, role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
       event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
     return new Response(`${head(`${r.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
 <script>window.BADGE=${JSON.stringify(data).replace(/</g, '\\u003c')};</script><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`,

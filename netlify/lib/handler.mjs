@@ -94,7 +94,7 @@ export function createHandler({ getStore, env }) {
     const url = new URL(req.url);
     const pm = url.pathname.match(/^\/events\/([a-z0-9-]{1,80})\/?$/);
     if (pm && req.method === 'GET') return EV.page(pm[1], url.origin);
-    const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20})\/?$/);
+    const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20}|preview)\/?$/);
     if (bm && req.method === 'GET') return EV.badge(bm[1], url.origin);
     const path = url.pathname.replace(/^\/api/, '').replace(/\/+$/, '') || '/';
     const method = req.method.toUpperCase();

@@ -280,3 +280,19 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .wlist .ckprog{margin-top:6px;max-width:260px}
 .watags{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0}.watags button{font:600 12px var(--body);border:1.5px solid var(--line);background:var(--surface);border-radius:99px;padding:4px 10px;cursor:pointer;color:inherit}
 .watpl{width:100%;font:15px/1.45 var(--body);padding:10px 12px;border:1.5px solid var(--line);border-radius:12px;min-height:200px}
+/* badge design */
+.bdgrid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;align-items:start}
+.bdtpls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bdtpl{display:flex;gap:8px;align-items:flex-start;border:2px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer}
+.bdtpl:has(input:checked){border-color:var(--accent);background:color-mix(in srgb,var(--accent) 8%,var(--surface))}
+.bdtpl input{margin-top:3px;accent-color:var(--accent)}.bdtpl b{display:block;font-size:14px}.bdtpl small{display:block;font-size:12px;color:var(--muted)}
+.bdcols{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.bdcol{width:32px;height:32px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 0 1.5px var(--line);cursor:pointer}
+.bdcol.on{box-shadow:0 0 0 3px var(--accent)}
+.bdcustom{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;cursor:pointer}.bdcustom input{width:36px;height:32px;padding:0;border:0;background:none;cursor:pointer}
+.bdlogo{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bdlprev{display:grid;place-items:center;width:64px;height:64px;border-radius:12px;background:var(--soft);font-size:11px;color:var(--muted);overflow:hidden}.bdlprev img{max-width:100%;max-height:100%;object-fit:contain}
+.bdchecks{display:flex;flex-wrap:wrap;gap:6px 16px}
+.bdprev{position:sticky;top:0;background:#E9EDF5;border-radius:14px;overflow:hidden}
+.bdprev iframe{display:block;width:100%;height:520px;border:0}
+@media (max-width:760px){.bdgrid{grid-template-columns:1fr}.bdprev{position:static;max-width:340px;margin:0 auto;width:100%}}

@@ -78,6 +78,7 @@ function eventForm(e){
    ${isNew?'':`<p class="small evregnote">${e.counts?`<b>${e.counts.total}</b> registration${e.counts.total===1?'':'s'} so far. `:''}<button type="button" class="linkbtn openregs">View registrations and download Excel</button></p>`}</div>
   <div class="m-link"><div class="field"><label for="ef-link">Registration link *</label><input id="ef-link" maxlength="600" value="${esc(e.regLink||'')}" placeholder="https://forms.gle/…"></div></div>
   <label class="ck"><input type="checkbox" id="ef-open" ${e.regOpen?'checked':''}><span><b>Registration is open</b>: the Register button shows until you untick this.</span></label></fieldset>
+ <fieldset class="qset bdgset"><legend>Badge design</legend><div class="bdgdesign"></div></fieldset>
  <label class="ck"><input type="checkbox" id="ef-pub" ${e.published?'checked':''}><span><b>Show on the website</b>: untick to keep it as a hidden draft.</span></label>
  <label class="ck"><input type="checkbox" id="ef-share" ${e.share!==false?'checked':''}><span><b>Show share buttons</b>: lets visitors share the event (Share button, WhatsApp, Facebook, LinkedIn, X, copy link). Untick to hide all of them.</span></label>
  <p class="formerr" role="alert"></p>
@@ -91,12 +92,13 @@ function eventForm(e){
    try{const img=await prepImage(f);const d=await AAPI.call('/admin/upload',{method:'POST',body:{type:img.type,data:img.data}});cover=d.id;pv.innerHTML=`<img src="${img.preview}" alt="">`}catch(err){pv.innerHTML='<span>Upload failed</span>';toast(err.message,true)}};
   const FORM=JSON.parse(JSON.stringify(e.form||{std:{whatsapp:true,country:true,education:true,role:true},fields:[]}));
   formBuilder($('.fbuild',m),FORM,e);
+  const BADGE=badgeDesigner($('.bdgdesign',m),e,m);
   $('form',m).addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.tagName==='INPUT'&&!['submit','button','checkbox','radio'].includes(ev.target.type))ev.preventDefault()});   // Enter never saves and closes the form by accident
   const rc=$('.rmcover',m);if(rc)rc.onclick=()=>{cover='';$('.evcprev',m).innerHTML='<span>No cover</span>'};
   const orr=$('.openregs',m);if(orr)orr.onclick=()=>{close();regsView(e)};
   const del=$('.delev',m);if(del)del.onclick=async()=>{close();if(!await confirmBox('Delete event?',`<b>${esc(e.title)}</b> and all its registrations will be deleted. This cannot be undone.`,'Delete event',true))return;await AAPI.call('/admin/events/'+e.id,{method:'DELETE'});toast('Event deleted');await loadEvents();renderEvents()};
   $('form',m).onsubmit=async ev=>{ev.preventDefault();const v=n=>(m.querySelector(`input[name=${n}]:checked`)||{}).value;const btn=$('button[type=submit]',m);btn.disabled=true;
-   const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,form:FORM,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked,share:$('#ef-share',m).checked};
+   const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,form:FORM,badge:BADGE,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked,share:$('#ef-share',m).checked};
    try{const sv=await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(sv.calendar==='ok'?'Event saved. Updated invitation emailed to everyone invited.':sv.calendar?'Event saved, but the updated invitation was not emailed: '+sv.calendar:isNew?'Event created':'Event saved',!!sv.calendar&&sv.calendar!=='ok');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
  });
 }
