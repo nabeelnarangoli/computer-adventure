@@ -32,7 +32,7 @@ export function cleanBadge(b = {}) {
     org: String(b.org || '').trim().slice(0, 80),
     logo: /^[a-f0-9]{24}$/.test(b.logo || '') ? b.logo : '',
     brand: bool(b.brand, true), size: BADGE_SIZES.includes(b.size) ? b.size : 'a6',
-    showRole: bool(b.showRole, true), showTime: bool(b.showTime, true), showVenue: bool(b.showVenue, true),
+    showRole: bool(b.showRole, true), showTime: bool(b.showTime, true), showVenue: bool(b.showVenue, true), hole: bool(b.hole, true),
   };
 }
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };

@@ -6,7 +6,7 @@ const $=s=>document.querySelector(s);
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const SIZES={a6:{mm:[105,148],name:'A6'},card:{mm:[54,85.6],name:'ID card'},a7:{mm:[74,105],name:'A7'},'4x6':{mm:[101.6,152.4],name:'4 × 6 in'},tag:{mm:[101.6,76.2],name:'Name tag'}};
 const TZN={'Asia/Kolkata':'IST','Asia/Dubai':'GST','Asia/Riyadh':'AST','Asia/Qatar':'AST','Europe/London':'UK time'};
-const DEF={tpl:'classic',color:'#0D2B22',org:'',logo:'',brand:true,size:'a6',showRole:true,showTime:true,showVenue:true};
+const DEF={tpl:'classic',color:'#0D2B22',org:'',logo:'',brand:true,size:'a6',showRole:true,showTime:true,showVenue:true,hole:true};
 
 function previewData(){let p={};try{p=JSON.parse(decodeURIComponent(location.hash.slice(1))||'{}')}catch(x){}
  const ev=p.event||{};const st=Date.now()+7*864e5;
@@ -34,9 +34,9 @@ function render(){
  const active=state==='ok'||state==='in';
  const qrPart=active?`<div class="bqr"><div class="qrbox">${qrSVG}</div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`
   :`<div class="bqr"><div class="qrbox off"><span>${state==='pending'?'⏳':'✕'}</span></div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`;
- const card=`<article class="bdg t-${esc(D.tpl)} sz-${esc(D.size)} st-${state}" style="--c:${esc(D.color)};--ar:${ar}" aria-label="Event badge for ${esc(B.name)}">
-  ${D.tpl==='minimal'?'<div class="bbar"></div>':''}
-  <div class="bhead">${D.tpl==='conference'?'<div class="slot"></div>':''}${orgHTML}
+ const card=`<article class="bdg t-${esc(D.tpl)} sz-${esc(D.size)} st-${state}${D.hole!==false?' holed':''}" style="--c:${esc(D.color)};--ar:${ar}" aria-label="Event badge for ${esc(B.name)}">
+  ${D.hole!==false?'<div class="bhole"><i class="slot"></i></div>':''}${D.tpl==='minimal'?'<div class="bbar"></div>':''}
+  <div class="bhead">${orgHTML}
    <span class="bkick">Event pass</span><h1 class="btitle">${esc(E.title)}</h1>
    ${D.showTime?`<p class="bwhen"><b>${esc(day)}</b> <span>${esc(time)}</span></p>`:''}${D.showVenue&&place?`<p class="bplace">${esc(place)}</p>`:''}</div>
   ${D.tpl==='classic'?'<div class="bcut"><i class="dot l"></i><i class="ln"></i><i class="dot r"></i></div>':''}

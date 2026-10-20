@@ -68,8 +68,7 @@
 .t-bold .bref{color:#fff}
 
 /* Conference: lanyard slot, colour band, big name, role bar at the bottom */
-.t-conference .bhead{background:var(--c);color:#fff;align-items:center;text-align:center;padding-top:12cqw}
-.t-conference .slot{position:absolute;top:4cqw;left:50%;width:22cqw;height:4.4cqw;margin-left:-11cqw;border-radius:99px;background:#fff}
+.t-conference .bhead{background:var(--c);color:#fff;align-items:center;text-align:center}
 .t-conference .borg{justify-content:center}
 .t-conference .bkick{color:color-mix(in srgb,#fff 70%,var(--c))}
 .t-conference .btitle{font-size:6.2cqw}
@@ -96,7 +95,7 @@
 .sz-tag .bname{font-size:7cqw}.sz-tag .bchip{font-size:2.4cqw;padding:.7cqw 2.2cqw}.sz-tag .bref{font-size:2.4cqw}
 .sz-tag .brole{grid-column:1/-1;grid-row:4;font-size:3cqw;padding:1.4cqw 0}
 .sz-tag .bfoot{grid-column:1/-1;grid-row:5;font-size:2cqw;padding:1cqw 0 1.4cqw}.sz-tag .bfoot .blogo.aq{height:3cqw}
-.sz-tag.t-conference .bhead{padding-top:3.4cqw;align-items:flex-start;text-align:left}.sz-tag .slot{display:none}.sz-tag.t-conference .borg{justify-content:flex-start}
+.sz-tag.t-conference .bhead{align-items:flex-start;text-align:left}.sz-tag.t-conference .borg{justify-content:flex-start}
 .sz-tag.t-conference .bwho{align-items:flex-start;text-align:left}
 .sz-tag.t-minimal .bmain{border:0;margin:0}
 
@@ -119,3 +118,12 @@
 .bhead,.bwho,.bcut,.brole,.bfoot,.bbar{flex:none}
 .bqr{display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-content:center}
 .bqr .qrbox{height:100%;max-height:56cqw;min-height:0;align-self:center}
+/* lanyard hole: a strip at the top with a slot to punch, so nothing printed is lost (every template; not on the landscape name tag) */
+.bhole{flex:none;height:11cqw;display:flex;align-items:flex-end;justify-content:center;padding-bottom:1cqw;box-sizing:border-box}
+.bhole .slot{display:block;width:22cqw;height:4.6cqw;border-radius:99px;background:#fff}
+.t-classic .bhole,.t-conference .bhole{background:var(--c)}
+.t-minimal .bhole .slot{background:#F1F4F2;border:.5cqw solid #C9D3CE;box-sizing:border-box}
+.holed.t-classic .bhead,.holed.t-conference .bhead,.holed.t-bold .bhead{padding-top:3cqw}
+.holed.t-minimal .bhole{padding-bottom:1.6cqw}
+.sz-tag .bhole{display:none}
+.sz-tag.holed .bhead{padding-top:3.4cqw}

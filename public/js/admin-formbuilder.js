@@ -106,7 +106,7 @@ const BD_TPLS=[['classic','Classic','Dark header with a ticket cut'],['minimal',
 const BD_SIZES=[['a6','A6 · 105 × 148 mm (postcard)'],['card','ID card · 54 × 86 mm (lanyard card)'],['a7','A7 · 74 × 105 mm'],['4x6','4 × 6 in · 102 × 152 mm (photo size)'],['tag','Name tag · 102 × 76 mm (landscape)']];
 const BD_COLORS=['#0D2B22','#1A1E3A','#5B3FD6','#0E5A8A','#0E6E6E','#7A1F2B','#C2560E','#111111'];
 function badgeDesigner(box,e,m){
- const D=Object.assign({tpl:'classic',color:'#0D2B22',org:'',logo:'',brand:true,size:'a6',showRole:true,showTime:true,showVenue:true},e.badge||{});
+ const D=Object.assign({tpl:'classic',color:'#0D2B22',org:'',logo:'',brand:true,size:'a6',showRole:true,showTime:true,showVenue:true,hole:true},e.badge||{});
  const ck=(k,t)=>`<label class="fbinl"><input type="checkbox" data-bk="${k}" ${D[k]?'checked':''}> ${t}</label>`;
  box.innerHTML=`<div class="bdgrid"><div class="bdopts">
   <p class="fbsub" style="margin-top:0">Template</p><div class="bdtpls">${BD_TPLS.map(([v,t,d])=>`<label class="bdtpl"><input type="radio" name="bdtpl" value="${v}" ${D.tpl===v?'checked':''}><span><b>${t}</b><small>${d}</small></span></label>`).join('')}</div>
@@ -114,7 +114,7 @@ function badgeDesigner(box,e,m){
   <div class="field"><label for="bd-org">Organiser name <small>(shown at the top of the badge)</small></label><input id="bd-org" maxlength="80" value="${esc(D.org)}" placeholder="e.g. KMCC Education Wing"></div>
   <div class="field"><label>Organiser logo</label><div class="bdlogo"><span class="bdlprev">${D.logo?`<img src="/api/img/${D.logo}" alt="">`:'No logo'}</span><input type="file" id="bd-logo" accept="image/png,image/jpeg,image/webp"><button type="button" class="linkbtn bdlrm" ${D.logo?'':'hidden'}>Remove</button></div><small class="small">A PNG with a transparent background looks best.</small></div>
   <div class="field"><label for="bd-size">Badge size <small>(for printing and the saved image)</small></label><select id="bd-size">${BD_SIZES.map(([v,t])=>`<option value="${v}" ${D.size===v?'selected':''}>${t}</option>`).join('')}</select></div>
-  <p class="fbsub">Show on the badge</p><div class="bdchecks">${ck('showTime','Date and time')}${ck('showVenue','Venue')}${ck('showRole','Student / Parent')}${ck('brand','Aqlyon (www.aqlyondm.com at the bottom)')}</div>
+  <p class="fbsub">Show on the badge</p><div class="bdchecks">${ck('showTime','Date and time')}${ck('showVenue','Venue')}${ck('showRole','Student / Parent')}${ck('brand','Aqlyon (www.aqlyondm.com at the bottom)')}${ck('hole','Space for a lanyard hole at the top')}</div>
  </div><div class="bdprev"><iframe title="Badge preview" loading="lazy"></iframe></div></div>`;
  const fr=$('iframe',box);
  const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};
