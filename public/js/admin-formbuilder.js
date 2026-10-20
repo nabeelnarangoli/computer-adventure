@@ -122,7 +122,10 @@ function badgeDesigner(box,e,m){
   return {title:$('#ef-title',m).value||'Your event name',tz,startUTC:u($('#ef-start',m).value)||Date.now()+7*864e5,endUTC:u($('#ef-end',m).value),mode,locationName:$('#ef-loc',m).value||'Event venue'}};
  let t=0;const show=()=>{clearTimeout(t);t=setTimeout(()=>{const h='#'+encodeURIComponent(JSON.stringify({design:{...D,logo:D.logo?'/api/img/'+D.logo:''},event:ev()}));
   if(fr.src&&fr.contentWindow&&fr.contentWindow.location.pathname==='/badge/preview')fr.contentWindow.location.hash=h;else fr.src='/badge/preview'+h},120)};
- fr.onload=()=>{try{const d=fr.contentDocument;const fit=()=>{fr.style.height=(d.documentElement.scrollHeight+4)+'px'};fit();new ResizeObserver(fit).observe(d.body)}catch(x){}};
+ // size the frame to the badge itself (not the page, which is always at least as tall as the frame: measuring that made it grow forever)
+ fr.onload=()=>{try{const d=fr.contentDocument,w=d.getElementById('badge');if(!w)return;let last=0;
+  const fit=()=>{const h=Math.min(1400,Math.ceil(w.getBoundingClientRect().height)+2);if(h>40&&Math.abs(h-last)>1){last=h;fr.style.height=h+'px'}};
+  fit();new ResizeObserver(fit).observe(w)}catch(x){}};
  $$('input[name=bdtpl]',box).forEach(r=>r.onchange=()=>{D.tpl=r.value;show()});
  $$('.bdcol',box).forEach(b=>b.onclick=()=>{D.color=b.dataset.col;$$('.bdcol',box).forEach(x=>x.classList.toggle('on',x===b));$('.bdcustom input',box).value=D.color;show()});
  $('.bdcustom input',box).oninput=x=>{D.color=x.target.value;$$('.bdcol',box).forEach(b=>b.classList.remove('on'));show()};
