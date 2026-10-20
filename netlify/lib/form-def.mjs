@@ -5,6 +5,8 @@ const TYPES = ['short', 'paragraph', 'choice', 'checkboxes', 'dropdown', 'scale'
 const OPT = ['choice', 'checkboxes', 'dropdown'];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const str = (v, n) => String(v ?? '').trim().slice(0, n);
+// dropdowns are searchable on the form, so they can hold very long lists (districts, schools, colleges …)
+export const MAX_DROPDOWN = 5000;
 const list = (a, max, n) => [...new Set((Array.isArray(a) ? a : []).map((x) => str(x, n)).filter(Boolean))].slice(0, max);
 const num = (v) => (v === '' || v == null || !isFinite(Number(v)) ? '' : Number(v));
 
@@ -21,7 +23,7 @@ export function cleanForm(def) {
     let id = /^f[a-z0-9]{3,12}$/.test(f.id) && !seen.has(f.id) ? f.id : 'f' + Math.random().toString(36).slice(2, 9);
     seen.add(id);
     const c = { id, type: f.type, label: str(f.label, 200), help: str(f.help, 500), required: f.type === 'section' ? false : !!f.required };
-    if (OPT.includes(f.type)) { c.options = list(f.options, 50, 120); if (!c.options.length) c.options = ['Option 1']; if (f.type !== 'dropdown') c.other = !!f.other; }
+    if (OPT.includes(f.type)) { c.options = list(f.options, f.type === 'dropdown' ? MAX_DROPDOWN : 50, 120); if (!c.options.length) c.options = ['Option 1']; if (f.type !== 'dropdown') c.other = !!f.other; }
     if (f.type === 'short') { c.valid = ['text', 'number', 'email', 'url', 'phone'].includes(f.valid) ? f.valid : 'text'; if (c.valid === 'number') { c.min = num(f.min); c.max = num(f.max); } }
     if (f.type === 'scale') { c.scaleMin = Number(f.scaleMin) === 0 ? 0 : 1; c.scaleMax = Math.min(10, Math.max(2, parseInt(f.scaleMax, 10) || 5)); c.minLabel = str(f.minLabel, 40); c.maxLabel = str(f.maxLabel, 40); }
     if (f.type === 'rating') c.stars = Math.min(10, Math.max(3, parseInt(f.stars, 10) || 5));

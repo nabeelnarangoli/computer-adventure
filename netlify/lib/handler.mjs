@@ -105,7 +105,7 @@ export function createHandler({ getStore, env }) {
     let body = {};
     if (['POST', 'PUT', 'PATCH'].includes(method)) {
       const text = await req.text();
-      if (text.length > (path === '/admin/upload' ? 2_600_000 : /^\/events\/[a-z0-9-]+\/upload$/.test(path) ? 4_400_000 : MAX_BODY)) return json(413, { error: 'Too much data.' });
+      if (text.length > (path === '/admin/upload' ? 2_600_000 : /^\/events\/[a-z0-9-]+\/upload$/.test(path) ? 4_400_000 : path.startsWith('/admin/events') ? 2_000_000 : MAX_BODY)) return json(413, { error: 'Too much data.' });
       try { body = text ? JSON.parse(text) : {}; } catch { return json(400, { error: 'Invalid JSON.' }); }
     }
     const auth = verify((req.headers.get('authorization') || '').replace(/^Bearer\s+/i, ''), secret);
