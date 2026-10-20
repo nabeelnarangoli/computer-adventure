@@ -122,3 +122,5 @@
 .rgf .ff.bad input:not([type=radio]):not([type=checkbox]),.rgf .ff.bad select,.rgf .ff.bad textarea{border-color:#B42318}
 .rgf fieldset.ff.bad{outline:2px solid #F3B4AE;outline-offset:6px;border-radius:8px}
 .rgf table.ffgrid{display:table;width:100%}.rgf table.ffgrid thead{display:table-header-group}.rgf table.ffgrid tbody{display:table-row-group}
+
+.rgf .stars{position:relative}.evdlg{position:relative}

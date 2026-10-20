@@ -19,7 +19,8 @@
 .acts .mini,.mini{background:var(--soft);border:1px solid var(--line)}
 .empty{text-align:center;background:var(--surface);border:2px dashed var(--line);border-radius:22px;padding:40px 20px;margin-top:16px}
 .empty h2{font-size:24px;margin-bottom:6px}.empty p{color:var(--muted)}
-.modalbg{position:fixed;inset:0;background:rgba(10,12,30,.45);display:grid;place-items:center;z-index:200;padding:16px;overflow:hidden}
+.modalbg{position:fixed;inset:0;background:rgba(10,12,30,.45);display:grid;place-items:center;z-index:200;padding:16px;overflow:hidden;overflow:clip}
+.modal{position:relative}   /* hidden inputs inside a popup are positioned (and scrolled) with it */
 .modal{background:var(--surface);color:var(--ink);border-radius:24px;padding:24px;width:100%;max-width:640px;max-height:calc(100dvh - 32px);overflow:auto;box-shadow:0 30px 80px rgba(0,0,0,.3)}
 .modal h2{font-size:26px;margin-bottom:10px}.modal h3{font-size:18px;margin:18px 0 6px}
 .mrow{display:flex;justify-content:flex-end;gap:10px;margin-top:18px;flex-wrap:wrap}
@@ -150,7 +151,7 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .fbfixed{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 6px}
 .fbchip{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:7px 13px;font-size:14px;font-weight:600;border:1.5px solid var(--line);background:var(--surface)}
 .fbchip.lock{background:var(--soft);color:var(--muted)}
-.fbchip.tog{cursor:pointer;user-select:none}.fbchip.tog input{position:absolute;opacity:0;width:1px;height:1px}
+.fbchip.tog{cursor:pointer;user-select:none;position:relative}.fbchip.tog input{position:absolute;opacity:0;width:1px;height:1px}
 .fbchip.tog::before{content:"";width:16px;height:16px;border-radius:5px;border:2px solid var(--muted);flex:none}
 .fbchip.tog.on{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface))}.fbchip.tog.on::before{background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M3 8l3 3 7-7' stroke='white' stroke-width='2.4' fill='none'/%3E%3C/svg%3E") center/12px no-repeat;border-color:var(--accent)}
 .fbchip.tog:has(input:focus-visible){outline:3px solid var(--accent);outline-offset:2px}
@@ -329,3 +330,5 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .rptip{position:fixed;z-index:300;background:#1A1E3A;color:#fff;border-radius:10px;padding:8px 10px;font-size:13px;line-height:1.5;pointer-events:none;max-width:280px;box-shadow:0 10px 24px -12px rgba(0,0,0,.5)}
 @media (max-width:760px){.rphero{grid-template-columns:repeat(2,minmax(0,1fr))}.rpgrid{grid-template-columns:1fr}.rpacts{margin-left:0}}
 @media print{.top,.admtabwrap,.rback,.evsub,.rpbar select,.rpacts,[data-tbl],[data-more],.toast{display:none!important}.rpbar label{font-size:13px}.rpcard{break-inside:avoid}.rpgrid{grid-template-columns:1fr 1fr}.rpfill i,.rpcb,.rplegend i{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+
+.pvform .sbtns label,.pvform .stars{position:relative}

@@ -25,6 +25,8 @@ function toast(msg,bad){const t=document.createElement('div');t.className='toast
 function mScroll(el,gap=80){const md=el&&el.closest('.modal');if(!md)return el&&el.scrollIntoView({block:'center'});md.scrollTo({top:md.scrollTop+el.getBoundingClientRect().top-md.getBoundingClientRect().top-gap,behavior:'smooth'})}
 function modal(html,onReady){const m=document.createElement('div');m.className='modalbg';m.innerHTML=`<div class="modal" role="dialog" aria-modal="true">${html}</div>`;document.body.appendChild(m);
  const close=()=>m.remove();
+ // the dark background never scrolls; if something tries (e.g. focusing a hidden field), put it straight back
+ m.addEventListener('scroll',()=>{if(m.scrollTop||m.scrollLeft){m.scrollTop=0;m.scrollLeft=0}});
  // clicking outside closes only simple messages; a window with things to fill in closes with its own buttons, so nothing typed is lost
  let downOut=false;m.addEventListener('pointerdown',e=>{downOut=e.target===m});
  m.addEventListener('click',e=>{if(e.target.closest('[data-close]'))return close();if(e.target===m&&downOut&&!m.querySelector('input:not([type=checkbox]):not([type=radio]),textarea,select'))close()});document.addEventListener('keydown',function k(e){if(!m.isConnected)return document.removeEventListener('keydown',k);if(e.key==='Escape'&&m===[...document.querySelectorAll('.modalbg')].pop()){close();document.removeEventListener('keydown',k)}});onReady&&onReady(m,close);return close}
