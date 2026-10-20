@@ -37,6 +37,7 @@ export function cleanBadge(b = {}) {
 }
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
 
+const waText = (v) => String(v ?? '').replace(/\r/g, '').slice(0, 1500).trim();
 function clean(b, old = {}) {
   const e = { ...old };
   const str = (k, n) => { if (b[k] !== undefined) e[k] = String(b[k] ?? '').trim().slice(0, n); };
@@ -53,6 +54,7 @@ function clean(b, old = {}) {
   if (b.capacity !== undefined) e.capacity = Math.max(0, parseInt(b.capacity, 10) || 0);
   if (b.form !== undefined) e.form = cleanForm(b.form);
   if (b.share !== undefined) e.share = !!b.share;
+  if (b.waMsg !== undefined) e.waMsg = waText(b.waMsg); // WhatsApp confirmation message for this event ('' = use the common one)
   if (b.badge !== undefined) e.badge = cleanBadge(b.badge);
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
   return e;
@@ -93,7 +95,7 @@ function publicEvent(e, list) {
 
 // Calendar invitations: our own email from the academy Gmail account (Apps Script mailer), with the
 // event attached as a calendar invitation. Subject: "Invitation from Aqlyon Academy: <event name>".
-const adminSettings = (s) => ({ whatsapp: s.whatsapp || '+919539244342', calUrl: s.calUrl || '', calEmail: s.calEmail || '', calSecret: s.calSecret || '', calNeedsUpdate: !!s.calUrl && !s.calV2 });
+const adminSettings = (s) => ({ whatsapp: s.whatsapp || '+919539244342', waMsg: s.waMsg || '', waMsgOnline: s.waMsgOnline || '', calUrl: s.calUrl || '', calEmail: s.calEmail || '', calSecret: s.calSecret || '', calNeedsUpdate: !!s.calUrl && !s.calV2 });
 const calOk = (r) => r && (r.status === 'confirmed' || r.status === 'approved');
 async function calPost(cfg, payload, wait = 9000) {
   if (!cfg || !cfg.calUrl) return { ok: false, error: 'Calendar invitations are not connected.' };
@@ -328,6 +330,8 @@ export function createEvents({ getStore, json }) {
         const cur = await rawSettings(); cur.whatsapp = cur.whatsapp || '+919539244342';
         if (body.calUrl !== undefined) { const u = String(body.calUrl).trim(); if (u && !/^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u)) return json(400, { error: 'Paste the Web app URL from Apps Script. It starts with https://script.google.com/macros/s/ and ends with /exec' }); cur.calUrl = u; if (!u) cur.calEmail = ''; }
         if (body.whatsapp !== undefined) { const w = String(body.whatsapp).replace(/[^\d+]/g, ''); if (!/^\+\d{8,15}$/.test(w)) return json(400, { error: 'WhatsApp number: include the country code, like +919539244342.' }); cur.whatsapp = w; }
+        if (body.waMsg !== undefined) cur.waMsg = waText(body.waMsg);              // common WhatsApp message, in-person events
+        if (body.waMsgOnline !== undefined) cur.waMsgOnline = waText(body.waMsgOnline); // and online events
         if (!cur.calSecret) cur.calSecret = crypto.randomBytes(18).toString('base64url');
         if (body.calUrl) { const t = await calPost(cur, { action: 'ping' }); if (!t.ok) return json(400, { error: 'The link was not saved. ' + (t.error || 'The script did not answer.') }); if (t.version !== 2) return json(400, { error: 'This is the old script. Copy the new code from this window into Apps Script, run authorize, then Deploy → Manage deployments → Edit → New version → Deploy.' }); cur.calEmail = t.email || ''; cur.calQuota = t.quota; cur.calV2 = true; }
         all2.events = cur; await meta().setJSON('settings', all2);

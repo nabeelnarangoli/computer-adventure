@@ -36,12 +36,20 @@ function renderEvents(){
  <div class="calbar ${EVSET.calUrl&&!EVSET.calNeedsUpdate?'on':EVSET.calNeedsUpdate?'warn':''}"><span class="calic">📅</span><div><b>Calendar invitations ${EVSET.calNeedsUpdate?'need a quick update':EVSET.calUrl?'on':'off'}</b><small>${EVSET.calNeedsUpdate?'Switch to our own invitation email (“Invitation from Aqlyon Academy: event name”). Takes 2 minutes.':EVSET.calUrl?`Emailed from ${esc(EVSET.calEmail||'your Google account')} as “Invitation from Aqlyon Academy: <i>event name</i>”, with the event attached for their calendar.`:'Connect so everyone who registers gets an invitation email with the event for their calendar.'}</small></div><button type="button" class="btn sm ${EVSET.calUrl&&!EVSET.calNeedsUpdate?'ghost':''} calsetup">${EVSET.calNeedsUpdate?'Update now':EVSET.calUrl?'Settings':'Connect'}</button></div>
  <details class="evset"><summary><b>Event settings</b> · WhatsApp for approvals: ${esc(EVSET.whatsapp)}</summary>
   <form class="mform evsetform"><div class="field"><label for="es-wa">WhatsApp number for paid registrations</label><input id="es-wa" value="${esc(EVSET.whatsapp)}" inputmode="tel"><small class="small">Visitors who register for a paid event send their details to this number for payment and approval. Include the country code.</small></div>
+  <p class="fbsub">Common WhatsApp message</p><p class="small">Used for every event that doesn't have its own message (set one in the event's <b>WhatsApp message</b> section). It's the confirmation sent from the WhatsApp lists and the <b>Send details on WhatsApp</b> button.</p>
+  <div class="wacommon" data-on="0"></div><button type="button" class="linkbtn sm wareset" data-on="0">Use the built-in message</button>
+  <div class="wacommon" data-on="1"></div><button type="button" class="linkbtn sm wareset" data-on="1">Use the built-in message</button>
   <p class="formerr"></p><button class="btn sm" type="submit">Save settings</button></form></details>
  <h2 class="evh">Upcoming</h2>${up.length?`<div class="evlist">${up.map(card).join('')}</div>`:`<div class="empty"><p>No upcoming events. Press <b>＋ New event</b> to add one. It appears on the website under <b>Upcoming events</b>.</p></div>`}
  ${past.length?`<h2 class="evh">Past</h2><div class="evlist past">${past.map(card).join('')}</div>`:''}`;
  $('#newev').onclick=()=>eventForm();
  $('.calsetup').onclick=calSetup;
- $('.evsetform').onsubmit=async ev=>{ev.preventDefault();const f=ev.target;try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{whatsapp:$('#es-wa').value}});toast('Settings saved');renderEvents()}catch(err){$('.formerr',f).textContent=err.message}};
+ const sampleEv=EVENTS.find(x=>x.mode==='offline')||EVENTS[0]||{title:'Your event name',start:new Date(Date.now()+7*864e5).toISOString().slice(0,10)+'T10:00',tz:'Asia/Kolkata',mode:'offline',locationName:'Aqlyon Career Discovery Centre, Koyilandy'};
+ const sampleOn=EVENTS.find(x=>x.mode==='online')||{...sampleEv,mode:'online',onlineUrl:'https://meet.google.com/abc-defg-hij'};
+ const WC=[0,1].map(o=>waEditor($(`.wacommon[data-on="${o}"]`),{value:waCommon(EVSET,!!o),online:!!o,ev:waEvent(o?sampleOn:sampleEv),person:WA_SAMPLE,id:'es-wa'+o,label:o?'For online events':'For in-person events'}));
+ $$('.wareset').forEach(b=>b.onclick=()=>WC[+b.dataset.on].set(waDefault(!!+b.dataset.on)));
+ $('.evsetform').onsubmit=async ev=>{ev.preventDefault();const f=ev.target;const keep=(o)=>{const v=WC[o].get();return v===waDefault(!!o).trim()?'':v};   // built-in text is stored as "use built-in"
+  try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{whatsapp:$('#es-wa').value,waMsg:keep(0),waMsgOnline:keep(1)}});toast('Settings saved');renderEvents()}catch(err){$('.formerr',f).textContent=err.message}};
  $$('[data-ev]').forEach(b=>b.onclick=async()=>{const e=EVENTS.find(x=>x.id===b.dataset.id);const a=b.dataset.ev;
   if(a==='edit')return eventForm(e);
   if(a==='regs')return regsView(e);
@@ -79,6 +87,9 @@ function eventForm(e){
   <div class="m-link"><div class="field"><label for="ef-link">Registration link *</label><input id="ef-link" maxlength="600" value="${esc(e.regLink||'')}" placeholder="https://forms.gle/…"></div></div>
   <label class="ck"><input type="checkbox" id="ef-open" ${e.regOpen?'checked':''}><span><b>Registration is open</b>: the Register button shows until you untick this.</span></label></fieldset>
  <fieldset class="qset bdgset"><legend>Badge design</legend><div class="bdgdesign"></div></fieldset>
+ <fieldset class="qset wamset"><legend>WhatsApp message</legend><p class="small">The confirmation message sent on WhatsApp: in the lists you share with helpers and the <b>Send details on WhatsApp</b> button.</p>
+  <div class="wause"><label class="ck"><input type="radio" name="wause" value="common" ${e.waMsg?'':'checked'}><span><b>Use the common message</b>: the same for all events (change it in <b>Event settings</b>)</span></label><label class="ck"><input type="radio" name="wause" value="own" ${e.waMsg?'checked':''}><span><b>Write a message for this event</b></span></label></div>
+  <div class="waedit"></div></fieldset>
  <label class="ck"><input type="checkbox" id="ef-pub" ${e.published?'checked':''}><span><b>Show on the website</b>: untick to keep it as a hidden draft.</span></label>
  <label class="ck"><input type="checkbox" id="ef-share" ${e.share!==false?'checked':''}><span><b>Show share buttons</b>: lets visitors share the event (Share button, WhatsApp, Facebook, LinkedIn, X, copy link). Untick to hide all of them.</span></label>
  <p class="formerr" role="alert"></p>
@@ -93,12 +104,21 @@ function eventForm(e){
   const FORM=JSON.parse(JSON.stringify(e.form||{std:{whatsapp:true,country:true,education:true,role:true},fields:[]}));
   formBuilder($('.fbuild',m),FORM,e);
   const BADGE=badgeDesigner($('.bdgdesign',m),e,m);
+  const mode=()=>(m.querySelector('input[name=mode]:checked')||{}).value==='online';
+  const evNow=()=>waEvent({title:$('#ef-title',m).value||'Your event name',start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:mode()?'online':'offline',locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,slug:e.slug});
+  const WB=$('.waedit',m),WM=waEditor(WB,{value:e.waMsg||waCommon(EVSET,mode()),online:mode(),ev:evNow,person:WA_SAMPLE,id:'ef-wa'});
+  let own=e.waMsg||'',isOwn=null;   // the event's own message is kept while you look at the common one
+  const waUse=()=>{const o=(m.querySelector('input[name=wause]:checked')||{}).value==='own';if(o===isOwn)return;if(isOwn)own=WM.get();isOwn=o;
+   WB.classList.toggle('ro',!o);WM.ta.readOnly=!o;WM.set(o?(own||waCommon(EVSET,mode())):waCommon(EVSET,mode()))};
+  $$('input[name=wause]',m).forEach(x=>x.addEventListener('change',waUse));waUse();
+  $$('input[name=mode]',m).forEach(x=>x.addEventListener('change',()=>{WM.mode(mode());if(WB.classList.contains('ro'))WM.set(waCommon(EVSET,mode()))}));
+  $('form',m).addEventListener('input',ev=>{if(ev.target!==WM.ta)WM.refresh()});
   $('form',m).addEventListener('keydown',ev=>{if(ev.key==='Enter'&&ev.target.tagName==='INPUT'&&!['submit','button','checkbox','radio'].includes(ev.target.type))ev.preventDefault()});   // Enter never saves and closes the form by accident
   const rc=$('.rmcover',m);if(rc)rc.onclick=()=>{cover='';$('.evcprev',m).innerHTML='<span>No cover</span>'};
   const orr=$('.openregs',m);if(orr)orr.onclick=()=>{close();regsView(e)};
   const del=$('.delev',m);if(del)del.onclick=async()=>{close();if(!await confirmBox('Delete event?',`<b>${esc(e.title)}</b> and all its registrations will be deleted. This cannot be undone.`,'Delete event',true))return;await AAPI.call('/admin/events/'+e.id,{method:'DELETE'});toast('Event deleted');await loadEvents();renderEvents()};
   $('form',m).onsubmit=async ev=>{ev.preventDefault();const v=n=>(m.querySelector(`input[name=${n}]:checked`)||{}).value;const btn=$('button[type=submit]',m);btn.disabled=true;
-   const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,form:FORM,badge:BADGE,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked,share:$('#ef-share',m).checked};
+   const body={title:$('#ef-title',m).value,summary:$('#ef-sum',m).value,details:$('#ef-det',m).value,cover,start:$('#ef-start',m).value,end:$('#ef-end',m).value,tz:$('#ef-tz',m).value,mode:v('mode'),locationName:$('#ef-loc',m).value,mapUrl:$('#ef-map',m).value,onlineUrl:$('#ef-on',m).value,paid:v('paid')==='paid',price:$('#ef-price',m).value,currency:$('#ef-cur',m).value,regMode:v('regMode'),capacity:$('#ef-cap',m).value,maxSeats:$('#ef-max',m).value,regLink:$('#ef-link',m).value,form:FORM,badge:BADGE,regOpen:$('#ef-open',m).checked,published:$('#ef-pub',m).checked,share:$('#ef-share',m).checked,waMsg:WB.classList.contains('ro')?'':WM.get()};
    try{const sv=await AAPI.call(isNew?'/admin/events':'/admin/events/'+e.id,{method:isNew?'POST':'PATCH',body});close();toast(sv.calendar==='ok'?'Event saved. Updated invitation emailed to everyone invited.':sv.calendar?'Event saved, but the updated invitation was not emailed: '+sv.calendar:isNew?'Event created':'Event saved',!!sv.calendar&&sv.calendar!=='ok');await loadEvents();renderEvents()}catch(err){$('.formerr',m).textContent=err.message;btn.disabled=false}};
  });
 }
@@ -274,9 +294,7 @@ async function regsView(e){
  const attCell=r=>!okReg(r)?'<span class="muted">–</span>':r.attended?`<span class="attyes">✓ ${esc(new Date(r.attended).toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',hour12:true}))}</span> <button type="button" class="linkbtn sm" data-att="0" data-id="${r.id}" title="Undo check-in">Undo</button>`:`<button type="button" class="btn sm ghost" data-att="1" data-id="${r.id}">Check in</button>`;
  const live=r=>!['rejected','cancelled'].includes(r.status);
  const counted=r=>live(r)&&!imp(r);
- const where=e.mode==='online'?(e.onlineUrl?`Join online: ${e.onlineUrl}`:'We will send the online joining link before the event.'):`Venue: ${e.locationName}${e.mapUrl?' · Map: '+e.mapUrl:''}`;
- const badgeUrl=r=>r.tk?location.origin+'/badge/'+r.tk:'';
- const confirmMsg=r=>`Hello ${r.name.split(' ')[0]}, your registration for "${e.title}" is confirmed. ✅\nRef: ${r.ref} · Seats: ${r.seats}\nWhen: ${evDate(e)}\n${where}${e.mode!=='online'&&r.tk?`\nYour entry badge (show the QR code at the entrance): ${badgeUrl(r)}`:''}\nEvent page: ${evLink(e)}\n– Aqlyon Career Discovery Centre`;
+ const confirmMsg=r=>waFill(waTemplate(e,EVSET),waEvent(e),waPerson(e,r));   // the event's WhatsApp message (or the common one)
  const ordered=()=>regs.slice().sort((a,b)=>a.at<b.at?-1:1); // oldest first, so # is the sign-up order
  const shown=()=>{const t=q.trim().toLowerCase();return ordered().map((r,i)=>({r,n:i+1})).filter(({r})=>(fs==='all'||(fs==='active'?counted(r):fs==='imported'?imp(r):fs==='pending'?r.status==='pending'&&!imp(r):fs==='in'?!!r.attended:fs==='notin'?okReg(r)&&!r.attended:r.status===fs))&&(!t||[r.name,r.email,r.phone,r.whatsapp,r.ref,countryName(r.country),r.education,r.role,...QF.map(f=>FF.show(f,ans(r,f)))].join(' ').toLowerCase().includes(t)))};
  const download=()=>{

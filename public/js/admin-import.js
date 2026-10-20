@@ -117,26 +117,49 @@ function slShare(e,l){
  <div class="stlink"><div class="stqr">${qr(slUrl(l.key))}</div><div><input class="stin" readonly value="${esc(slUrl(l.key))}" aria-label="List link"><div class="evbtns"><button type="button" class="btn sm slcp">Copy link</button><a class="btn sm ghost" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Send link on WhatsApp</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${esc(slUrl(l.key))}">Open ↗</a></div></div></div>
  <p class="small">The link works until 2 days after the event. You can turn it off or delete it any time.</p><div class="mrow"><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{m.querySelector('.modal').classList.add('wide');$('.slcp',m).onclick=()=>copy(slUrl(l.key))});
 }
+/* ---------- WhatsApp message helpers (admin) ---------- */
+// the event's details as the message placeholders need them (same wording as the server)
+function waEvent(e){
+ const TZN={'Asia/Kolkata':'India time','Asia/Dubai':'UAE time','Asia/Riyadh':'Saudi time','Asia/Qatar':'Qatar time','Europe/London':'UK time'};
+ const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};
+ const tz=e.tz||'Asia/Kolkata',utc=l=>Date.parse(l+':00Z')-(OFF[tz]??330)*60000,tf=ms=>new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'numeric',minute:'2-digit',hour12:true}).format(ms);
+ let when='';try{when=`${new Intl.DateTimeFormat('en-GB',{timeZone:tz,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(utc(e.start))}, ${tf(utc(e.start))}${e.end?' – '+tf(utc(e.end)):''} (${TZN[tz]||''})`}catch(x){}
+ return {title:e.title||'',when,venue:e.mode==='online'?'Online':e.locationName||'',mapUrl:e.mode==='offline'?e.mapUrl||'':'',join:e.onlineUrl||'',page:e.slug?evLink(e):'',mode:e.mode};
+}
+const waPerson=(e,r)=>({name:r.name,ref:r.ref,seats:r.seats||1,badge:e.mode!=='online'&&r.tk?location.origin+'/badge/'+r.tk:''});
+const WA_SAMPLE={name:'Aisha Rahman',ref:'AQ-7F3C21',seats:1,badge:location.origin+'/badge/preview'};
+// message box with the {placeholder} buttons and a live preview; get() returns the text
+function waEditor(box,{value,online,ev,person,label='Message',id='wamsg'}){
+ box.innerHTML=`<div class="field"><label for="${id}">${label}</label><div class="watags"></div><textarea id="${id}" class="watpl">${esc(value)}</textarea><small class="small">Words in {curly brackets} are filled in for each person. *Stars* make text bold in WhatsApp.</small></div>
+ <p class="small"><b>Preview</b> for ${esc(person.name)}:</p><pre class="wapre"></pre>`;
+ const ta=$('textarea',box),pv=$('.wapre',box);let on=online,E=ev;
+ const tags=()=>{$('.watags',box).innerHTML=WA_TAGS.filter(([t])=>on?!['{badge}','{map}'].includes(t):t!=='{join}').map(([t,l])=>`<button type="button" data-tag="${t}" title="Insert ${l}">${t}</button>`).join('');
+  $$('[data-tag]',box).forEach(b=>b.onclick=()=>{const t=b.dataset.tag,s=ta.selectionStart??ta.value.length;ta.value=ta.value.slice(0,s)+t+ta.value.slice(ta.selectionEnd??s);ta.focus();ta.selectionStart=ta.selectionEnd=s+t.length;prev()})};
+ const prev=()=>{pv.textContent=waFill(ta.value,{...(typeof E==='function'?E():E),mode:on?'online':'offline'},person)};
+ ta.oninput=prev;tags();prev();
+ return {get:()=>ta.value.replace(/\r/g,'').trim(),set:v=>{ta.value=v;prev()},mode:o=>{if(o!==on){on=o;tags()}prev()},refresh:prev,ta};
+}
+
 function slCreate(e,regs,ids,after){
  const okR=r=>['confirmed','approved'].includes(r.status);
  const picked=regs.filter(r=>ids.includes(r.id)),good=picked.filter(okR),left=picked.length-good.length;
  if(!good.length)return toast('Select confirmed people first. Only confirmed or approved people get a confirmation message.',true);
- const TZN={'Asia/Kolkata':'India time','Asia/Dubai':'UAE time','Asia/Riyadh':'Saudi time','Asia/Qatar':'Qatar time','Europe/London':'UK time'};
- const OFF={'Asia/Kolkata':330,'Asia/Dubai':240,'Asia/Riyadh':180,'Asia/Qatar':180,'Europe/London':0};
- const utc=l=>Date.parse(l+':00Z')-(OFF[e.tz]??330)*60000,tz=e.tz||'Asia/Kolkata',tf=ms=>new Intl.DateTimeFormat('en-GB',{timeZone:tz,hour:'numeric',minute:'2-digit',hour12:true}).format(ms);
- const when=`${new Intl.DateTimeFormat('en-GB',{timeZone:tz,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(utc(e.start))}, ${tf(utc(e.start))}${e.end?' – '+tf(utc(e.end)):''} (${TZN[tz]||''})`;   // same wording as the server
- const ev={title:e.title,when,venue:e.mode==='online'?'Online':e.locationName||'',mapUrl:e.mode==='offline'?e.mapUrl||'':'',join:e.onlineUrl||'',page:evLink(e),mode:e.mode};
- const sample=good[0],sp={name:sample.name,ref:sample.ref,seats:sample.seats,badge:e.mode!=='online'&&sample.tk?location.origin+'/badge/'+sample.tk:''};
+ const ev=waEvent(e);
+ const sample=good[0],sp=waPerson(e,sample);
  const n=(e.sendLists||[]).length+1;
  modal(`<h2>Share for WhatsApp</h2><p><b>${good.length}</b> ${good.length===1?'person':'people'} will be on this list${left?` (${left} not confirmed ${left===1?'is':'are'} left out)`:''}. A helper opens the link and sends each person this message from their own WhatsApp.</p>
  <div class="field"><label for="slname">Name of the list <small>(e.g. the helper's name)</small></label><input id="slname" maxlength="60" value="List ${n}"></div>
- <div class="field"><label for="slmsg">Message</label><div class="watags">${WA_TAGS.filter(([t])=>e.mode==='online'?!['{badge}','{map}'].includes(t):t!=='{join}').map(([t,l])=>`<button type="button" data-tag="${t}" title="Insert ${l}">${t}</button>`).join('')}</div><textarea id="slmsg" class="watpl">${esc(waDefault(e.mode==='online'))}</textarea><small class="small">Words in {curly brackets} are filled in for each person. *Stars* make text bold in WhatsApp.</small></div>
- <p class="small"><b>Preview</b> for ${esc(sample.name)}:</p><pre class="wapre slprev"></pre>
+ <div class="slwa"></div>
+ <div class="wasave"><label class="ck"><input type="checkbox" id="sl-saveev"><span>Save this message for <b>${esc(e.title)}</b> (used next time for this event)</span></label><label class="ck"><input type="checkbox" id="sl-saveall"><span>Save as the <b>common message</b> for all events</span></label></div>
  <p class="formerr" role="alert"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn slgo">Create link</button></div>`,(m,close)=>{
-  m.querySelector('.modal').classList.add('wide');const ta=$('#slmsg',m);
-  const prev=()=>{$('.slprev',m).textContent=waFill(ta.value,ev,sp)};ta.oninput=prev;prev();
-  $$('[data-tag]',m).forEach(b=>b.onclick=()=>{const t=b.dataset.tag,s=ta.selectionStart??ta.value.length;ta.value=ta.value.slice(0,s)+t+ta.value.slice(ta.selectionEnd??s);ta.focus();ta.selectionStart=ta.selectionEnd=s+t.length;prev()});
-  $('.slgo',m).onclick=async x=>{x.target.disabled=true;try{const l=await AAPI.call(`/admin/events/${e.id}/sendlists`,{method:'POST',body:{name:$('#slname',m).value,msg:ta.value,ids:good.map(r=>r.id)}});
+  m.querySelector('.modal').classList.add('wide');
+  const W=waEditor($('.slwa',m),{value:waTemplate(e,EVSET),online:e.mode==='online',ev,person:sp,id:'slmsg'});
+  $('.slgo',m).onclick=async x=>{x.target.disabled=true;try{const msg=W.get();if(!msg)throw new Error('Write a message first.');
+   const l=await AAPI.call(`/admin/events/${e.id}/sendlists`,{method:'POST',body:{name:$('#slname',m).value,msg,ids:good.map(r=>r.id)}});
+   const saved=[];
+   if($('#sl-saveev',m).checked){try{await AAPI.call('/admin/events/'+e.id,{method:'PATCH',body:{waMsg:msg}});e.waMsg=msg;const k=EVENTS.find(v=>v.id===e.id);if(k)k.waMsg=msg;saved.push('this event')}catch(er){toast('List created, but the message was not saved for the event: '+er.message,true)}}
+   if($('#sl-saveall',m).checked){try{EVSET=await AAPI.call('/admin/events/settings',{method:'PATCH',body:{[e.mode==='online'?'waMsgOnline':'waMsg']:msg}});saved.push('all events')}catch(er){toast('List created, but the common message was not saved: '+er.message,true)}}
+   if(saved.length)setTimeout(()=>toast('Message saved for '+saved.join(' and ')),400);
    e.sendLists=[...(e.sendLists||[]),l.key];close();slShare(e,l);after&&after()}catch(err){$('.formerr',m).textContent=err.message;x.target.disabled=false}};
  });
 }

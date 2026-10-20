@@ -353,3 +353,10 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .pvform .ddo.sel::after{content:" ✓";color:var(--green,#1E8A5A)}
 .pvform .ddnone{padding:10px 12px;color:#6B7B74;font-size:14px}
 .pvform .ddnone[hidden]{display:none}
+/* WhatsApp message: per event (editor) and common (Event settings) */
+.wause{display:flex;flex-direction:column;gap:6px;margin:8px 0 10px}
+.waedit.ro .watags,.waedit.ro .watpl+small{display:none}
+.waedit.ro .watpl{opacity:.75;cursor:default}
+.wacommon{margin-top:10px}
+.wareset{margin:-4px 0 6px}
+.wasave{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
