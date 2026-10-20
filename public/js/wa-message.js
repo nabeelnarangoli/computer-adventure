@@ -9,7 +9,7 @@ function waFill(tpl,ev,p){
   '{badge}':p.badge||'','{ref}':p.ref||'','{people}':p.seats>1?` · ${p.seats} people`:'','{join}':ev.join||'','{event page}':ev.page||''};
  return String(tpl||waDefault(ev.mode==='online')).replace(/\{(first name|name|event|date|venue|map|badge|ref|people|join|event page)\}/g,m=>v[m]).replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
-const waUrl=(num,text)=>`https://wa.me/${String(num||'').replace(/[^\d]/g,'')}?text=${encodeURIComponent(text)}`;
+const waUrl=(num,text)=>`https://api.whatsapp.com/send?phone=${String(num||'').replace(/[^\d]/g,'')}&text=${encodeURIComponent(text)}`;
 // Which message to use: the event's own message, else the common message (Event settings), else the built-in one.
 const waCommon=(set,online)=>(((set||{})[online?'waMsgOnline':'waMsg'])||'').trim()||waDefault(online);
 const waTemplate=(e,set)=>(e&&e.waMsg||'').trim()||waCommon(set,e&&e.mode==='online');

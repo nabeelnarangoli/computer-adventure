@@ -8,7 +8,7 @@ let EVENTS=[],EVSET={whatsapp:'+919539244342',calUrl:'',calEmail:''};
 const evDate=e=>{try{const d=new Date(e.start+':00');return d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short',year:'numeric'})+' · '+d.toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',hour12:true})+' '+((EV_TZ.find(t=>t[0]===e.tz)||[])[1]||'').replace(/.*\((.*)\)/,'$1')}catch(x){return e.start}};
 const evLink=e=>location.origin+'/events/'+e.slug;
 const STATE_LABEL={open:['Registration open','ok'],closed:['Registration closed','no'],full:['Fully booked','no'],ended:['Ended','muted'],none:['Info only','muted']};
-const waLink=(num,text)=>`https://wa.me/${String(num).replace(/[^\d]/g,'')}?text=${encodeURIComponent(text)}`;
+const waLink=(num,text)=>`https://api.whatsapp.com/send?phone=${String(num).replace(/[^\d]/g,'')}&text=${encodeURIComponent(text)}`;
 
 function adminTabs(active){return `<nav class="admtabs" role="tablist">${[['learners','Learners'],['events','Events']].map(([k,t])=>`<button type="button" role="tab" aria-selected="${k===active}" class="${k===active?'on':''}" data-tab="${k}">${t}</button>`).join('')}</nav>`}
 function bindTabs(){$$('[data-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.tab;history.replaceState(null,'',t==='events'?'#events':location.pathname);showTab(t)})}

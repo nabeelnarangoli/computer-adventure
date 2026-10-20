@@ -70,7 +70,7 @@ root.innerHTML=`<article class="evdetail">
  </div>
  ${E.share!==false?`<div class="evbox share"><b>${ICON.share} Share this event</b><div class="shbtns">
   <button type="button" class="shb" data-s="copy">Copy link</button>
-  <a class="shb wa" href="https://wa.me/?text=${encodeURIComponent(E.title+' · '+fmtDay(E)+'\n'+url)}" target="_blank" rel="noopener">WhatsApp</a>
+  <a class="shb wa" href="https://api.whatsapp.com/send?text=${encodeURIComponent(E.title+' · '+fmtDay(E)+'\n'+url)}" target="_blank" rel="noopener">WhatsApp</a>
   <a class="shb" href="https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}" target="_blank" rel="noopener">Facebook</a>
   <a class="shb" href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}" target="_blank" rel="noopener">LinkedIn</a>
   <a class="shb" href="https://x.com/intent/post?text=${encodeURIComponent(E.title)}&url=${encodeURIComponent(url)}" target="_blank" rel="noopener">X</a>
@@ -141,7 +141,7 @@ rb.onclick=()=>{
   const dlg=$('.evdlg',m);
   if(d.status==='pending'){
    const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}${body.whatsapp?`\nWhatsApp: ${body.whatsapp}`:''}${body.education||body.role?`\n${[body.education,body.role].filter(Boolean).join(' · ')}`:''}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
-   const wa=`https://wa.me/${String(d.whatsapp).replace(/[^\d]/g,'')}?text=${encodeURIComponent(msg)}`;
+   const wa=`https://api.whatsapp.com/send?phone=${String(d.whatsapp).replace(/[^\d]/g,'')}&text=${encodeURIComponent(msg)}`;
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">1/2</span><h2>One more step: payment</h2><p>Your place is reserved. Send your details to us on WhatsApp and we'll share how to pay <b>${esc(d.currency+' '+d.total)}</b>. Your seat is confirmed once payment is approved.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p><a class="btn solid lg wa" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><p class="small">WhatsApp didn't open? Message <b>${esc(d.whatsapp)}</b> with your reference.</p></div>`;
    window.open(wa,'_blank','noopener');
   }else{
@@ -150,7 +150,7 @@ rb.onclick=()=>{
     <p class="small remind">📅 ${d.calendar?'We\'ve emailed your invitation to <b>'+esc(body.email)+'</b>. You can also add':'Add'} the event to your calendar below. The calendar file includes reminders 1 day and 1 hour before.</p>
     ${d.badge&&E.mode!=='online'?`<p class="badgecta"><a class="btn" href="${esc(d.badge)}" target="_blank" rel="noopener">🎫 View my entry badge</a><small>Show its QR code at the entrance.${d.calendar?' We\'ve also emailed it to you.':''}</small></p>`:''}
     <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download calendar file</button>${E.share!==false?`<button type="button" class="btn line sharebig">${ICON.share} Share</button>`:''}</div>
-    ${E.share!==false?`<p class="small">Tell a friend: <a href="https://wa.me/?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p>`:''}</div>`;
+    ${E.share!==false?`<p class="small">Tell a friend: <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p>`:''}</div>`;
    $$('.sharebig',dlg).forEach(b=>b.onclick=shareNow);
    $('.icsd',dlg).onclick=()=>ics(d.onlineUrl?'Join: '+d.onlineUrl:'');
   }
