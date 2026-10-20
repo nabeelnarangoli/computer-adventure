@@ -1,3 +1,4 @@
+import { nameCase } from './name-case.mjs';
 // Event invitation emails sent from the academy Gmail account (through the Apps Script mailer).
 // Each email has our own subject ("Invitation from Aqlyon Academy: <event name>"), a branded body with the
 // person's reference, and a calendar invitation (invite.ics, METHOD:REQUEST) so Gmail, Outlook and Apple Mail
@@ -27,6 +28,7 @@ export function whenText(e) {
 }
 
 export function inviteMail(e, r, kind, { origin = '', organizer = '', seq = 0 } = {}) {
+  r = { ...r, name: nameCase(r.name) };
   const { start, end } = eventTimes(e);
   const page = origin ? `${origin}/events/${e.slug}` : '';
   const badge = origin && r.tk ? `${origin}/badge/${r.tk}` : '';

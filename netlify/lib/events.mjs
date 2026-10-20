@@ -1,3 +1,4 @@
+import { nameCase } from './name-case.mjs';
 // Upcoming events: storage, public API, admin API, registrations and the shareable event page.
 // Stores: events (one JSON per event), regs (one JSON per event: {list:[...]}), images (cover photos as base64).
 import crypto from 'node:crypto';
@@ -135,7 +136,7 @@ export function createEvents({ getStore, json }) {
   }
   const checkinInfo = (e, doc, r) => ({
     event: { id: e.id, title: e.title, slug: e.slug, start: e.start, tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, mode: e.mode, locationName: e.locationName || '' },
-    reg: { id: r.id, tk: r.tk, ref: r.ref, name: r.name, role: r.role || '', education: r.education || '', seats: r.seats || 1, phone: r.phone, email: r.email, status: r.status, attended: r.attended || '' },
+    reg: { id: r.id, tk: r.tk, ref: r.ref, name: nameCase(r.name), role: r.role || '', education: r.education || '', seats: r.seats || 1, phone: r.phone, email: r.email, status: r.status, attended: r.attended || '' },
     counts: { attended: doc.list.filter((x) => calOk(x) && x.attended).reduce((t, x) => t + (x.seats || 1), 0), total: seatsTaken(doc.list) },
   });
   const getRegs = async (id) => ((await regs().get(id, { type: 'json' })) || { list: [] }).list;
@@ -200,7 +201,7 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'GET') {
         const people = [];
         for (const id of l.ids) { const r = doc.list.find((x) => x.id === id); if (!r) continue; if (await ensureTk(e, r)) await rs.setJSON(e.id, doc);
-          people.push({ id: r.id, name: r.name, ref: r.ref, phone: r.phone, whatsapp: r.whatsapp || r.phone, seats: r.seats || 1, role: r.role || '', ok: calOk(r), status: r.status, badge: calOk(r) && e.mode !== 'online' ? `${origin}/badge/${r.tk}` : '', sent: (l.sent[id] || {}).at || '' }); }
+          people.push({ id: r.id, name: nameCase(r.name), ref: r.ref, phone: r.phone, whatsapp: r.whatsapp || r.phone, seats: r.seats || 1, role: r.role || '', ok: calOk(r), status: r.status, badge: calOk(r) && e.mode !== 'online' ? `${origin}/badge/${r.tk}` : '', sent: (l.sent[id] || {}).at || '' }); }
         return json(200, { list: { name: l.name, msg: l.msg }, event: { title: e.title, slug: e.slug, mode: e.mode, when: whenText(e), venue: e.mode === 'online' ? 'Online' : e.locationName || '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '', join: e.mode === 'online' ? e.onlineUrl || '' : '', page: `${origin}/events/${e.slug}` }, people });
       }
       if (m[2] && method === 'POST') {
@@ -221,7 +222,7 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'GET') {
         const list = await getRegs(e.id);
         return json(200, { event: { id: e.id, title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, locationName: e.locationName || '', mode: e.mode },
-          regs: list.map((r) => ({ id: r.id, tk: r.tk, ref: r.ref, name: r.name, role: r.role || '', seats: r.seats || 1, status: r.status, attended: r.attended || '', phone: '••• ' + p4(r), p4: p4(r) })) });
+          regs: list.map((r) => ({ id: r.id, tk: r.tk, ref: r.ref, name: nameCase(r.name), role: r.role || '', seats: r.seats || 1, status: r.status, attended: r.attended || '', phone: '••• ' + p4(r), p4: p4(r) })) });
       }
       if (m[2]) {
         const f = await byBadge(m[2]);
@@ -266,7 +267,7 @@ export function createEvents({ getStore, json }) {
       const st = regState(e, doc.list);
       if (e.regMode !== 'form') return json(400, { error: 'Registration for this event happens on another page.' });
       if (st !== 'open') return json(409, { error: st === 'full' ? 'Sorry, this event is fully booked.' : st === 'ended' ? 'This event has already ended.' : 'Registration for this event is closed.' });
-      const name = String(body.name || '').trim().slice(0, 80);
+      const name = nameCase(String(body.name || '').slice(0, 120)).slice(0, 80);
       const email = String(body.email || '').trim().toLowerCase().slice(0, 80);
       const phone = String(body.phone || '').trim().slice(0, 24);
       const country = String(body.country || '').trim().toUpperCase().slice(0, 2);
@@ -420,7 +421,7 @@ export function createEvents({ getStore, json }) {
       if (m[2] && m[2].startsWith('/regs')) {
         const rs = regs(); const doc = (await rs.get(e.id, { type: 'json' })) || { list: [] };
         if (!m[3] && method === 'GET') {
-          let changed = false; for (const r of doc.list) if (await ensureTk(e, r)) changed = true;
+          let changed = false; for (const r of doc.list) { if (await ensureTk(e, r)) changed = true; const nm = nameCase(r.name); if (nm && nm !== r.name) { r.name = nm; changed = true; } } // names written one way
           if (changed) await rs.setJSON(e.id, doc);
           return json(200, { regs: doc.list, calendar: !!(await rawSettings()).calUrl });
         }
@@ -432,7 +433,7 @@ export function createEvents({ getStore, json }) {
           const seenP = new Set(doc.list.filter((r) => !['rejected', 'cancelled'].includes(r.status)).map((r) => r.phone));
           const added = [], skipped = [];
           for (const [i, x] of rows.entries()) {
-            const name = String(x.name || '').trim().slice(0, 80), email = String(x.email || '').trim().toLowerCase().slice(0, 80), phone = String(x.phone || '').trim().slice(0, 24);
+            const name = nameCase(String(x.name || '').slice(0, 120)).slice(0, 80), email = String(x.email || '').trim().toLowerCase().slice(0, 80), phone = String(x.phone || '').trim().slice(0, 24);
             const why = !name ? 'No name' : !EMAIL_RE.test(email) ? 'Email missing or not valid' : !/^\+\d{1,4} \d{5,14}$/.test(phone) ? 'Mobile missing or not valid' : seenE.has(email) ? 'Already registered (same email)' : seenP.has(phone) ? 'Already registered (same mobile)' : '';
             if (why) { skipped.push({ row: x.row ?? i + 1, name, reason: why }); continue; }
             seenE.add(email); seenP.add(phone);
@@ -521,7 +522,7 @@ export function createEvents({ getStore, json }) {
     if (!f) return new Response(`${head('Badge not found')}<body class="bdgpage"><main class="bdgwrap"><div class="bdgmsg"><h1>Badge not found</h1><p>Check the link, or contact Aqlyon Career Discovery Centre.</p><p><a class="btn" href="/#events">See upcoming events</a></p></div></main></body></html>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
     const { e, r } = f;
     const pe = publicEvent(e, f.doc.list);
-    const data = { design: badgeDesign(e), tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: r.name, role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
+    const data = { design: badgeDesign(e), tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: nameCase(r.name), role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
       event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
     return new Response(`${head(`${r.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
 <script>window.BADGE=${JSON.stringify(data).replace(/</g, '\\u003c')};</script><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`,
