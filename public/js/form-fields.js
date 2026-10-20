@@ -74,7 +74,7 @@ function render(f,pre='q'){
   case 'short':{const t={number:'number',email:'email',url:'url',phone:'tel'}[f.valid]||'text';
    return `<label class="ff" data-f="${f.id}">${lab}<input ${nm} type="${t}" ${t==='number'?`inputmode="decimal" ${f.min!=null&&f.min!==''?`min="${f.min}"`:''} ${f.max!=null&&f.max!==''?`max="${f.max}"`:''}`:`maxlength="${f.maxLen||300}"`} ${t==='tel'?'inputmode="tel"':''}></label>`}
   case 'paragraph':return `<label class="ff" data-f="${f.id}">${lab}<textarea ${nm} rows="3" maxlength="${f.maxLen||2000}"></textarea></label>`;
-  case 'dropdown':return `<label class="ff" data-f="${f.id}">${lab}<select ${nm}><option value="">Choose…</option>${(f.options||[]).map(o=>`<option>${esc(o)}</option>`).join('')}</select></label>`;
+  case 'dropdown':return `<label class="ff" data-f="${f.id}">${lab}<select ${nm} data-search><option value="">Choose…</option>${(f.options||[]).map(o=>`<option>${esc(o)}</option>`).join('')}</select></label>`;
   case 'choice':case 'checkboxes':{const tp=f.type==='choice'?'radio':'checkbox';
    return `<fieldset class="ff opts" data-f="${f.id}"><legend>${lab}</legend>${(f.options||[]).map(o=>`<label class="opt"><input type="${tp}" ${nm} value="${esc(o)}"><span>${esc(o)}</span></label>`).join('')}${f.other?`<label class="opt oth"><input type="${tp}" ${nm} value="__other"><span>Other:</span><input class="othtxt" name="${id}-other" maxlength="200" aria-label="Other"></label>`:''}</fieldset>`}
   case 'scale':return `<fieldset class="ff" data-f="${f.id}"><legend>${lab}</legend><div class="scale">${f.minLabel?`<span class="sl">${esc(f.minLabel)}</span>`:''}<div class="sbtns">${range(+f.scaleMin||1,+f.scaleMax||5).map(n=>`<label><input type="radio" ${nm} value="${n}"><span>${n}</span></label>`).join('')}</div>${f.maxLabel?`<span class="sl">${esc(f.maxLabel)}</span>`:''}</div></fieldset>`;
@@ -127,5 +127,53 @@ function show(f,v){
  if(f&&f.type==='rating')return v+' / '+(f.stars||5);
  return String(v);
 }
-return {TYPES,PRESETS,OPT_TYPES,blank,fromPreset,render,read,check,show,esc,nid,typeName:t=>(TYPES.find(x=>x.t===t)||{}).name||t};
+/* ---------- searchable dropdown ----------
+   Turns a <select> into a button that opens a list with a search box (type to filter).
+   The real <select> stays in the form (hidden), so reading, checking and saving answers work as before
+   and its "change" event still fires. The list opens in the page flow, so it is never cut off inside a popup. */
+const fold=s=>String(s).toLowerCase().normalize('NFKD').replace(/[̀-ͯ]/g,'');
+function searchable(sel){
+ if(!sel||sel.dataset.dd)return;sel.dataset.dd='1';
+ const w=document.createElement('span');w.className='ddw';
+ w.innerHTML=`<button type="button" class="ddbtn" aria-haspopup="listbox" aria-expanded="false"><span class="ddval"></span><span class="ddar" aria-hidden="true">▾</span></button>
+  <span class="ddpop" hidden><input class="ddq" type="search" placeholder="Type to search…" autocomplete="off" enterkeyhint="search" aria-label="Search the list"><span class="ddlist" role="listbox"></span><span class="ddnone" hidden>No match. Try fewer letters.</span></span>`;
+ sel.before(w);w.appendChild(sel);sel.hidden=true;sel.tabIndex=-1;
+ const btn=w.querySelector('.ddbtn'),val=w.querySelector('.ddval'),pop=w.querySelector('.ddpop'),q=w.querySelector('.ddq'),list=w.querySelector('.ddlist'),none=w.querySelector('.ddnone');
+ const opts=()=>[...sel.options].filter(o=>o.value!=='');
+ const ph=()=>{const o=[...sel.options].find(o=>o.value==='');return o?o.text:'Choose…'};
+ const paint=()=>{const o=sel.selectedIndex>=0&&sel.options[sel.selectedIndex];const has=o&&o.value!=='';val.textContent=has?o.text:ph();w.classList.toggle('empty',!has)};
+ let act=-1;
+ const items=()=>[...list.querySelectorAll('.ddo:not([hidden])')];
+ const mark=i=>{const it=items();act=Math.max(0,Math.min(i,it.length-1));it.forEach((x,j)=>x.classList.toggle('act',j===act));if(it[act])it[act].scrollIntoView({block:'nearest'})};
+ const build=()=>{list.innerHTML=opts().map((o,i)=>`<span class="ddo${o.selected?' sel':''}" role="option" data-i="${i}" aria-selected="${o.selected}">${esc(o.text)}</span>`).join('')};
+ const filter=()=>{const words=fold(q.value.trim()).split(/\s+/).filter(Boolean),os=opts();let n=0;
+  list.querySelectorAll('.ddo').forEach(x=>{const t=fold(os[+x.dataset.i].text);const ok=words.every(k=>t.includes(k));x.hidden=!ok;if(ok)n++});
+  none.hidden=n>0;mark(0)};
+ const open=(seed='')=>{if(!pop.hidden)return;closeAll(w);build();pop.hidden=false;w.classList.add('open');btn.setAttribute('aria-expanded','true');q.value=seed;filter();
+  const s=items().findIndex(x=>x.classList.contains('sel'));if(!seed&&s>=0)mark(s);
+  q.focus({preventScroll:true});pop.scrollIntoView({block:'nearest'})};
+ const close=(back)=>{if(pop.hidden)return;pop.hidden=true;w.classList.remove('open');btn.setAttribute('aria-expanded','false');if(back)btn.focus({preventScroll:true})};
+ const pick=x=>{if(!x)return;const o=opts()[+x.dataset.i];if(o&&sel.value!==o.value){sel.value=o.value;sel.dispatchEvent(new Event('change',{bubbles:true}));sel.dispatchEvent(new Event('input',{bubbles:true}))}paint();close(true)};
+ w._ddclose=()=>close(false);
+ btn.addEventListener('click',e=>{e.preventDefault();pop.hidden?open():close(true)});
+ btn.addEventListener('keydown',e=>{if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();open()}else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key!==' '){e.preventDefault();open(e.key)}});
+ q.addEventListener('input',filter);
+ q.addEventListener('keydown',e=>{
+  if(e.key==='ArrowDown'){e.preventDefault();mark(act+1)}else if(e.key==='ArrowUp'){e.preventDefault();mark(act-1)}
+  else if(e.key==='Enter'){e.preventDefault();pick(items()[act])}
+  else if(e.key==='Escape'){e.preventDefault();e.stopPropagation();close(true)}
+  else if(e.key==='Tab')close(false)});
+ // the field sits inside a <label>: stop clicks in the list from "clicking the label" (which would toggle it again)
+ pop.addEventListener('click',e=>{if(e.target!==q)e.preventDefault();const x=e.target.closest('.ddo');if(x)pick(x)});
+ pop.addEventListener('mousedown',e=>{if(e.target!==q)e.preventDefault()}); // keep the search box focused
+ list.addEventListener('mousemove',e=>{const x=e.target.closest('.ddo');if(x){const i=items().indexOf(x);if(i!==act)mark(i)}});
+ sel.addEventListener('change',paint);
+ paint();
+}
+function closeAll(except){document.querySelectorAll('.ddw.open').forEach(w=>{if(w!==except&&w._ddclose)w._ddclose()})}
+if(typeof document!=='undefined')document.addEventListener('pointerdown',e=>{const w=e.target.closest&&e.target.closest('.ddw');closeAll(w)},true);
+// make every list in a form searchable (the registration questions' dropdowns, plus any <select data-search>)
+const enhance=root=>root.querySelectorAll('select[data-search]').forEach(searchable);
+
+return {TYPES,PRESETS,OPT_TYPES,blank,fromPreset,render,read,check,show,esc,nid,searchable,enhance,typeName:t=>(TYPES.find(x=>x.t===t)||{}).name||t};
 })();

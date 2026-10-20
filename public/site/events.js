@@ -97,8 +97,8 @@ rb.onclick=()=>{
   <label>Email<input name="email" type="email" required maxlength="80" autocomplete="email"></label>
   <label>Mobile number<span class="tel"><select name="cc" aria-label="Mobile country code">${ccOpts(guess)}</select><input name="mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></span></label>
   ${STD.whatsapp?`<div class="lbl">WhatsApp number<label class="same"><input type="checkbox" name="same" checked> Same as mobile</label><span class="tel wa"><select name="wcc" aria-label="WhatsApp country code" disabled>${ccOpts(guess)}</select><input name="wmob" type="tel" inputmode="tel" required maxlength="18" disabled aria-label="WhatsApp number"></span></div>`:''}
-  ${STD.country?`<label>Country<select name="country" required autocomplete="country">${cOpts(guess)}</select></label>`:''}
-  ${STD.education?`<label>Education level<select name="education" required><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>`:''}
+  ${STD.country?`<label>Country<select name="country" required autocomplete="country" data-search>${cOpts(guess)}</select></label>`:''}
+  ${STD.education?`<label>Education level<select name="education" required data-search><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>`:''}
   ${STD.role?`<label>I am a<select name="role" required><option value="">Choose…</option><option>Student</option><option>Parent</option></select></label>`:''}
   ${FIELDS.map(x=>FF.render(x)).join('')}
   ${E.maxSeats>1?`<label>Number of people<select name="seats">${Array.from({length:Math.min(E.maxSeats,E.seatsLeft??E.maxSeats)},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label>`:''}
@@ -110,7 +110,7 @@ rb.onclick=()=>{
  document.body.appendChild(m);document.body.style.overflow='hidden';
  const close=()=>{m.remove();document.body.style.overflow=''};
  $('.x',m).onclick=close;m.addEventListener('click',e=>{if(e.target===m)close()});document.addEventListener('keydown',function k(e){if(e.key==='Escape'){close();document.removeEventListener('keydown',k)}});
- const f=$('form',m);let ccT=false;
+ const f=$('form',m);let ccT=false;FF.enhance(f);
  const syncWa=()=>{if(!f.same)return;const same=f.same.checked;f.wcc.disabled=f.wmob.disabled=same;if(same){f.wcc.value=f.cc.value;f.wmob.value=f.mob.value}else if(!f.wmob.value)f.wmob.focus()};
  if(f.country)f.country.onchange=()=>{if(!ccT){f.cc.value=f.country.value;syncWa()}};f.cc.onchange=()=>{ccT=true;syncWa()};f.mob.oninput=syncWa;if(f.same)f.same.onchange=syncWa;f.name.focus();
  $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));

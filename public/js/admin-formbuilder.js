@@ -93,7 +93,7 @@ function fbPreview(FORM,ev){
   ${std.country?`<label>Country <span class="req">*</span>${sel('India')}</label>`:''}${std.education?`<label>Education level <span class="req">*</span>${sel('Choose…')}</label>`:''}${std.role?`<label>I am a <span class="req">*</span>${sel('Student / Parent')}</label>`:''}
   ${FORM.fields.map(f=>FF.render(f,'pv')).join('')}
   <p class="err" role="alert"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Close</button><button type="submit" class="btn">Check my answers</button></div></form>`,(m)=>{
-  m.querySelector('.modal').classList.add('wide');const f=$('.pvform',m);
+  m.querySelector('.modal').classList.add('wide');const f=$('.pvform',m);FF.enhance(f);
   $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));
   f.onsubmit=x=>{x.preventDefault();$$('.ff.bad',f).forEach(b=>b.classList.remove('bad'));const err=$('.err',f);
    for(const q of FORM.fields){const msg=FF.check(q,FF.read(q,f,'pv'));if(msg){const b=$(`[data-f="${q.id}"]`,f);if(b){b.classList.add('bad');mScroll(b)}err.textContent=msg;return}}
