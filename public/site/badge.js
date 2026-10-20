@@ -35,7 +35,7 @@ function render(){
  const qrPart=active?`<div class="bqr"><div class="qrbox">${qrSVG}</div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`
   :`<div class="bqr"><div class="qrbox off"><span>${state==='pending'?'⏳':'✕'}</span></div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`;
  const card=`<article class="bdg t-${esc(D.tpl)} sz-${esc(D.size)} st-${state}${D.hole!==false?' holed':''}" style="--c:${esc(D.color)};--ar:${ar}" aria-label="Event badge for ${esc(B.name)}">
-  ${D.hole!==false?'<div class="bhole"><i class="slot"></i></div>':''}${D.tpl==='minimal'?'<div class="bbar"></div>':''}
+  ${D.tpl==='minimal'?'<div class="bbar"></div>':''}${D.hole!==false?'<div class="bhole"></div>':''}
   <div class="bhead">${orgHTML}
    <span class="bkick">Event pass</span><h1 class="btitle">${esc(E.title)}</h1>
    ${D.showTime?`<p class="bwhen"><b>${esc(day)}</b> <span>${esc(time)}</span></p>`:''}${D.showVenue&&place?`<p class="bplace">${esc(place)}</p>`:''}</div>

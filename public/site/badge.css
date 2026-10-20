@@ -118,12 +118,11 @@
 .bhead,.bwho,.bcut,.brole,.bfoot,.bbar{flex:none}
 .bqr{display:grid;grid-template-rows:minmax(0,1fr) auto;justify-items:center;align-content:center}
 .bqr .qrbox{height:100%;max-height:56cqw;min-height:0;align-self:center}
-/* lanyard hole: a strip at the top with a slot to punch, so nothing printed is lost (every template; not on the landscape name tag) */
-.bhole{flex:none;height:11cqw;display:flex;align-items:flex-end;justify-content:center;padding-bottom:1cqw;box-sizing:border-box}
-.bhole .slot{display:block;width:22cqw;height:4.6cqw;border-radius:99px;background:#fff}
+/* lanyard hole: empty space at the top so the printer can punch the hole without cutting anything (every template; not on the landscape name tag) */
+.bhole{flex:none;height:9cqw}
+/* about 9–10 mm on the printed badge whatever its width */
+.sz-card .bhole{height:17cqw}.sz-a7 .bhole{height:13cqw}.sz-a6 .bhole,.sz-4x6 .bhole{height:9cqw}
 .t-classic .bhole,.t-conference .bhole{background:var(--c)}
-.t-minimal .bhole .slot{background:#F1F4F2;border:.5cqw solid #C9D3CE;box-sizing:border-box}
 .holed.t-classic .bhead,.holed.t-conference .bhead,.holed.t-bold .bhead{padding-top:3cqw}
-.holed.t-minimal .bhole{padding-bottom:1.6cqw}
 .sz-tag .bhole{display:none}
 .sz-tag.holed .bhead{padding-top:3.4cqw}
