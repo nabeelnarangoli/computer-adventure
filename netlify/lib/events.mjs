@@ -537,6 +537,8 @@ export function createEvents({ getStore, json }) {
     const desc = (e.summary || e.details || '').replace(/\s+/g, ' ').slice(0, 200);
     const img = pe.cover ? origin + pe.cover : origin + '/img/og-default.png';
     const url = `${origin}/events/${e.slug}`;
+    // Google shows about 60 characters of a title: add the centre's name only when it fits
+    const pageTitle = [`${e.title} · Aqlyon Career Discovery Centre`, `${e.title} · Aqlyon`].find((t) => t.length <= 60) || e.title;
     const ld = { '@context': 'https://schema.org', '@type': 'Event', name: e.title, description: desc, image: [img], startDate: new Date(pe.startUTC).toISOString(), ...(pe.endUTC ? { endDate: new Date(pe.endUTC).toISOString() } : {}),
       eventAttendanceMode: e.mode === 'online' ? 'https://schema.org/OnlineEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode', eventStatus: 'https://schema.org/EventScheduled',
       location: e.mode === 'online' ? { '@type': 'VirtualLocation', url } : { '@type': 'Place', name: e.locationName, address: e.locationName },
@@ -545,7 +547,7 @@ export function createEvents({ getStore, json }) {
     const html = `<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>${esc(e.title)} · Aqlyon Career Discovery Centre</title>
+<title>${esc(pageTitle)}</title>
 <meta name="description" content="${esc(desc)}">
 <link rel="canonical" href="${esc(url)}">
 <meta property="og:type" content="website"><meta property="og:site_name" content="Aqlyon Career Discovery Centre">
@@ -559,7 +561,7 @@ export function createEvents({ getStore, json }) {
 <script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>
 </head><body class="evpage">
 <header class="evtop"><a class="brand" href="/"><img src="/img/aqlyon-q.png" alt="" width="34" height="34"><span><b>Aqlyon</b><small>Career Discovery Centre</small></span></a><a class="evback" href="/#events">All events</a></header>
-<main id="ev" data-slug="${esc(e.slug)}"><noscript><h1>${esc(e.title)}</h1><p>${esc(desc)}</p></noscript></main>
+<main id="ev" data-slug="${esc(e.slug)}"><noscript><article><h1>${esc(e.title)}</h1><p><b>${esc(whenText(e))}</b>${e.mode === 'online' ? ' · Online event' : e.locationName ? ' · ' + esc(e.locationName) : ''}</p>${e.summary ? `<p>${esc(e.summary)}</p>` : ''}${String(e.details || '').split(/\n\s*\n|\n/).map((x) => x.trim()).filter(Boolean).map((x) => `<p>${esc(x)}</p>`).join('')}<p><a href="/#events">More events</a> · <a href="/#about">Education consultation and career support</a> · <a href="/#contact">Contact Aqlyon Career Discovery Centre</a></p></article></noscript></main>
 <script>window.EVENT=${JSON.stringify(pe).replace(/</g, '\\u003c')};</script>
 <script src="/js/countries.js"></script><script src="/js/form-fields.js"></script><script src="/site/events.js"></script>
 </body></html>`;

@@ -3,6 +3,7 @@
 // Storage is any object with get(key,{type:'json'}), setJSON(key,value), delete(key), list().
 import crypto from 'node:crypto';
 import { createEvents } from './events.mjs';
+import { createSeo } from './seo.mjs';
 
 const USER_RE = /^[a-z0-9._-]{3,24}$/;
 const KINDS = ['child', 'adult'];
@@ -87,6 +88,8 @@ export function createHandler({ getStore, env }) {
   const getSettings = async (meta) => ({ allowRegister: true, ...((await meta.get('settings', { type: 'json' })) || {}) });
 
   const EV = createEvents({ getStore, json });
+  const SEO = createSeo({ getStore, json, env: () => (typeof env === 'function' ? env() : {}) });
+  const allEvents = async () => { const s = getStore('events'); const { blobs } = await s.list(); const out = []; for (const b of blobs) { const e = await s.get(b.key, { type: 'json' }); if (e) out.push(e); } return out; };
   return async function handle(req) {
     const { admin, secret } = cfg();
     if (!admin) return json(500, { error: 'The server is not set up yet. Add an ADMIN_PASSWORD environment variable in Netlify and redeploy.' });
@@ -94,6 +97,7 @@ export function createHandler({ getStore, env }) {
     const url = new URL(req.url);
     const pm = url.pathname.match(/^\/events\/([a-z0-9-]{1,80})\/?$/);
     if (pm && req.method === 'GET') return EV.page(pm[1], url.origin);
+    if (req.method === 'GET' && /^\/(sitemap\.xml|robots\.txt|google[a-z0-9]{6,40}\.html)$/i.test(url.pathname)) { const r = await SEO.publicFile(url.pathname, url.origin, allEvents); if (r) return r; }
     const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20}|preview)\/?$/);
     if (bm && req.method === 'GET') return EV.badge(bm[1], url.origin);
     const path = url.pathname.replace(/^\/api/, '').replace(/\/+$/, '') || '/';
@@ -238,6 +242,7 @@ export function createHandler({ getStore, env }) {
 
       if (path.startsWith('/admin/')) {
         if (!auth || auth.r !== 'admin') return json(401, { error: 'Admin login needed.' });
+        if (path.startsWith('/admin/seo/')) { const sr = await SEO.routes({ path, method, body, url }); if (sr) return sr; }
 
         if (path === '/admin/users' && method === 'GET') {
           const { blobs } = await users.list();

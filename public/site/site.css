@@ -337,3 +337,25 @@ address a{color:var(--green-d);font-weight:600}
 .ctleft .cways{grid-template-columns:repeat(3,auto);justify-content:start}
 @media (max-width:560px){.ctleft .cways{grid-template-columns:1fr}.mdesk{width:min(80%,300px)}}
 @media (max-width:560px){.ctleft .cways{grid-template-columns:1fr}}
+
+/* education consultation & career support summary (search-friendly) */
+.about{padding:100px 0;background:#fff}
+.abgrid{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:56px;align-items:start}
+.abhead{position:sticky;top:110px}
+.abpoints{list-style:none;display:flex;flex-wrap:wrap;gap:8px;margin:24px 0 0;padding:0}
+.abpoints li{background:var(--mint);color:var(--ink);border-radius:99px;padding:7px 14px;font-weight:600;font-size:15px}
+.abbody{display:grid;gap:16px;color:var(--ink2)}
+.abbody h3{font-size:24px;color:var(--ink);margin-top:10px}
+.ablist{margin:0;padding-left:20px;display:grid;gap:8px}
+.ablist b{color:var(--ink)}
+.ablinks{display:flex;flex-wrap:wrap;gap:12px;margin-top:8px}
+@media (max-width:900px){.abgrid{grid-template-columns:1fr;gap:28px}.abhead{position:static}}
+/* FAQ */
+.faq{padding:100px 0;background:var(--mint)}
+.faqlist{margin-top:36px;display:grid;gap:12px;max-width:900px}
+.faqlist details{background:#fff;border-radius:var(--r-md);padding:4px 22px;border:1px solid var(--line)}
+.faqlist summary{cursor:pointer;list-style:none;font:700 19px/1.35 var(--disp);padding:16px 36px 16px 0;position:relative;color:var(--ink)}
+.faqlist summary::-webkit-details-marker{display:none}
+.faqlist summary::after{content:"+";position:absolute;right:0;top:12px;font-size:26px;font-weight:600;color:var(--green-d);transition:transform .2s}
+.faqlist details[open] summary::after{transform:rotate(45deg)}
+.faqlist details p{padding:0 0 18px;color:var(--slate)}

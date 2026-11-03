@@ -360,3 +360,58 @@ button.ckrow{cursor:pointer}.ckrow small{display:block;color:var(--muted);font-s
 .wacommon{margin-top:10px}
 .wareset{margin:-4px 0 6px}
 .wasave{display:flex;flex-direction:column;gap:6px;margin:6px 0 4px}
+/* ---------- SEO & Google ranking tab (admin-seo.js) ---------- */
+.seotabs{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 18px}
+.seotabs button{font:700 14px var(--body);padding:8px 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--muted);cursor:pointer;min-height:40px}
+.seotabs button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.seohead p{margin:0 0 14px;color:var(--muted)}
+.seohrow{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;margin-bottom:14px}.seohrow p{margin:0}
+.seoinl{display:flex;align-items:center;gap:8px;font-weight:700}.seoinl select{padding:8px 10px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font:inherit}
+.seocard{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;min-width:0}
+.seocard h2,.seosec>h2,.seogrid h2{font-size:19px;margin:0 0 8px}
+.seosec{margin-top:22px}
+.seogrid{display:grid;gap:14px}.seogrid>*{min-width:0}
+.seogrid.g4{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}.seogrid.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr))}
+.seoring{display:flex;align-items:center;gap:16px;color:var(--ink)}.seobig{font-size:20px}.seoring .small{margin:4px 0 0}
+.seostat b{display:block;font-size:32px;line-height:1.1}.seostat span{color:var(--muted);font-size:14px}
+.seodelta{font-size:13px;font-weight:700;margin-left:6px}.seodelta.up{color:#1E9E62}.seodelta.down{color:#D93A3F}
+.seopill{display:inline-flex;align-items:center;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:700;vertical-align:middle}
+.seopill.good{background:#E0F4EA;color:#0F6E44}.seopill.ok{background:#FBEFD7;color:#8A5A00}.seopill.bad{background:#FBE1E1;color:#A3262A}
+.seodot{width:10px;height:10px;border-radius:50%;flex:none;display:inline-block;margin-top:6px}
+.seodot.good{background:#1E9E62}.seodot.ok{background:#C9820F}.seodot.bad{background:#D93A3F}
+.seoissue{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line)}.seoissue:first-child{border-top:0}
+.seoissue b{display:block}.seoissue p{margin:2px 0 0;color:var(--muted);font-size:14px}.seoissue small{color:var(--muted);font-weight:400}
+.seoempty{padding:18px;text-align:center;color:var(--muted)}
+.seopage{border-top:1px solid var(--line)}.seopage:first-child{border-top:0}
+.seopage>button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:50px minmax(0,1fr) auto;gap:12px;align-items:center;width:100%;padding:12px 4px;cursor:pointer;color:var(--ink)}
+.seopage>button:focus-visible{outline:3px solid var(--accent);border-radius:8px}
+.seopage .u{font-weight:700;overflow-wrap:anywhere}
+.seoscore{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff}
+.seoscore.good{background:#1E9E62}.seoscore.ok{background:#B87708}.seoscore.bad{background:#D93A3F}
+.seobody{padding:0 4px 16px 62px}@media (max-width:600px){.seobody{padding-left:4px}.seopage>button{grid-template-columns:44px minmax(0,1fr)}.seopage>button .seopill{grid-column:2;justify-self:start}}
+.seorow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:8px}
+.seokw{display:inline-block;padding:1px 8px;border-radius:6px;background:var(--soft);color:var(--ink);font-weight:700;font-size:13px}
+.seotw{overflow-x:auto}
+.seot{width:100%;border-collapse:collapse;font-size:14px}
+.seot th,.seot td{text-align:left;padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.seot th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.seot td.n,.seot th.n{text-align:right;white-space:nowrap}
+.seot a{color:var(--accent)}
+.seoyes{color:#1E9E62;font-weight:800}.seono{color:#D93A3F;font-weight:800}
+.seocard svg{display:block;width:100%;height:auto;color:var(--muted)}.seoring svg{width:auto;flex:none;color:var(--ink)}
+.seolegend{display:flex;gap:16px;font-size:13px;color:var(--muted);margin-top:6px}.seolegend i{display:inline-block;width:12px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.seoform{display:grid;gap:12px;align-content:start}.seoform h2{margin:0}.seoform .small{margin:2px 0 0}
+.seoform .field textarea,.seoform .field input,.seoform .field select{width:100%}
+.seosteps{margin:0;padding-left:20px;font-size:14px}.seosteps li{margin:6px 0}
+.seosteps code,.seoform code{background:var(--soft);padding:1px 6px;border-radius:6px;font-size:13px}
+.seosteps a,.seoform a{color:var(--accent)}
+.seoaiout{margin-top:6px}.seoaicard{background:var(--soft)}.seoaicard h3{font-size:16px;margin:14px 0 6px}
+.seoaicard ul{margin:0;padding-left:20px}.seoaicard li{margin:5px 0}
+.seocopy{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:9px 12px;display:flex;gap:10px;align-items:flex-start;justify-content:space-between;margin:6px 0}
+.seocopy span{flex:1;overflow-wrap:anywhere}
+.seocopy button{flex:none;border:0;background:var(--ink);color:var(--bg);border-radius:99px;padding:6px 12px;font:700 12px var(--body);cursor:pointer}
+pre.seomd{white-space:pre-wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:420px;overflow:auto;font-size:13px}
+.seocheck{list-style:none;margin:0;padding:0}
+.seocheck li{display:flex;gap:12px;padding:11px 0;border-top:1px solid var(--line)}.seocheck li:first-child{border-top:0}
+.seocheck input{width:20px;height:20px;flex:none;margin-top:2px;accent-color:var(--accent)}
+.seocheck label{display:block;font-weight:400;cursor:pointer}.seocheck b{display:block}.seocheck span{display:block;color:var(--muted);font-size:14px;margin-top:2px}

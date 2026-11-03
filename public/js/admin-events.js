@@ -10,12 +10,13 @@ const evLink=e=>location.origin+'/events/'+e.slug;
 const STATE_LABEL={open:['Registration open','ok'],closed:['Registration closed','no'],full:['Fully booked','no'],ended:['Ended','muted'],none:['Info only','muted']};
 const waLink=(num,text)=>`https://api.whatsapp.com/send?phone=${String(num).replace(/[^\d]/g,'')}&text=${encodeURIComponent(text)}`;
 
-function adminTabs(active){return `<nav class="admtabs" role="tablist">${[['learners','Learners'],['events','Events']].map(([k,t])=>`<button type="button" role="tab" aria-selected="${k===active}" class="${k===active?'on':''}" data-tab="${k}">${t}</button>`).join('')}</nav>`}
-function bindTabs(){$$('[data-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.tab;history.replaceState(null,'',t==='events'?'#events':location.pathname);showTab(t)})}
+function adminTabs(active){return `<nav class="admtabs" role="tablist">${[['learners','Learners'],['events','Events'],['seo','SEO']].map(([k,t])=>`<button type="button" role="tab" aria-selected="${k===active}" class="${k===active?'on':''}" data-tab="${k}">${t}</button>`).join('')}</nav>`}
+function bindTabs(){$$('[data-tab]').forEach(b=>b.onclick=()=>{const t=b.dataset.tab;history.replaceState(null,'',t==='events'?'#events':t==='seo'?'#seo':location.pathname);showTab(t)})}
 async function showTab(t){
  $('.admtabwrap').innerHTML=adminTabs(t==='checkin'?'events':t);bindTabs();
  if(typeof stopScan==='function')stopScan();
  if(t==='checkin')return checkinRoute();
+ if(t==='seo')return seoView((location.hash.match(/^#seo\/(\w+)/)||[])[1]);
  if(t==='events'){$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading events…</p>';await loadEvents();
   const m=location.hash.match(/^#events\/([a-f0-9]{16})(\/checkin|\/report)?/),ev=m&&EVENTS.find(x=>x.id===m[1]);   // reopen the event page after a refresh
   if(ev)return m[2]==='/checkin'?checkinView(ev):m[2]==='/report'?reportView(ev):regsView(ev);renderEvents()}
