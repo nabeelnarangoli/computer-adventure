@@ -29,7 +29,7 @@ const vidFrame=(v,auto,mute)=>v.file?`<div class="vwrap r-wide"><video src="${es
 const vidLite=(v,label,big)=>{
  if(!v.embed&&!v.file)return `<a class="vlink" href="${esc(v.url)}" target="_blank" rel="noopener"><span class="vlplay" aria-hidden="true"></span><b>Watch on ${esc(v.name)} ↗</b></a>`;
  if(v.file)return vidFrame(v,false);
- return `<button type="button" class="vlite r-${esc(v.ratio||'wide')}${big?' big':''}${v.thumb?'':' noimg p-'+esc(v.p)}" data-v='${esc(JSON.stringify({p:v.p,name:v.name,embed:v.embed,ratio:v.ratio}))}' aria-label="Play ${esc(v.name)} video${label?': '+esc(label):''}">${v.thumb?`<img src="${esc(v.thumb)}" alt="" loading="lazy">`:`<span class="vsite">${esc(v.name)}</span>`}<span class="vplay" aria-hidden="true"></span></button>`};
+ return `<button type="button" class="vlite r-${esc(v.ratio||'wide')}${big?' big':''}${v.thumb?'':' noimg p-'+esc(v.p)}" data-v='${esc(JSON.stringify({p:v.p,name:v.name,embed:v.embed,ratio:v.ratio}))}' aria-label="Play ${esc(v.name)} video${label?': '+esc(label):''}">${v.thumb?`<img src="${esc(v.thumb)}" alt="${esc((label||v.name)+' video')}" loading="lazy">`:`<span class="vsite">${esc(v.name)}</span>`}<span class="vplay" aria-hidden="true"></span></button>`};
 document.addEventListener('click',ev=>{const b=ev.target.closest('.vlite');if(!b)return;try{b.outerHTML=vidFrame(JSON.parse(b.dataset.v),true)}catch(e){}});
 const badge=e=>{const d=local(e.start);return `<span class="evdate"><b>${d.getDate()}</b><small>${d.toLocaleDateString('en-GB',{month:'short'})}</small></span>`};
 
@@ -37,7 +37,7 @@ const badge=e=>{const d=local(e.start);return `<span class="evdate"><b>${d.getDa
 const sec=$('#events');
 if(sec){
  const card=e=>`<a class="evc ${e.state}" href="/events/${esc(e.slug)}">
-  <div class="evimg">${e.cover?`<img src="${esc(e.cover)}" alt="" loading="lazy">`:'<span class="evph"></span>'}${badge(e)}${liveNow(e.live)==='live'?'<span class="evlive"><i></i>LIVE</span>':''}</div>
+  <div class="evimg">${e.cover?`<img src="${esc(e.cover)}" alt="${esc(e.title)}" loading="lazy">`:'<span class="evph"></span>'}${badge(e)}${liveNow(e.live)==='live'?'<span class="evlive"><i></i>LIVE</span>':''}</div>
   <div class="evtxt"><div class="evtags"><span>${e.mode==='online'?'Online':'Offline'}</span><span class="${e.paid?'':'free'}">${esc(price(e))}</span>${e.state!=='open'&&e.state!=='none'?`<span class="st">${STATE[e.state]}</span>`:''}${liveNow(e.live)==='scheduled'?'<span class="lvtag">Live stream</span>':liveNow(e.live)==='live'?'<span class="lvtag on">● Live now</span>':''}${(e.media||[]).length?'<span>Photos &amp; videos</span>':''}</div>
   <h3>${esc(e.title)}</h3><p class="when">${esc(local(e.start).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))} · ${esc(timeLine(e))}</p>
   ${e.mode==='offline'&&e.locationName?`<p class="where">${esc(e.locationName)}</p>`:''}${e.summary?`<p class="sum">${esc(e.summary)}</p>`:''}
@@ -69,7 +69,7 @@ const regBtn=()=>{
  if(E.state==='none')return '';
  return `<span class="evstate">${STATE[E.state]}</span>`};
 root.innerHTML=`<article class="evdetail">
- <div class="evhero">${E.cover?`<img src="${esc(E.cover)}" alt="">`:'<span class="evph big"></span>'}</div>
+ <div class="evhero">${E.cover?`<img src="${esc(E.cover)}" alt="${esc(E.title)}">`:'<span class="evph big"></span>'}</div>
  <div class="evgridd"><div class="evmain">
   <div class="evtags"><span>${E.mode==='online'?'Online event':'In person'}</span><span class="${E.paid?'':'free'}">${esc(price(E))}</span>${E.state==='open'&&E.seatsLeft!==null&&E.seatsLeft<=15?`<span class="st">Only ${E.seatsLeft} seat${E.seatsLeft===1?'':'s'} left</span>`:''}<span class="lvtagslot"></span></div>
   <h1>${esc(E.title)}</h1>${E.summary?`<p class="lead">${esc(E.summary)}</p>`:''}
@@ -116,7 +116,7 @@ if(L){
 const photos=(E.media||[]).map((x,i)=>({...x,i})).filter(x=>x.k==='img');
 if(photos.length){
  const dlg=document.createElement('dialog');dlg.className='lightbox';dlg.setAttribute('aria-label','Photos');
- dlg.innerHTML='<button type="button" class="lbx" aria-label="Close">×</button><button type="button" class="lbnav prev" aria-label="Previous photo">‹</button><figure><img alt=""><figcaption></figcaption></figure><button type="button" class="lbnav next" aria-label="Next photo">›</button><span class="lbcount"></span>';
+ dlg.innerHTML='<button type="button" class="lbx" aria-label="Close">×</button><button type="button" class="lbnav prev" aria-label="Previous photo">‹</button><figure><img alt="Event photo"><figcaption></figcaption></figure><button type="button" class="lbnav next" aria-label="Next photo">›</button><span class="lbcount"></span>';
  document.body.appendChild(dlg);let at=0;
  const show=k=>{at=(k+photos.length)%photos.length;const p=photos[at];$('img',dlg).src=p.src;$('img',dlg).alt=p.cap||E.title;$('figcaption',dlg).textContent=p.cap||'';$('.lbcount',dlg).textContent=`${at+1} / ${photos.length}`};
  $$('.galimg').forEach(b=>b.onclick=()=>{show(photos.findIndex(p=>p.i===+b.dataset.i));dlg.showModal()});

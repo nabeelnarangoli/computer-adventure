@@ -54,7 +54,7 @@ async function seoCrawl(){
    headings:[...scope.querySelectorAll('h1,h2,h3,h4')].map(el=>({level:+el.tagName[1],text:seoText(el)})),
    paragraphs:[...scope.querySelectorAll('p,li,dd')].map(seoText).filter(Boolean),
    links:[...scope.querySelectorAll('a[href]')].map(a=>({href:a.getAttribute('href'),text:seoText(a)})),
-   images:[...scope.querySelectorAll('img')].filter(i=>i.getAttribute('alt')!=='').map(i=>({src:i.getAttribute('src'),alt:i.getAttribute('alt')||''})),
+   images:[...scope.querySelectorAll('img')].map(i=>({src:i.getAttribute('src'),alt:i.getAttribute('alt')||''})),
    text:seoText(scope)};
   const title=seoText(q('title')),description=meta('description'),keyword=meta('seo:focus');
   const res=SEOChecks.analyze({keyword,seoTitle:title,metaDescription:description,slug:P.url.split('/').filter(Boolean).pop()||'',doc,kind:'page'});
