@@ -39,6 +39,63 @@ export function cleanBadge(b = {}) {
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
 
 const waText = (v) => String(v ?? '').replace(/\r/g, '').slice(0, 1500).trim();
+// YouTube video id from any YouTube link (watch, youtu.be, live, shorts, embed), or '' if it isn't one
+export const ytId = (u) => { const m = String(u || '').trim().match(/^(?:https?:\/\/)?(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|live\/|shorts\/|embed\/)|youtu\.be\/)([\w-]{11})(?:[?&#/].*)?$/i); return m ? m[1] : ''; };
+const okUrl = (u) => /^https:\/\/\S+\.\S+$/i.test(String(u || '').trim());
+const LOCAL_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+// Live stream: a link (YouTube plays on the event page; Facebook, Instagram, Zoom… open in a new tab),
+// optional start and end (default: the event's own times) and a manual override.
+function cleanLive(b) {
+  b = b && typeof b === 'object' ? b : {};
+  const url = okUrl(b.url) ? String(b.url).trim().slice(0, 600) : '';
+  return { on: !!b.on && !!url, url, start: LOCAL_RE.test(b.start || '') ? b.start : '', end: LOCAL_RE.test(b.end || '') ? b.end : '',
+    status: ['auto', 'live', 'ended'].includes(b.status) ? b.status : 'auto', title: String(b.title || '').trim().slice(0, 120) };
+}
+// Any video link → how to show it on the page. Plays inside the page for YouTube, Facebook, Instagram, TikTok,
+// Vimeo, Google Drive and direct video files; anything else (Instagram Live, Zoom…) becomes a "Watch on …" button.
+export function videoInfo(raw) {
+  const url = String(raw || '').trim();
+  let u; try { u = new URL(url); } catch { return null; }
+  if (u.protocol !== 'https:') return null;
+  const h = u.hostname.replace(/^(www|m|mobile|web)\./, ''), path = u.pathname;
+  const yt = ytId(url);
+  if (yt) return { p: 'youtube', name: 'YouTube', embed: `https://www.youtube-nocookie.com/embed/${yt}?rel=0&playsinline=1`, thumb: `https://i.ytimg.com/vi/${yt}/hqdefault.jpg`, v: yt, ratio: /\/shorts\//.test(path) ? 'tall' : 'wide' };
+  if (/(^|\.)facebook\.com$|^fb\.watch$/.test(h)) {
+    const tall = /\/reel\//.test(path);
+    return { p: 'facebook', name: 'Facebook', embed: `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=false${tall ? '&width=360' : '&width=1280'}`, ratio: tall ? 'tall' : 'wide' };
+  }
+  let m;
+  if (/(^|\.)instagram\.com$/.test(h)) {
+    if ((m = path.match(/^\/(?:[\w.]+\/)?(p|reel|reels|tv)\/([\w-]+)/))) return { p: 'instagram', name: 'Instagram', embed: `https://www.instagram.com/${m[1] === 'reels' ? 'reel' : m[1]}/${m[2]}/embed/`, ratio: 'insta' };
+    return { p: 'instagram', name: 'Instagram', embed: '', ratio: 'wide' };                       // live, profile: link only
+  }
+  if (/(^|\.)tiktok\.com$/.test(h) && (m = path.match(/\/video\/(\d+)/))) return { p: 'tiktok', name: 'TikTok', embed: `https://www.tiktok.com/embed/v2/${m[1]}`, ratio: 'tall' };
+  if (/(^|\.)vimeo\.com$/.test(h) && (m = path.match(/\/(?:video\/)?(\d{5,})/))) return { p: 'vimeo', name: 'Vimeo', embed: `https://player.vimeo.com/video/${m[1]}`, ratio: 'wide' };
+  if (h === 'drive.google.com' && (m = path.match(/\/file\/d\/([\w-]+)/))) return { p: 'drive', name: 'Google Drive', embed: `https://drive.google.com/file/d/${m[1]}/preview`, ratio: 'wide' };
+  if (/\.(mp4|webm|mov|m4v)$/i.test(path)) return { p: 'file', name: 'Video', file: url, ratio: 'wide' };
+  const name = /zoom\.us$/.test(h) ? 'Zoom' : /twitch\.tv$/.test(h) ? 'Twitch' : /(x|twitter)\.com$/.test(h) ? 'X' : /linkedin\.com$/.test(h) ? 'LinkedIn' : /meet\.google\.com$/.test(h) ? 'Google Meet' : h;
+  return { p: 'link', name, embed: '', ratio: 'wide' };
+}
+// Photos & videos: uploaded photos (image ids) and video links (any site), each with an optional caption
+function cleanMedia(list) {
+  return (Array.isArray(list) ? list : []).map((m) => {
+    const cap = String((m && m.cap) || '').trim().slice(0, 160);
+    if (m && m.k === 'img' && /^[a-f0-9]{24}$/.test(m.id || '')) return { k: 'img', id: m.id, cap };
+    const url = m && m.k === 'yt' && /^[\w-]{11}$/.test(m.v || '') ? `https://youtu.be/${m.v}` : m && m.k === 'vid' ? String(m.url || '').trim().slice(0, 600) : '';
+    return url && videoInfo(url) ? { k: 'vid', url, cap } : null;
+  }).filter(Boolean).slice(0, 80);
+}
+const publicMedia = (e) => (e.media || []).map((m) => (m.k === 'img' ? { k: 'img', src: `/api/img/${m.id}`, cap: m.cap || '' } : { k: 'vid', url: m.url, cap: m.cap || '', ...videoInfo(m.url) })).filter((m) => m.k === 'img' || m.p);
+// where the live stream is now: scheduled, live or ended (the admin can force live or ended)
+export function liveInfo(e, now = Date.now()) {
+  const L = e.live;
+  if (!L || !L.on || !L.url) return null;
+  const start = toUTC(L.start || e.start, e.tz);
+  const end = L.end ? toUTC(L.end, e.tz) : e.end && !L.start ? toUTC(e.end, e.tz) : start + 3 * 3600_000;
+  const status = L.status === 'live' ? 'live' : L.status === 'ended' ? 'ended' : now < start ? 'scheduled' : now <= end ? 'live' : 'ended';
+  const vi = videoInfo(L.url) || { p: 'link', name: '' };
+  return { url: L.url, yt: ytId(L.url), video: vi, platform: vi.p, title: L.title || '', startUTC: start, endUTC: end, status, forced: L.status !== 'auto' };
+}
 function clean(b, old = {}) {
   const e = { ...old };
   const str = (k, n) => { if (b[k] !== undefined) e[k] = String(b[k] ?? '').trim().slice(0, n); };
@@ -57,6 +114,8 @@ function clean(b, old = {}) {
   if (b.share !== undefined) e.share = !!b.share;
   if (b.waMsg !== undefined) e.waMsg = waText(b.waMsg); // WhatsApp confirmation message for this event ('' = use the common one)
   if (b.badge !== undefined) e.badge = cleanBadge(b.badge);
+  if (b.live !== undefined) e.live = cleanLive(b.live);
+  if (b.media !== undefined) e.media = cleanMedia(b.media);
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
   return e;
 }
@@ -91,6 +150,7 @@ function publicEvent(e, list) {
     mode: e.mode, locationName: e.mode === 'offline' ? e.locationName || '' : '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '',
     paid: !!e.paid, price: e.price || 0, currency: e.currency || 'AED', regMode: e.regMode, regLink: e.regMode === 'link' ? e.regLink : '',
     form: formOf(e), share: e.share !== false, state: regState(e, list), seatsLeft: e.capacity ? Math.max(0, e.capacity - taken) : null, maxSeats: e.maxSeats || 1,
+    live: liveInfo(e), media: publicMedia(e),
   };
 }
 
@@ -345,7 +405,7 @@ export function createEvents({ getStore, json }) {
     }
     if (path === '/admin/events' && method === 'GET') {
       const out = [];
-      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length, attended: list.filter((r) => calOk(r) && r.attended).reduce((t, r) => t + (r.seats || 1), 0) } }); }
+      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), liveStatus: (liveInfo(e) || {}).status || '', counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length, attended: list.filter((r) => calOk(r) && r.attended).reduce((t, r) => t + (r.seats || 1), 0) } }); }
       out.sort((a, b) => toUTC(b.start, b.tz) - toUTC(a.start, a.tz));
       return json(200, { events: out, settings: adminSettings(await rawSettings()) });
     }
@@ -540,7 +600,7 @@ export function createEvents({ getStore, json }) {
     // Google shows about 60 characters of a title: add the centre's name only when it fits
     const pageTitle = [`${e.title} · Aqlyon Career Discovery Centre`, `${e.title} · Aqlyon`].find((t) => t.length <= 60) || e.title;
     const ld = { '@context': 'https://schema.org', '@type': 'Event', name: e.title, description: desc, image: [img], startDate: new Date(pe.startUTC).toISOString(), ...(pe.endUTC ? { endDate: new Date(pe.endUTC).toISOString() } : {}),
-      eventAttendanceMode: e.mode === 'online' ? 'https://schema.org/OnlineEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode', eventStatus: 'https://schema.org/EventScheduled',
+      eventAttendanceMode: e.mode === 'online' ? 'https://schema.org/OnlineEventAttendanceMode' : pe.live ? 'https://schema.org/MixedEventAttendanceMode' : 'https://schema.org/OfflineEventAttendanceMode', eventStatus: 'https://schema.org/EventScheduled',
       location: e.mode === 'online' ? { '@type': 'VirtualLocation', url } : { '@type': 'Place', name: e.locationName, address: e.locationName },
       organizer: { '@type': 'Organization', name: 'Aqlyon Career Discovery Centre', url: origin },
       offers: { '@type': 'Offer', price: e.paid ? e.price : 0, priceCurrency: e.currency || 'AED', url, availability: pe.state === 'open' ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' } };

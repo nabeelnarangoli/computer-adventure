@@ -144,3 +144,67 @@
 .rgf .ddo.sel::after{content:" ✓";color:var(--green,#1E8A5A)}
 .rgf .ddnone{padding:10px 12px;color:#6B7B74;font-size:14px}
 .rgf .ddnone[hidden]{display:none}
+
+/* ---------- live stream ---------- */
+.evtags span.lvtag{background:#FDE4E2;color:#A3201B}
+.evtags span.lvtag.on{background:#E5322D;color:#fff}
+.lvtagslot{display:contents}
+.evlive{position:absolute;top:12px;right:12px;display:inline-flex;align-items:center;gap:6px;background:#E5322D;color:#fff;font:800 13px/1 var(--body);letter-spacing:.08em;padding:7px 11px;border-radius:99px;box-shadow:0 4px 14px rgba(229,50,45,.4)}
+.evlive i,.lvpill.on i{width:8px;height:8px;border-radius:50%;background:#fff;animation:lvpulse 1.4s ease-in-out infinite}
+@keyframes lvpulse{50%{opacity:.25}}
+@media (prefers-reduced-motion:reduce){.evlive i,.lvpill.on i{animation:none}}
+.evlivebox{margin:6px 0 26px;padding:18px;border-radius:var(--r-md);background:#fff;border:2px solid var(--line);display:grid;gap:12px}
+.evlivebox.live{border-color:#E5322D;box-shadow:0 10px 30px -18px rgba(229,50,45,.6)}
+.lvhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px}.lvhead b{font:700 20px/1.2 var(--disp)}
+.lvpill{display:inline-flex;align-items:center;gap:7px;font:800 13px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;padding:7px 12px;border-radius:99px}
+.lvpill.on{background:#E5322D;color:#fff}.lvpill.sched{background:#FDE4E2;color:#A3201B}.lvpill.rec{background:var(--mint);color:var(--ink)}
+.lvsub{color:var(--slate);margin:0}
+.lvgo{justify-self:start}.lvnote{color:var(--slate);font-size:14px;margin-top:-4px}
+.lvext{font-size:14px;color:var(--green-d);font-weight:600;justify-self:start}
+/* videos from any site: a still or poster that turns into the player on click */
+.vlite{all:unset;box-sizing:border-box;position:relative;display:block;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;cursor:pointer;background:#000}
+.vlite img{width:100%;height:100%;object-fit:cover;opacity:.92;transition:opacity .2s}
+.vlite:hover img{opacity:1}
+.vlite:focus-visible,.vlink:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.vlite.noimg{background:linear-gradient(135deg,var(--ink),#1E4A3B)}
+.vlite.p-facebook{background:linear-gradient(135deg,#0B3D91,#1877F2)}.vlite.p-instagram{background:linear-gradient(135deg,#5B2A86,#C13584 55%,#F77737)}
+.vlite.p-tiktok{background:linear-gradient(135deg,#111,#2B2B2B)}.vlite.p-vimeo{background:linear-gradient(135deg,#0A5B7A,#1AB7EA)}.vlite.p-drive{background:linear-gradient(135deg,#0F6E44,#1FA870)}
+.vsite{position:absolute;left:14px;bottom:12px;color:#fff;font:700 15px var(--body);opacity:.95}
+.vplay{position:absolute;left:50%;top:50%;width:68px;height:48px;margin:-24px 0 0 -34px;border-radius:14px;background:#E5322D;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.vlite.noimg .vplay{background:rgba(255,255,255,.22);backdrop-filter:blur(4px)}
+.vplay::after{content:"";position:absolute;left:27px;top:14px;border-style:solid;border-width:10px 0 10px 17px;border-color:transparent transparent transparent #fff}
+.vlite.big .vplay{transform:scale(1.15)}
+.vwrap{position:relative;width:100%;aspect-ratio:16/9;border-radius:14px;overflow:hidden;background:#000}
+.vwrap iframe,.vwrap video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.r-tall,.vwrap.r-tall{aspect-ratio:9/16;max-width:400px;margin-inline:auto}
+.r-insta,.vwrap.r-insta{aspect-ratio:9/14;max-width:440px;margin-inline:auto;background:#fff}
+.vlink{display:grid;place-items:center;align-content:center;gap:6px;aspect-ratio:16/9;border-radius:14px;background:linear-gradient(135deg,var(--ink),#1E4A3B);color:#fff;text-decoration:none;text-align:center;padding:16px}
+.vlink b{font-size:16px}.vlink small{font-size:13px;color:#CFE3DA}
+.vlplay{width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.18);position:relative}.vlplay::after{content:"";position:absolute;left:21px;top:16px;border-style:solid;border-width:10px 0 10px 16px;border-color:transparent transparent transparent #fff}
+
+/* ---------- photos & videos ---------- */
+.evgal{margin-top:34px}
+.evgal h2{font-size:clamp(28px,3.4vw,38px);margin-bottom:16px;max-width:none}
+.galgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,220px),1fr));gap:14px}
+.galitem{margin:0;display:grid;gap:6px;align-content:start}
+.galitem figcaption{font-size:14.5px;color:var(--slate);line-height:1.4}
+.galimg{all:unset;box-sizing:border-box;display:block;aspect-ratio:4/3;border-radius:14px;overflow:hidden;cursor:zoom-in;background:var(--mint)}
+.galimg img{width:100%;height:100%;object-fit:cover;transition:transform .35s}
+.galimg:hover img{transform:scale(1.04)}
+.galimg:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+/* in the grid every poster is 4:3; a tall reel or Instagram post takes its own shape once it plays */
+.galitem.vid .vlite,.galitem.vid .vlink,.galitem.vid .vwrap.r-wide{aspect-ratio:4/3;max-width:none}
+.galitem.vid .vwrap.r-tall,.galitem.vid .vwrap.r-insta{max-width:none}
+.lightbox{border:0;padding:0;margin:auto;width:100vw;height:100dvh;max-width:none;max-height:none;background:rgba(6,18,14,.94);color:#fff}
+.lightbox::backdrop{background:rgba(6,18,14,.94)}
+.lightbox[open]{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center}
+.lightbox figure{margin:0;display:grid;gap:10px;justify-items:center;padding:56px 8px 40px;max-height:100dvh}
+.lightbox img{max-width:100%;max-height:calc(100dvh - 140px);object-fit:contain;border-radius:8px}
+.lightbox figcaption{font-size:16px;text-align:center;max-width:60ch;color:#DCEBE3}
+.lbx,.lbnav{border:0;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;border-radius:99px;font:400 34px/1 var(--body);width:52px;height:52px;display:grid;place-items:center}
+.lbx:hover,.lbnav:hover{background:rgba(255,255,255,.24)}
+.lbx{position:absolute;top:12px;right:12px;font-size:30px}
+.lbnav{margin:0 10px}
+.lbcount{position:absolute;top:24px;left:20px;font-size:14px;color:#B9D3C7}
+@media (max-width:600px){.lightbox[open]{grid-template-columns:minmax(0,1fr)}.lbnav{position:absolute;bottom:14px;width:48px;height:48px}.lbnav.prev{left:14px}.lbnav.next{right:14px}.lightbox figure{padding:60px 0 80px}}
+@media (max-width:560px){.galgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.galitem figcaption{font-size:13px}.vlink b{font-size:13.5px}.vplay{transform:scale(.8)}}

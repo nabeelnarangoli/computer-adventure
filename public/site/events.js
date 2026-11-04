@@ -16,17 +16,32 @@ const ICON={cal:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" str
  web:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>',
  tag:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 12V4h8l10 10-8 8z"/><circle cx="7.5" cy="8.5" r="1.5"/></svg>',
  share:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 10.5l6.8-4M8.6 13.5l6.8 4"/></svg>'};
+/* live stream & gallery helpers */
+const PLATFORM={youtube:'YouTube',facebook:'Facebook',instagram:'Instagram',tiktok:'TikTok',vimeo:'Vimeo',drive:'Google Drive',file:'',link:''};
+// the live status changes with the clock: recompute it in the browser unless the admin forced it
+const liveNow=L=>!L?'':L.forced?L.status:Date.now()<L.startUTC?'scheduled':Date.now()<=L.endUTC?'live':'ended';
+// Video from any site (shape from videoInfo on the server: p, name, embed | file, thumb, ratio).
+// A still/poster first; the real player loads on click (fast pages, nothing from the video site until play).
+// browsers only start a video by itself when it is muted: the live player starts muted, a clicked video with sound
+const autoplay=(v,mute)=>v.p==='youtube'?'&autoplay=1'+(mute?'&mute=1':''):v.p==='vimeo'?'?autoplay=1'+(mute?'&muted=1':''):'';
+const vidFrame=(v,auto,mute)=>v.file?`<div class="vwrap r-wide"><video src="${esc(v.file)}" controls playsinline preload="metadata"${auto?' autoplay':''}${mute?' muted':''}></video></div>`
+ :`<div class="vwrap r-${esc(v.ratio||'wide')}"><iframe src="${esc(v.embed+(auto?autoplay(v,mute):''))}" title="${esc(v.name)} video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy" scrolling="no"></iframe></div>`;
+const vidLite=(v,label,big)=>{
+ if(!v.embed&&!v.file)return `<a class="vlink" href="${esc(v.url)}" target="_blank" rel="noopener"><span class="vlplay" aria-hidden="true"></span><b>Watch on ${esc(v.name)} ↗</b></a>`;
+ if(v.file)return vidFrame(v,false);
+ return `<button type="button" class="vlite r-${esc(v.ratio||'wide')}${big?' big':''}${v.thumb?'':' noimg p-'+esc(v.p)}" data-v='${esc(JSON.stringify({p:v.p,name:v.name,embed:v.embed,ratio:v.ratio}))}' aria-label="Play ${esc(v.name)} video${label?': '+esc(label):''}">${v.thumb?`<img src="${esc(v.thumb)}" alt="" loading="lazy">`:`<span class="vsite">${esc(v.name)}</span>`}<span class="vplay" aria-hidden="true"></span></button>`};
+document.addEventListener('click',ev=>{const b=ev.target.closest('.vlite');if(!b)return;try{b.outerHTML=vidFrame(JSON.parse(b.dataset.v),true)}catch(e){}});
 const badge=e=>{const d=local(e.start);return `<span class="evdate"><b>${d.getDate()}</b><small>${d.toLocaleDateString('en-GB',{month:'short'})}</small></span>`};
 
 /* ---------- home page section ---------- */
 const sec=$('#events');
 if(sec){
  const card=e=>`<a class="evc ${e.state}" href="/events/${esc(e.slug)}">
-  <div class="evimg">${e.cover?`<img src="${esc(e.cover)}" alt="" loading="lazy">`:'<span class="evph"></span>'}${badge(e)}</div>
-  <div class="evtxt"><div class="evtags"><span>${e.mode==='online'?'Online':'Offline'}</span><span class="${e.paid?'':'free'}">${esc(price(e))}</span>${e.state!=='open'&&e.state!=='none'?`<span class="st">${STATE[e.state]}</span>`:''}</div>
+  <div class="evimg">${e.cover?`<img src="${esc(e.cover)}" alt="" loading="lazy">`:'<span class="evph"></span>'}${badge(e)}${liveNow(e.live)==='live'?'<span class="evlive"><i></i>LIVE</span>':''}</div>
+  <div class="evtxt"><div class="evtags"><span>${e.mode==='online'?'Online':'Offline'}</span><span class="${e.paid?'':'free'}">${esc(price(e))}</span>${e.state!=='open'&&e.state!=='none'?`<span class="st">${STATE[e.state]}</span>`:''}${liveNow(e.live)==='scheduled'?'<span class="lvtag">Live stream</span>':liveNow(e.live)==='live'?'<span class="lvtag on">● Live now</span>':''}${(e.media||[]).length?'<span>Photos &amp; videos</span>':''}</div>
   <h3>${esc(e.title)}</h3><p class="when">${esc(local(e.start).toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}))} · ${esc(timeLine(e))}</p>
   ${e.mode==='offline'&&e.locationName?`<p class="where">${esc(e.locationName)}</p>`:''}${e.summary?`<p class="sum">${esc(e.summary)}</p>`:''}
-  <span class="evgo">${e.state==='open'?(e.regMode==='link'?'Details & register':'View & register'):'View details'} →</span></div></a>`;
+  <span class="evgo">${liveNow(e.live)==='live'?'Watch live':e.state==='open'?(e.regMode==='link'?'Details & register':'View & register'):(e.media||[]).length?'See photos & videos':'View details'} →</span></div></a>`;
  fetch('/api/events').then(r=>r.json()).then(d=>{
   const g=$('.evgrid',sec);g.innerHTML=(d.upcoming||[]).map(card).join('');
   $('.evnone',sec).hidden=!!(d.upcoming||[]).length;
@@ -56,10 +71,12 @@ const regBtn=()=>{
 root.innerHTML=`<article class="evdetail">
  <div class="evhero">${E.cover?`<img src="${esc(E.cover)}" alt="">`:'<span class="evph big"></span>'}</div>
  <div class="evgridd"><div class="evmain">
-  <div class="evtags"><span>${E.mode==='online'?'Online event':'In person'}</span><span class="${E.paid?'':'free'}">${esc(price(E))}</span>${E.state==='open'&&E.seatsLeft!==null&&E.seatsLeft<=15?`<span class="st">Only ${E.seatsLeft} seat${E.seatsLeft===1?'':'s'} left</span>`:''}</div>
+  <div class="evtags"><span>${E.mode==='online'?'Online event':'In person'}</span><span class="${E.paid?'':'free'}">${esc(price(E))}</span>${E.state==='open'&&E.seatsLeft!==null&&E.seatsLeft<=15?`<span class="st">Only ${E.seatsLeft} seat${E.seatsLeft===1?'':'s'} left</span>`:''}<span class="lvtagslot"></span></div>
   <h1>${esc(E.title)}</h1>${E.summary?`<p class="lead">${esc(E.summary)}</p>`:''}
   <div class="toprow">${regBtn().replace('id="regbtn"','id="regbtn2"')}${E.share!==false?`<button type="button" class="btn line sharebig">${ICON.share} Share event</button>`:''}</div>
+  <section class="evlivebox" id="live" aria-live="polite" hidden></section>
   <div class="evbody">${paras(E.details)}</div>
+  ${(E.media||[]).length?`<section class="evgal" id="gallery" aria-labelledby="gal-h"><h2 id="gal-h">Photos &amp; videos</h2><div class="galgrid">${E.media.map((x,i)=>x.k==='img'?`<figure class="galitem"><button type="button" class="galimg" data-i="${i}" aria-label="Open photo ${i+1}${x.cap?': '+esc(x.cap):''}"><img src="${esc(x.src)}" alt="${esc(x.cap||E.title+' photo '+(i+1))}" loading="lazy"></button>${x.cap?`<figcaption>${esc(x.cap)}</figcaption>`:''}</figure>`:`<figure class="galitem vid">${vidLite(x,x.cap)}${x.cap?`<figcaption>${esc(x.cap)}</figcaption>`:''}</figure>`).join('')}</div></section>`:''}
  </div>
  <aside class="evside"><div class="evbox">
   <p class="row">${ICON.cal}<span><b>${esc(fmtDay(E))}</b>${esc(timeLine(E))}${yt?`<small>Your time: ${esc(yt)}</small>`:''}</span></p>
@@ -76,6 +93,39 @@ root.innerHTML=`<article class="evdetail">
   <a class="shb" href="https://x.com/intent/post?text=${encodeURIComponent(E.title)}&url=${encodeURIComponent(url)}" target="_blank" rel="noopener">X</a>
   ${navigator.share?'<button type="button" class="shb" data-s="native">More…</button>':''}</div></div>`:''}
  </aside></div></article>`;
+/* live stream panel: scheduled → live → recording, updated every 30 seconds */
+const L=E.live;
+if(L){
+ const box=$('#live'),slot=$('.lvtagslot'),pf=PLATFORM[L.platform]||(L.platform==='link'&&L.video?L.video.name:'');
+ const when=ms=>new Date(ms).toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit',hour12:true});
+ const until=ms=>{const m=Math.max(1,Math.round((ms-Date.now())/6e4));return m<60?`in ${m} min`:m<1440?`in ${Math.floor(m/60)} h ${m%60?m%60+' min':''}`.trim():`in ${Math.round(m/1440)} day${Math.round(m/1440)===1?'':'s'}`};
+ let shown='';
+ const draw=()=>{const st=liveNow(L);if(st===shown&&st!=='scheduled')return;const first=!shown;shown=st;box.hidden=false;box.className='evlivebox '+st;
+  const head=st==='live'?`<span class="lvpill on"><i></i>LIVE</span><b>${esc(L.title||'Live now')}</b>`:st==='scheduled'?`<span class="lvpill sched">Live stream scheduled</span><b>${esc(L.title||'Watch this event live')}</b>`:`<span class="lvpill rec">Recording</span><b>${esc(L.title||'Watch the live stream again')}</b>`;
+  const sub=st==='scheduled'?`Starts ${esc(when(L.startUTC))} (your time) · ${esc(until(L.startUTC))}`:st==='live'?`Streaming now${pf?' on '+pf:''}`:'';
+  const V=L.video||{},plays=!!(V.embed||V.file);
+  const player=plays?(st==='live'?vidFrame(V,true,true):vidLite({...V,url:L.url},L.title||E.title,true))
+   :`<a class="btn ${st==='live'?'solid':'line'} lg lvgo" href="${esc(L.url)}" target="_blank" rel="noopener">${st==='live'?'Watch live':st==='scheduled'?'Open the live stream':'Watch the recording'}${pf?' on '+pf:''} ↗</a>${st==='scheduled'?'<small class="lvnote">The link works once the stream starts.</small>':''}`;
+  box.innerHTML=`<div class="lvhead">${head}</div>${sub?`<p class="lvsub">${sub}</p>`:''}${player}${plays?`<a class="lvext" href="${esc(L.url)}" target="_blank" rel="noopener">Open on ${esc(pf||V.name||'the original site')} ↗</a>`:''}`;
+  slot.innerHTML=st==='live'?'<span class="lvtag on">● Live now</span>':st==='scheduled'?'<span class="lvtag">Live stream</span>':'';
+  if(st==='live'&&!first)box.scrollIntoView({behavior:'smooth',block:'center'})};
+ draw();if(!L.forced)setInterval(draw,30000);
+ if(liveNow(L)==='live'&&location.hash!=='#live')setTimeout(()=>box.scrollIntoView({block:'center'}),300);
+}
+/* gallery lightbox */
+const photos=(E.media||[]).map((x,i)=>({...x,i})).filter(x=>x.k==='img');
+if(photos.length){
+ const dlg=document.createElement('dialog');dlg.className='lightbox';dlg.setAttribute('aria-label','Photos');
+ dlg.innerHTML='<button type="button" class="lbx" aria-label="Close">×</button><button type="button" class="lbnav prev" aria-label="Previous photo">‹</button><figure><img alt=""><figcaption></figcaption></figure><button type="button" class="lbnav next" aria-label="Next photo">›</button><span class="lbcount"></span>';
+ document.body.appendChild(dlg);let at=0;
+ const show=k=>{at=(k+photos.length)%photos.length;const p=photos[at];$('img',dlg).src=p.src;$('img',dlg).alt=p.cap||E.title;$('figcaption',dlg).textContent=p.cap||'';$('.lbcount',dlg).textContent=`${at+1} / ${photos.length}`};
+ $$('.galimg').forEach(b=>b.onclick=()=>{show(photos.findIndex(p=>p.i===+b.dataset.i));dlg.showModal()});
+ $('.lbx',dlg).onclick=()=>dlg.close();$('.prev',dlg).onclick=()=>show(at-1);$('.next',dlg).onclick=()=>show(at+1);
+ dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+ dlg.addEventListener('keydown',e=>{if(e.key==='ArrowLeft')show(at-1);if(e.key==='ArrowRight')show(at+1)});
+ let x0=null;dlg.addEventListener('touchstart',e=>{x0=e.touches[0].clientX},{passive:true});dlg.addEventListener('touchend',e=>{if(x0===null)return;const dx=e.changedTouches[0].clientX-x0;if(Math.abs(dx)>50)show(at+(dx<0?1:-1));x0=null});
+ if(photos.length<2)$$('.lbnav',dlg).forEach(b=>b.hidden=true);
+}
 const toast=m=>{const t=document.createElement('div');t.className='evtoast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),2600)};
 $('#icsb').onclick=()=>ics();
 const shareNow=async()=>{if(navigator.share){try{await navigator.share({title:E.title,text:(E.summary||E.title)+' · '+fmtDay(E),url});return}catch(e){if(e.name==='AbortError')return}}
