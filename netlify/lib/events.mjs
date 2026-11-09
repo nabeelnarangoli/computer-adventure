@@ -177,6 +177,7 @@ export function createEvents({ getStore, json }) {
   const uploads = () => getStore('uploads');
   const sendlists = () => getStore('sendlists');      // WhatsApp send lists shared with helpers: key -> {e, name, ids, msg, on, sent}
   const slSummary = (l, doc) => ({ key: l.key, name: l.name, on: l.on, msg: l.msg, createdAt: l.createdAt, total: l.ids.length,
+    first: (({ name, ref, seats, tk } = {}) => (name ? { name: nameCase(name), ref, seats, tk } : null))(doc.list.find((r) => l.ids.includes(r.id))), // for the message preview when editing
     sent: l.ids.filter((id) => l.sent[id]).length, valid: l.ids.filter((id) => calOk(doc.list.find((r) => r.id === id))).length });
   async function sendList(key) {
     const l = await sendlists().get(key, { type: 'json' });

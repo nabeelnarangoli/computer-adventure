@@ -163,13 +163,26 @@ function slCreate(e,regs,ids,after){
    e.sendLists=[...(e.sendLists||[]),l.key];close();slShare(e,l);after&&after()}catch(err){$('.formerr',m).textContent=err.message;x.target.disabled=false}};
  });
 }
+// edit a shared list's name and message; helpers who already have the link get the new text for everyone not yet sent
+function slEdit(e,l,after){
+ modal(`<h2>Edit WhatsApp list</h2><form class="mform"><div class="field"><label for="sle-name">Name of the list</label><input id="sle-name" maxlength="60" required value="${esc(l.name)}"></div><div class="slwa"></div>
+ <p class="small">${l.sent?`${l.sent} of ${l.total} already sent. `:''}The helper's link stays the same: everyone not yet sent gets the new message.</p><p class="formerr"></p>
+ <div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="submit" class="btn">Save changes</button></div></form>`,(m,close)=>{
+  m.querySelector('.modal').classList.add('wide');
+  const W=waEditor($('.slwa',m),{value:l.msg||waTemplate(e,EVSET),online:e.mode==='online',ev:waEvent(e),person:l.first?waPerson(e,l.first):WA_SAMPLE,id:'sle-msg'});
+  $('form',m).onsubmit=async x=>{x.preventDefault();const b=$('button[type=submit]',m),name=$('#sle-name',m).value.trim(),msg=W.get();
+   if(!name||!msg){$('.formerr',m).textContent=!name?'Give the list a name.':'Write a message.';return}
+   b.disabled=true;try{await AAPI.call(`/admin/events/${e.id}/sendlists/${l.key}`,{method:'PATCH',body:{name,msg}});close();toast('List updated');after()}catch(err){$('.formerr',m).textContent=err.message;b.disabled=false}};
+ });
+}
 async function slPanel(e,box){
  let lists=[];try{lists=(await AAPI.call(`/admin/events/${e.id}/sendlists`)).lists}catch(x){return}
  if(!lists.length){box.innerHTML='';return}
  box.innerHTML=`<h3 class="fbph">WhatsApp lists shared with helpers</h3><div class="wlists">${lists.map(l=>`<div class="wlist ${l.on?'':'offl'}"><div><b>${esc(l.name)}</b>${l.on?'':' <span class="chipx muted">Off</span>'}<small>${l.sent} of ${l.total} sent${l.valid<l.total?` · ${l.total-l.valid} no longer confirmed`:''}</small><div class="ckprog"><i style="width:${l.total?Math.round(l.sent/l.total*100):0}%"></i></div></div>
-  <span class="evbtns" style="margin:0"><button type="button" class="btn sm ghost" data-sl="share" data-k="${l.key}">Share link</button><button type="button" class="btn sm ghost" data-sl="${l.on?'off':'on'}" data-k="${l.key}">${l.on?'Turn off':'Turn on'}</button><button type="button" class="btn sm ghost danger" data-sl="del" data-k="${l.key}">Delete</button></span></div>`).join('')}</div>`;
+  <span class="evbtns" style="margin:0"><button type="button" class="btn sm ghost" data-sl="share" data-k="${l.key}">Share link</button><button type="button" class="btn sm ghost" data-sl="edit" data-k="${l.key}">Edit</button><button type="button" class="btn sm ghost" data-sl="${l.on?'off':'on'}" data-k="${l.key}">${l.on?'Turn off':'Turn on'}</button><button type="button" class="btn sm ghost danger" data-sl="del" data-k="${l.key}">Delete</button></span></div>`).join('')}</div>`;
  $$('[data-sl]',box).forEach(b=>b.onclick=async()=>{const l=lists.find(x=>x.key===b.dataset.k),a=b.dataset.sl;
   if(a==='share')return slShare(e,l);
+  if(a==='edit')return slEdit(e,l,()=>slPanel(e,box));
   if(a==='del'&&!await confirmBox('Delete this WhatsApp list?',`The link for <b>${esc(l.name)}</b> stops working. Messages already sent stay marked in Registrations.`,'Delete list',true))return;
   try{if(a==='del'){await AAPI.call(`/admin/events/${e.id}/sendlists/${l.key}`,{method:'DELETE'});e.sendLists=(e.sendLists||[]).filter(k=>k!==l.key)}else await AAPI.call(`/admin/events/${e.id}/sendlists/${l.key}`,{method:'PATCH',body:{on:a==='on'}});slPanel(e,box)}catch(err){toast(err.message,true)}});
 }

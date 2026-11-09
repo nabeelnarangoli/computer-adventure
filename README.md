@@ -140,6 +140,8 @@ The same SEO assistant as aqlyondm.com, inside the admin panel (no separate logi
 
 **Connect Google Search Console (once):** add `aqlyonacademy.com` in Search Console (Domain property via DNS, or URL prefix with the HTML file method using SEO → Settings → Google verification file); enable the Search Console API in Google Cloud; create a service account and a JSON key; add the service account email in Search Console → Users and permissions (Restricted); paste the JSON and the property (`sc-domain:aqlyonacademy.com`) in SEO → Settings. **AI assistant:** paste an Anthropic API key (starts with `sk-ant-`) in SEO → Settings. Keys stay in Netlify Blobs and are never sent back to the browser; environment variables `GSC_SERVICE_ACCOUNT`, `GSC_SITE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL` also work.
 
+- WhatsApp lists shared with helpers have an **Edit** button: change the list name and message (with the same {placeholder} buttons and a preview for the first person on the list). The helper's link stays the same and everyone not yet sent gets the new message.
+
 ## Event live stream, photos and videos
 
 In the event editor:
