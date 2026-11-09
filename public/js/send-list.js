@@ -11,6 +11,8 @@ async function call(path,opts={}){let r;try{r=await fetch('/api/send/'+KEY+path,
  let d={};try{d=await r.json()}catch(e){}if(r.status===403){blocked(d.error);throw new Error(d.error)}if(!r.ok)throw new Error(d.error||'Something went wrong.');return d}
 const time=s=>new Date(s).toLocaleTimeString('en-GB',{hour:'numeric',minute:'2-digit',hour12:true});
 function draw(){
+ // Call: opens the phone's dialler with the number filled in (tel: link); uses the mobile number, else the WhatsApp number
+ const telLink=p=>{const n=String(p.phone||p.whatsapp||'').replace(/[^\d+]/g,'');return n.replace(/\D/g,'').length>=6?`<a class="btn sm ghost callbtn" href="tel:${esc(n)}" aria-label="Call ${esc(p.name)} on ${esc(p.phone||p.whatsapp)}"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2z"/></svg>Call</a>`:''};
  const ok=D.people.filter(p=>p.ok),sent=ok.filter(p=>p.sent),todo=ok.filter(p=>!p.sent),off=D.people.filter(p=>!p.ok);
  const list=view==='todo'?todo:view==='sent'?sent:D.people;
  main.innerHTML=`<div class="admhead"><div><h1 style="margin-bottom:2px">${esc(D.event.title)}</h1><p class="small">${esc(D.event.when)}${D.event.venue?' · '+esc(D.event.venue):''}<br>List: <b>${esc(D.list.name)}</b></p></div></div>
@@ -18,8 +20,8 @@ function draw(){
  <p class="tipbox small" style="margin:0 0 12px">Tap <b>Send on WhatsApp</b>, press the send arrow in WhatsApp, then come back here. The person is marked as sent and the next one moves to the top.</p>
  <nav class="evsub" role="tablist">${[['todo',`To send`,todo.length],['sent','Sent',sent.length],['all','All',D.people.length]].map(([k,t,n])=>`<button type="button" data-v="${k}" class="${view===k?'on':''}">${t} <i>${n}</i></button>`).join('')}</nav>
  <div class="wal">${list.length?list.map(p=>`<div class="ckrow warow ${p.sent?'done':''} ${p.ok?'':'off'}"><div><b>${esc(p.name)}</b><small>${esc(p.ref)} · ${esc(p.whatsapp)}${p.seats>1?' · '+p.seats+' people':''}</small>${p.ok?'':`<small class="calno">Registration ${esc(p.status)}: don't send</small>`}${p.sent?`<small class="attyes">✓ Sent ${time(p.sent)}</small>`:''}</div>
-  ${p.ok?(p.sent?`<span class="waacts"><a class="btn sm ghost" data-send="${p.id}" href="${esc(waUrl(p.whatsapp,waFill(D.list.msg,D.event,p)))}" target="_blank" rel="noopener">Send again</a><button type="button" class="linkbtn sm" data-undo="${p.id}">Undo</button></span>`
-   :`<a class="btn wabtn" data-send="${p.id}" href="${esc(waUrl(p.whatsapp,waFill(D.list.msg,D.event,p)))}" target="_blank" rel="noopener">Send on WhatsApp</a>`):''}</div>`).join('')
+  <span class="waacts">${telLink(p)}${p.ok?(p.sent?`<a class="btn sm ghost" data-send="${p.id}" href="${esc(waUrl(p.whatsapp,waFill(D.list.msg,D.event,p)))}" target="_blank" rel="noopener">Send again</a><button type="button" class="linkbtn sm" data-undo="${p.id}">Undo</button>`
+   :`<a class="btn wabtn" data-send="${p.id}" href="${esc(waUrl(p.whatsapp,waFill(D.list.msg,D.event,p)))}" target="_blank" rel="noopener">Send on WhatsApp</a>`):''}</span></div>`).join('')
   :`<p class="small" style="margin:16px 0">${view==='todo'?'🎉 Everyone on this list has been sent their message.':'Nobody here yet.'}</p>`}</div>
  ${off.length&&view!=='all'?`<p class="small">${off.length} on this list ${off.length===1?'is':'are'} no longer confirmed and ${off.length===1?'is':'are'} hidden.</p>`:''}
  <details class="evset" style="margin-top:18px"><summary>See the message</summary><pre class="wapre">${esc(waFill(D.list.msg,D.event,ok[0]||D.people[0]||{name:'Name',ref:'AQ-XXXXXX',seats:1,badge:''}))}</pre></details>`;

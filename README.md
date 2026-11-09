@@ -142,6 +142,8 @@ The same SEO assistant as aqlyondm.com, inside the admin panel (no separate logi
 
 - WhatsApp lists shared with helpers have an **Edit** button: change the list name and message (with the same {placeholder} buttons and a preview for the first person on the list). The helper's link stays the same and everyone not yet sent gets the new message.
 
+- The helper's WhatsApp list page has a **Call** button for each person: a `tel:` link that opens the phone's dialler with their mobile number filled in.
+
 ## Event live stream, photos and videos
 
 In the event editor:

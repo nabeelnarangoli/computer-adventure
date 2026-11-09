@@ -431,3 +431,5 @@ pre.seomd{white-space:pre-wrap;background:var(--surface);border:1px solid var(--
 .mdadd{display:flex;flex-wrap:wrap;gap:8px}.mdfile{cursor:pointer}
 .ytpimg{width:100%;max-width:320px;border-radius:12px;margin-top:4px}
 .mdsite{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:14px;color:var(--ink);background:var(--soft);text-align:center;padding:6px}
+.callbtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+@media (max-width:520px){.warow{flex-wrap:wrap}.warow .waacts{width:100%;justify-content:flex-end}}
