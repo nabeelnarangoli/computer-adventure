@@ -30,7 +30,7 @@ function render(){
  const orgHTML=hasOrg?`<div class="borg">${D.logo?`<img class="blogo" src="${esc(D.logo)}" alt="">`:''}${D.org?`<span class="borgn">${esc(D.org)}</span>`:''}</div>`
   :D.brand?`<div class="borg"><img class="blogo aq" src="/img/aqlyon-q.png" alt=""><span class="borgn"><b>Aqlyon</b> Career Discovery Centre</span></div>`:'';
  const role=D.showRole&&B.role?B.role:'';
- const chips=`${role&&D.tpl!=='conference'?`<span class="bchip ${role==='Parent'?'par':''}">${esc(role)}</span>`:''}${B.seats>1?`<span class="bchip adm">Admits ${B.seats}</span>`:''}`;
+ const chips=`${role&&D.tpl!=='conference'?`<span class="bchip ${role==='Parent'?'par':''}">${esc(role)}</span>`:''}${B.seats>1?`<span class="bchip adm">Admits ${B.seats}</span>`:''}${(B.chips||[]).map(c=>`<span class="bchip">${esc(c)}</span>`).join('')}`;
  const active=state==='ok'||state==='in';
  const qrPart=active?`<div class="bqr"><div class="qrbox">${qrSVG}</div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`
   :`<div class="bqr"><div class="qrbox off"><span>${state==='pending'?'⏳':'✕'}</span></div><span class="bref">Ref <b>${esc(B.ref)}</b></span></div>`;
@@ -52,6 +52,7 @@ function render(){
  ${state==='off'?`<p class="bdgwarn bad">This registration is ${esc(B.status)}, so the badge can't be used. Contact Aqlyon Career Discovery Centre if this is a mistake.</p>`:''}
  ${active&&!B.preview?`<p class="bdghint">Show this QR code at the entrance</p><div class="bdgbtns"><button type="button" class="btn" id="save">Save badge image</button><button type="button" class="btn line" id="print">Print (${esc(sz.name)})</button></div>
  <p class="bdgnote">Tip: save the image to your phone so you can show it without internet. Hi ${esc(first)}, see you there!</p>`:''}
+ ${(B.others||[]).length>1?`<p class="bdgnote bdgothers">Badges on this booking: ${B.others.map(o=>o.me?`<b>${esc(o.name)}</b>`:`<a href="${esc(o.url)}">${esc(o.name)}</a>`).join(' · ')}</p>`:''}
  ${B.preview?`<p class="bdgnote">Preview with sample details · printed size ${esc(sz.name)} (${sz.mm[0]} × ${sz.mm[1]} mm)</p>`:`<p class="bdgnote"><a href="/events/${esc(E.slug)}">Event details</a>${E.mapUrl&&E.mode!=='online'?` · <a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions</a>`:''}</p>`}`;
  // print exactly at the badge size
  let ps=$('#pagesize');if(!ps){ps=document.createElement('style');ps.id='pagesize';document.head.appendChild(ps)}

@@ -146,6 +146,17 @@ The same SEO assistant as aqlyondm.com, inside the admin panel (no separate logi
 
 - **One link per answer**: in *Share for WhatsApp*, choose *A separate link for each answer* and pick a question (Constituency, Grama Panchayat, country, any dropdown, multiple-choice or short-text question). The selected people are grouped by their answer (same spelling ignoring capitals and spaces; *No answer* for blanks), the groups are shown before creating, and one list is created per group, named after the answer. A summary shows every link with Copy, Send on WhatsApp and Open, plus Copy all links.
 
+## Details for each person (e.g. a parent registering two children)
+
+In the event editor's registration form, tick **Ask the details of each person** and choose what to call them (person, child, participant, student…). Then tick **Ask for each child** on the questions that differ per person (age, category, gender…). Set how many people one booking can include under Registration.
+
+- The form asks the contact's details once (name, email, mobile: e.g. the parent), then **Number of children** and a block per child: *Child 1*, *Child 2*… with a name and the per-person questions. Each block is checked in the browser and on the server.
+- Stored as `r.people = [{name, answers, tk, attended}]` (the booking's own answers stay in `r.answers`).
+- **Each person gets their own badge** (ref AQ-1234-1, AQ-1234-2; their per-person answers such as *Age 6* and the category appear as chips) and their own QR check-in. Person 1 uses the booking's badge token. The success screen, the invitation email and the WhatsApp `{badge}` list every person's badge.
+- Check-in, the helper check-in link and the check-in report count people one by one; searching the parent's name finds all their children. The registrations table shows the names, per-person answers (*Aisha: Below 7; Adam: 8 and above*) and *1 of 2* checked in.
+- Excel: the Registrations sheet adds the names, plus a sheet with one row per person (their ref, answers, who booked, check-in).
+- Report: per-person questions are counted once per person (*Category (each child)*: 2 children answered).
+
 ## Event live stream, photos and videos
 
 In the event editor:

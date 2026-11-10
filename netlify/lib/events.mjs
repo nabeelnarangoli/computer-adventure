@@ -3,7 +3,7 @@ import { nameCase } from './name-case.mjs';
 // Stores: events (one JSON per event), regs (one JSON per event: {list:[...]}), images (cover photos as base64).
 import crypto from 'node:crypto';
 import { inviteMail, whenText } from './invite-mail.mjs';
-import { cleanForm, formOf, checkAnswers } from './form-def.mjs';
+import { cleanForm, formOf, checkAnswers, showAnswer, eachOn, nounOf } from './form-def.mjs';
 
 export const TZS = {
   'Asia/Kolkata': { label: 'IST', name: 'India time', off: 330 },
@@ -177,7 +177,7 @@ export function createEvents({ getStore, json }) {
   const uploads = () => getStore('uploads');
   const sendlists = () => getStore('sendlists');      // WhatsApp send lists shared with helpers: key -> {e, name, ids, msg, on, sent}
   const slSummary = (l, doc) => ({ key: l.key, name: l.name, on: l.on, msg: l.msg, createdAt: l.createdAt, total: l.ids.length,
-    first: (({ name, ref, seats, tk } = {}) => (name ? { name: nameCase(name), ref, seats, tk } : null))(doc.list.find((r) => l.ids.includes(r.id))), // for the message preview when editing
+    first: (({ name, ref, seats, tk, people } = {}) => (name ? { name: nameCase(name), ref, seats, tk, people: people && people.map((x) => ({ name: nameCase(x.name), tk: x.tk })) } : null))(doc.list.find((r) => l.ids.includes(r.id))), // for the message preview when editing
     sent: l.ids.filter((id) => l.sent[id]).length, valid: l.ids.filter((id) => calOk(doc.list.find((r) => r.id === id))).length });
   async function sendList(key) {
     const l = await sendlists().get(key, { type: 'json' });
@@ -188,18 +188,46 @@ export function createEvents({ getStore, json }) {
     return { l, e };
   }          // files people attach in registration forms            // badge token -> { e: event id, r: registration id }
   // every registration gets a private badge token; the QR code on the badge holds it
-  async function ensureTk(e, r) { if (r.tk) return false; r.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(r.tk, { e: e.id, r: r.id }); return true; }
+  // with details for each person, every person also gets a badge: person 1 uses the booking's token, the others their own
+  async function ensureTk(e, r) {
+    let changed = false;
+    if (!r.tk) { r.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(r.tk, { e: e.id, r: r.id }); changed = true; }
+    for (const [i, p] of (r.people || []).entries()) {
+      if (i === 0) { if (p.tk !== r.tk) { p.tk = r.tk; changed = true; } continue; }
+      if (!p.tk) { p.tk = crypto.randomBytes(10).toString('hex'); await badges().setJSON(p.tk, { e: e.id, r: r.id, p: i }); changed = true; }
+    }
+    return changed;
+  }
   async function byBadge(tk) {
     const ix = await badges().get(tk, { type: 'json' }); if (!ix) return null;
     const e = await events().get(ix.e, { type: 'json' }); if (!e) return null;
     const doc = (await regs().get(e.id, { type: 'json' })) || { list: [] };
-    const r = doc.list.find((x) => x.id === ix.r); return r ? { e, doc, r } : null;
+    const r = doc.list.find((x) => x.id === ix.r); if (!r) return null;
+    const p = r.people && r.people.length ? Math.min(ix.p || 0, r.people.length - 1) : -1;   // which person this badge is for (-1: the booking)
+    return { e, doc, r, p };
   }
-  const checkinInfo = (e, doc, r) => ({
-    event: { id: e.id, title: e.title, slug: e.slug, start: e.start, tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, mode: e.mode, locationName: e.locationName || '' },
-    reg: { id: r.id, tk: r.tk, ref: r.ref, name: nameCase(r.name), role: r.role || '', education: r.education || '', seats: r.seats || 1, phone: r.phone, email: r.email, status: r.status, attended: r.attended || '' },
-    counts: { attended: doc.list.filter((x) => calOk(x) && x.attended).reduce((t, x) => t + (x.seats || 1), 0), total: seatsTaken(doc.list) },
-  });
+  // one person on a booking: their name, ref (AQ-1234-2), badge token and check-in
+  const personOf = (r, p) => (p >= 0 && r.people && r.people[p] ? { i: p, n: r.people.length, name: nameCase(r.people[p].name), ref: `${r.ref}-${p + 1}`, tk: r.people[p].tk || r.tk, answers: r.people[p].answers || {}, attended: r.people[p].attended || '' } : null);
+  const attendedCount = (list) => list.filter(calOk).reduce((t, x) => t + (x.people && x.people.length ? x.people.filter((p) => p.attended).length : x.attended ? x.seats || 1 : 0), 0);
+  // check a person (or the whole booking) in or out; the booking counts as attended once anyone on it has arrived
+  function setAttended(r, p, on, by) {
+    const now = new Date().toISOString();
+    if (r.people && r.people.length) {
+      (p >= 0 ? [r.people[p]] : r.people).forEach((x) => { x.attended = on ? x.attended || now : ''; });
+      r.attended = r.people.map((x) => x.attended).filter(Boolean).sort()[0] || '';
+    } else r.attended = on ? r.attended || now : '';
+    r.checkedBy = r.attended ? r.checkedBy || by : '';
+  }
+  const eachSummary = (e, x) => formOf(e).fields.filter((f) => f.each && f.type !== 'section' && x.answers && x.answers[f.id] != null && x.answers[f.id] !== '').map((f) => ({ label: f.label, value: showAnswer(f, x.answers[f.id]) }));
+  const checkinInfo = (e, doc, r, p = -1) => {
+    const P = personOf(r, p);
+    return {
+      event: { id: e.id, title: e.title, slug: e.slug, start: e.start, tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, mode: e.mode, locationName: e.locationName || '' },
+      reg: { id: r.id, tk: P ? P.tk : r.tk, ref: P ? P.ref : r.ref, name: P ? P.name : nameCase(r.name), role: P ? '' : r.role || '', education: P ? '' : r.education || '', seats: P ? 1 : r.seats || 1, phone: r.phone, email: r.email, status: r.status, attended: P ? P.attended : r.attended || '',
+        person: P ? { i: P.i + 1, n: P.n, noun: nounOf(formOf(e)), contact: nameCase(r.name), details: eachSummary(e, r.people[p]) } : null },
+      counts: { attended: attendedCount(doc.list), total: seatsTaken(doc.list) },
+    };
+  };
   const getRegs = async (id) => ((await regs().get(id, { type: 'json' })) || { list: [] }).list;
   const all = async () => { const s = events(); const { blobs } = await s.list(); const out = []; for (const b of blobs) { const e = await s.get(b.key, { type: 'json' }); if (e) out.push(e); } return out; };
   const bySlug = async (slug) => (await all()).find((e) => e.slug === slug);
@@ -262,7 +290,7 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'GET') {
         const people = [];
         for (const id of l.ids) { const r = doc.list.find((x) => x.id === id); if (!r) continue; if (await ensureTk(e, r)) await rs.setJSON(e.id, doc);
-          people.push({ id: r.id, name: nameCase(r.name), ref: r.ref, phone: r.phone, whatsapp: r.whatsapp || r.phone, seats: r.seats || 1, role: r.role || '', ok: calOk(r), status: r.status, badge: calOk(r) && e.mode !== 'online' ? `${origin}/badge/${r.tk}` : '', sent: (l.sent[id] || {}).at || '' }); }
+          people.push({ id: r.id, name: nameCase(r.name), ref: r.ref, phone: r.phone, whatsapp: r.whatsapp || r.phone, seats: r.seats || 1, role: r.role || '', ok: calOk(r), status: r.status, badge: calOk(r) && e.mode !== 'online' ? (r.people && r.people.length ? r.people.map((x) => `${nameCase(x.name)}: ${origin}/badge/${x.tk || r.tk}`).join('\n') : `${origin}/badge/${r.tk}`) : '', sent: (l.sent[id] || {}).at || '' }); }
         return json(200, { list: { name: l.name, msg: l.msg }, event: { title: e.title, slug: e.slug, mode: e.mode, when: whenText(e), venue: e.mode === 'online' ? 'Online' : e.locationName || '', mapUrl: e.mode === 'offline' ? e.mapUrl || '' : '', join: e.mode === 'online' ? e.onlineUrl || '' : '', page: `${origin}/events/${e.slug}` }, people });
       }
       if (m[2] && method === 'POST') {
@@ -283,7 +311,9 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'GET') {
         const list = await getRegs(e.id);
         return json(200, { event: { id: e.id, title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: (TZS[e.tz] || TZS['Asia/Kolkata']).label, locationName: e.locationName || '', mode: e.mode },
-          regs: list.map((r) => ({ id: r.id, tk: r.tk, ref: r.ref, name: nameCase(r.name), role: r.role || '', seats: r.seats || 1, status: r.status, attended: r.attended || '', phone: '••• ' + p4(r), p4: p4(r) })) });
+          // a booking with details for each person is listed once per person, so each can be checked in
+          regs: list.flatMap((r) => (r.people && r.people.length ? r.people.map((x, i) => { const P = personOf(r, i); return { id: r.id, tk: P.tk, ref: P.ref, name: P.name, role: '', seats: 1, status: r.status, attended: P.attended, phone: '••• ' + p4(r), p4: p4(r), contact: nameCase(r.name) }; })
+            : [{ id: r.id, tk: r.tk, ref: r.ref, name: nameCase(r.name), role: r.role || '', seats: r.seats || 1, status: r.status, attended: r.attended || '', phone: '••• ' + p4(r), p4: p4(r) }])) });
       }
       if (m[2]) {
         const f = await byBadge(m[2]);
@@ -291,11 +321,10 @@ export function createEvents({ getStore, json }) {
         if (f.e.id !== e.id) return json(409, { error: `This badge is for another event: ${f.e.title}.` });
         if (method === 'POST') {
           if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.` });
-          f.r.attended = body.attended ? (f.r.attended || new Date().toISOString()) : '';
-          f.r.checkedBy = body.attended ? 'helper link' : '';
+          setAttended(f.r, f.p, !!body.attended, 'helper link');
           await regs().setJSON(f.e.id, f.doc);
         }
-        return json(200, staffView(checkinInfo(f.e, f.doc, f.r)));
+        return json(200, staffView(checkinInfo(f.e, f.doc, f.r, f.p)));
       }
       return json(405, { error: 'Not allowed.' });
     }
@@ -352,6 +381,25 @@ export function createEvents({ getStore, json }) {
         uploadsUsed.push(id); return { id, name: u.name, type: u.type, size: u.size };
       });
       if (chk.error) return json(400, { error: chk.error });
+      // details for each person: a name and the per-person questions for every seat booked
+      let people = null;
+      if (eachOn(form)) {
+        const noun = nounOf(form), Noun = noun[0].toUpperCase() + noun.slice(1), rawP = Array.isArray(body.people) ? body.people : [];
+        if (rawP.length !== seats) return json(400, { error: `Please fill in the details of each ${noun} (${seats}).` });
+        people = [];
+        for (const [i, x] of rawP.entries()) {
+          const pn = nameCase(String((x && x.name) || '').slice(0, 120)).slice(0, 80);
+          if (!pn) return json(400, { error: `${Noun} ${i + 1}: please enter the name.` });
+          const pc = await checkAnswers(form, x && x.answers, async (id) => {
+            if (!/^[a-f0-9]{24}$/.test(id) || uploadsUsed.includes(id)) return null;
+            const u = await uploads().get(id, { type: 'json' });
+            if (!u || u.e !== e.id || u.used) return null;
+            uploadsUsed.push(id); return { id, name: u.name, type: u.type, size: u.size };
+          }, 'each');
+          if (pc.error) return json(400, { error: `${Noun} ${i + 1}: ${pc.error}` });
+          people.push({ name: pn, answers: pc.answers });
+        }
+      }
       if (e.capacity && seatsTaken(doc.list) + seats > e.capacity) return json(409, { error: `Only ${e.capacity - seatsTaken(doc.list)} seat(s) left.` });
       const dup = doc.list.find((r) => r.status !== 'cancelled' && r.status !== 'rejected' && (r.email === email || r.phone === phone));
       if (dup) return json(409, { error: 'You are already registered for this event with this email or mobile number.', ref: dup.ref });
@@ -363,6 +411,7 @@ export function createEvents({ getStore, json }) {
       rl.n += 1; await meta().setJSON(ipKey, rl);
       const ref = 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase();
       const r = { id: crypto.randomBytes(8).toString('hex'), ref, name, email, phone, whatsapp: std.whatsapp ? whatsapp : '', country: std.country ? country : '', education: std.education ? education : '', role: std.role ? role : '', answers: chk.answers, seats, status: e.paid ? 'pending' : 'confirmed', at: new Date().toISOString() };
+      if (people) r.people = people;
       await ensureTk(e, r);
       doc.list.push(r); await store.setJSON(e.id, doc);
       for (const id of uploadsUsed) { const u = await uploads().get(id, { type: 'json' }); if (u) { u.used = r.id; await uploads().setJSON(id, u); } }
@@ -370,7 +419,8 @@ export function createEvents({ getStore, json }) {
       const origin = new URL(req.url).origin;
       const cal = calOk(r) ? await calGuests(e, doc, [r], 'invite', origin) : null;
       // free online events: the joining link is shown right away; paid ones get it after approval
-      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!(cal && cal.ok), badge: calOk(r) ? `/badge/${r.tk}` : '' });
+      return json(201, { ref, status: r.status, seats, total: e.paid ? e.price * seats : 0, currency: e.currency || 'AED', onlineUrl: !e.paid && e.mode === 'online' ? e.onlineUrl || '' : '', whatsapp: s.whatsapp, calendar: !!(cal && cal.ok), badge: calOk(r) ? `/badge/${r.tk}` : '',
+        badges: calOk(r) && r.people ? r.people.map((x, i) => ({ name: nameCase(x.name), ref: `${ref}-${i + 1}`, url: `/badge/${x.tk}` })) : [] });
     }
 
     /* ---------- admin ---------- */
@@ -406,7 +456,7 @@ export function createEvents({ getStore, json }) {
     }
     if (path === '/admin/events' && method === 'GET') {
       const out = [];
-      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), liveStatus: (liveInfo(e) || {}).status || '', counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length, attended: list.filter((r) => calOk(r) && r.attended).reduce((t, r) => t + (r.seats || 1), 0) } }); }
+      for (const e of await all()) { const list = await getRegs(e.id); out.push({ ...e, state: regState(e, list), liveStatus: (liveInfo(e) || {}).status || '', counts: { total: list.length, seats: seatsTaken(list), pending: list.filter((r) => r.status === 'pending').length, attended: attendedCount(list) } }); }
       out.sort((a, b) => toUTC(b.start, b.tz) - toUTC(a.start, a.tz));
       return json(200, { events: out, settings: adminSettings(await rawSettings()) });
     }
@@ -430,14 +480,13 @@ export function createEvents({ getStore, json }) {
       const f = await byBadge(m[1]);
       if (!f) return json(404, { error: 'This QR code is not an Aqlyon badge, or the registration was deleted.' });
       if (method === 'POST') {
-        if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.`, ...checkinInfo(f.e, f.doc, f.r) });
-        const already = !!f.r.attended;
-        f.r.attended = body.attended ? (f.r.attended || new Date().toISOString()) : '';
-        f.r.checkedBy = body.attended ? 'admin' : '';
+        if (body.attended && !calOk(f.r)) return json(409, { error: f.r.status === 'pending' ? 'Not approved yet: this person is still waiting for approval.' : `This registration is ${f.r.status}.`, ...checkinInfo(f.e, f.doc, f.r, f.p) });
+        const already = !!(f.p >= 0 ? f.r.people[f.p].attended : f.r.attended);
+        setAttended(f.r, f.p, !!body.attended, 'admin');
         await regs().setJSON(f.e.id, f.doc);
-        return json(200, { ...checkinInfo(f.e, f.doc, f.r), already: body.attended && already });
+        return json(200, { ...checkinInfo(f.e, f.doc, f.r, f.p), already: body.attended && already });
       }
-      return json(200, checkinInfo(f.e, f.doc, f.r));
+      return json(200, checkinInfo(f.e, f.doc, f.r, f.p));
     }
     m = path.match(/^\/admin\/events\/([a-f0-9]{16})\/sendlists(?:\/([a-f0-9]{24}))?$/);
     if (m) {
@@ -519,8 +568,8 @@ export function createEvents({ getStore, json }) {
             if (!ids.has(r.id)) continue;
             if (op === 'confirm') { if (calOk(r)) { skipped++; continue; } r.status = okStatus; }
             else if (op === 'reject' || op === 'cancel') { if (calOk(r) && r.cal) toCancel.push(r); r.status = op === 'reject' ? 'rejected' : 'cancelled'; }
-            else if (op === 'checkin') { if (!calOk(r)) { skipped++; continue; } r.attended = r.attended || new Date().toISOString(); r.checkedBy = r.checkedBy || 'admin'; }
-            else if (op === 'uncheckin') r.attended = '';
+            else if (op === 'checkin') { if (!calOk(r)) { skipped++; continue; } setAttended(r, -1, true, 'admin'); }
+            else if (op === 'uncheckin') setAttended(r, -1, false, '');
             else continue;
             r.updatedAt = new Date().toISOString(); n++;
           }
@@ -542,7 +591,7 @@ export function createEvents({ getStore, json }) {
         if (method === 'PATCH') {
           const was = calOk(r);
           if (['pending', 'approved', 'confirmed', 'rejected', 'cancelled'].includes(body.status)) r.status = body.status;
-          if (body.attended !== undefined) { if (body.attended && !calOk(r)) return json(409, { error: 'Only confirmed or approved people can be checked in.' }); r.attended = body.attended ? (r.attended || new Date().toISOString()) : ''; }
+          if (body.attended !== undefined) { if (body.attended && !calOk(r)) return json(409, { error: 'Only confirmed or approved people can be checked in.' }); setAttended(r, -1, !!body.attended, 'admin'); }
           await ensureTk(e, r);
           r.updatedAt = new Date().toISOString(); await rs.setJSON(e.id, doc);
           let cal = null;
@@ -581,11 +630,14 @@ export function createEvents({ getStore, json }) {
 <link rel="stylesheet" href="/site/site.css"><link rel="stylesheet" href="/site/badge.css"></head>`;
     if (tk === 'preview') return new Response(`${head('Badge preview')}<body class="bdgpage pv"><main class="bdgwrap" id="badge"></main><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' } });
     if (!f) return new Response(`${head('Badge not found')}<body class="bdgpage"><main class="bdgwrap"><div class="bdgmsg"><h1>Badge not found</h1><p>Check the link, or contact Aqlyon Career Discovery Centre.</p><p><a class="btn" href="/#events">See upcoming events</a></p></div></main></body></html>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
-    const { e, r } = f;
+    const { e, r } = f, P = personOf(r, f.p);
     const pe = publicEvent(e, f.doc.list);
-    const data = { design: badgeDesign(e), tk: r.tk, qr: `${origin}/admin#checkin/${r.tk}`, name: nameCase(r.name), role: r.role || '', seats: r.seats || 1, ref: r.ref, status: r.status, valid: calOk(r), attended: r.attended || '',
+    // a person's own badge (details for each person): their name, ref AQ-1234-2 and their answers (e.g. age group) as chips
+    const data = { design: badgeDesign(e), tk: P ? P.tk : r.tk, qr: `${origin}/admin#checkin/${P ? P.tk : r.tk}`, name: P ? P.name : nameCase(r.name), role: P ? '' : r.role || '', seats: P ? 1 : r.seats || 1, ref: P ? P.ref : r.ref, status: r.status, valid: calOk(r), attended: P ? P.attended : r.attended || '',
+      chips: P ? eachSummary(e, r.people[f.p]).filter((x) => x.value.length <= 24).slice(0, 2).map((x) => (/^\d+(\.\d+)?$/.test(x.value) ? `${x.label} ${x.value}`.slice(0, 30) : x.value)) : [], person: P ? { i: P.i + 1, n: P.n, noun: nounOf(formOf(e)) } : null,
+      others: P && P.n > 1 ? r.people.map((x, i) => ({ name: nameCase(x.name), url: `/badge/${x.tk || r.tk}`, me: i === f.p })) : [],
       event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
-    return new Response(`${head(`${r.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
+    return new Response(`${head(`${data.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
 <script>window.BADGE=${JSON.stringify(data).replace(/</g, '\\u003c')};</script><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`,
       { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });
   }

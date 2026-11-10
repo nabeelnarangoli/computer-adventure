@@ -442,3 +442,14 @@ pre.seomd{white-space:pre-wrap;background:var(--surface);border:1px solid var(--
 .slmany{display:grid;gap:8px;max-height:52vh;overflow:auto;margin:10px 0}
 .slmrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--soft);border-radius:12px;padding:10px 12px}
 .slmrow small{display:block;color:var(--muted);font-size:13px}
+/* form builder: details for each person */
+.fbeach{margin:12px 0;padding:12px 14px;border:1px dashed var(--line);border-radius:14px;display:grid;gap:8px}
+.fbeach.on{border-style:solid;border-color:var(--accent);background:color-mix(in srgb,var(--accent) 6%,transparent)}
+.fbflags{display:inline-flex;flex-wrap:wrap;gap:14px}
+.fbcard.each{border-left:4px solid var(--accent)}
+.fbeachtag{display:inline-block;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+.pvform .ffperson,.ffperson{border:1px solid var(--line);border-radius:14px;padding:12px 14px 14px;margin:4px 0;display:grid;gap:12px;min-width:0}
+.ffperson>legend{font-weight:800;padding:0 6px}
+.pplnames{display:block;font-weight:400;color:var(--muted);font-size:12.5px;max-width:240px;white-space:normal}
+.fbeach .fbrow label{display:grid;gap:4px;font-weight:600;font-size:14px;max-width:260px}
+.fbeach .fbrow input{font:15px var(--body);padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);width:100%}

@@ -9,6 +9,7 @@ const FB_VALID=[['text','Any text'],['number','Number'],['email','Email address'
 
 function formBuilder(box,FORM,ev){
  const fields=()=>FORM.fields;
+ FORM.each=Object.assign({on:false,noun:'person'},FORM.each||{});
  const optEditor=(f,key,label,addLabel)=>`<div class="fbopts" data-list="${key}"><p class="fbsub">${label}</p>${(f[key]||[]).map((o,i)=>`<div class="fbopt"><span class="fbmark">${key==='options'?(f.type==='checkboxes'?'☐':f.type==='dropdown'?(i+1)+'.':'◯'):key==='rows'?(i+1)+'.':'▢'}</span><input value="${esc(o)}" data-o="${i}" maxlength="${key==='options'?120:80}" aria-label="${label} ${i+1}"><button type="button" class="fbx" data-rmo="${i}" aria-label="Remove">×</button></div>`).join('')}
   <div class="fboptadd"><button type="button" class="linkbtn" data-addo>＋ ${addLabel}</button><button type="button" class="linkbtn" data-paste>Paste a list</button>${key==='options'&&f.type!=='dropdown'?`<label class="fbinl"><input type="checkbox" data-k="other" ${f.other?'checked':''}> Add "Other" with a text box</label>`:''}</div></div>`;
  const editor=f=>{
@@ -22,18 +23,21 @@ function formBuilder(box,FORM,ev){
   }
   return '';
  };
- const card=(f,i)=>`<div class="fbcard ${f.type==='section'?'sec':''}" data-i="${i}">
+ const card=(f,i)=>`<div class="fbcard ${f.type==='section'?'sec':''} ${FORM.each.on&&f.each?'each':''}" data-i="${i}">${FORM.each.on&&f.each?`<span class="fbeachtag">For each ${esc(FORM.each.noun)}</span>`:''}
   <div class="fbtop"><span class="fbnum">${f.type==='section'?'T':i+1}</span><input class="fblabel" data-k="label" value="${esc(f.label)}" placeholder="${f.type==='section'?'Section title':'Question'}" maxlength="200" aria-label="Question">
    <select class="fbtype" data-type aria-label="Question type">${FF.TYPES.map(t=>`<option value="${t.t}" ${f.type===t.t?'selected':''}>${t.ic} ${t.name}</option>`).join('')}</select></div>
   <input class="fbhelp" data-k="help" value="${esc(f.help||'')}" placeholder="${f.type==='section'?'Description (optional)':'Description or hint (optional)'}" maxlength="500" aria-label="Description">
   ${editor(f)}
-  <div class="fbfoot">${f.type==='section'?'':`<label class="fbreq"><input type="checkbox" data-k="required" ${f.required?'checked':''}><span>Required</span></label>`}
+  <div class="fbfoot"><span class="fbflags">${f.type==='section'?'':`<label class="fbreq"><input type="checkbox" data-k="required" ${f.required?'checked':''}><span>Required</span></label>`}${FORM.each.on?`<label class="fbreq fbeachk"><input type="checkbox" data-k="each" data-redraw ${f.each?'checked':''}><span>Ask for each ${esc(FORM.each.noun)}</span></label>`:''}</span>
    <span class="fbtools"><button type="button" data-mv="-1" ${i?'':'disabled'} aria-label="Move up" title="Move up">↑</button><button type="button" data-mv="1" ${i<fields().length-1?'':'disabled'} aria-label="Move down" title="Move down">↓</button><button type="button" data-dup aria-label="Duplicate" title="Duplicate">⧉</button><button type="button" data-del aria-label="Delete" title="Delete">🗑</button></span></div></div>`;
  const draw=()=>{
   box.innerHTML=`<div class="fbhead"><b>Registration form</b><small>Choose the questions people answer when they register.</small></div>
   <div class="fbfixed">${['Full name','Email','Mobile number'].map(t=>`<span class="fbchip lock" title="Always asked">🔒 ${t}</span>`).join('')}
    ${FB_STD.map(([k,t])=>`<label class="fbchip tog ${FORM.std[k]?'on':''}"><input type="checkbox" data-std="${k}" ${FORM.std[k]?'checked':''}><span>${t}</span></label>`).join('')}</div>
   <p class="fbsub">🔒 Always asked (needed for the badge and emails). Tap the others to switch them on or off.</p>
+  <div class="fbeach ${FORM.each.on?'on':''}"><label class="ck"><input type="checkbox" id="fb-each" ${FORM.each.on?'checked':''}><span><b>Ask the details of each person</b>: when someone books for more than one (e.g. a parent with two children), the form asks each person's name and the questions you mark <b>Ask for each…</b>. Each person gets their own badge and check-in.</span></label>
+   ${FORM.each.on?`<div class="fbrow"><label>Call them<input id="fb-noun" list="fb-nouns" maxlength="20" value="${esc(FORM.each.noun)}"></label><datalist id="fb-nouns"><option value="person"><option value="child"><option value="participant"><option value="student"><option value="guest"></datalist></div>
+   <p class="fbsub">The form shows “${esc(FORM.each.noun[0].toUpperCase()+FORM.each.noun.slice(1))} 1”, “${esc(FORM.each.noun[0].toUpperCase()+FORM.each.noun.slice(1))} 2”… with a name and the marked questions for each, after “Number of people”. Name, email and mobile at the top are the contact person's (e.g. the parent's). Set how many people one booking can include under Registration.</p>`:''}</div>
   <div class="fbcards">${fields().map(card).join('')}</div>
   ${fields().length?'':'<p class="fbempty">No extra questions yet.</p>'}
   <div class="fbbtns"><button type="button" class="btn sm fbadd">＋ Add field</button><button type="button" class="btn ghost sm fbprev">👁 Preview form</button></div>`;
@@ -41,10 +45,12 @@ function formBuilder(box,FORM,ev){
  };
  const bind=()=>{
   $$('[data-std]',box).forEach(c=>c.onchange=()=>{FORM.std[c.dataset.std]=c.checked;c.closest('.fbchip').classList.toggle('on',c.checked)});
+  $('#fb-each',box).onchange=x=>{FORM.each.on=x.target.checked;draw()};
+  const nn=$('#fb-noun',box);if(nn)nn.onchange=()=>{FORM.each.noun=(nn.value.trim().toLowerCase().replace(/[^\p{L} -]/gu,'')||'person').slice(0,20);draw()};
   $('.fbadd',box).onclick=()=>fbPicker(FORM,added=>{FORM.fields.push(...added);draw();const cs=$$('.fbcard',box);const first=cs[cs.length-added.length];if(first){mScroll(first);first.classList.add('fbnew');const l=$('.fblabel',first);if(l&&!l.value)l.focus({preventScroll:true})}});
   $('.fbprev',box).onclick=()=>fbPreview(FORM,ev);
   $$('.fbcard',box).forEach(c=>{const i=+c.dataset.i,f=fields()[i];
-   $$('[data-k]',c).forEach(inp=>{const k=inp.dataset.k;const up=()=>{let v=inp.type==='checkbox'?inp.checked:inp.value;if(['scaleMin','scaleMax','stars'].includes(k))v=+v;f[k]=v;if(k==='valid')draw()};inp.oninput=up;inp.onchange=up});
+   $$('[data-k]',c).forEach(inp=>{const k=inp.dataset.k;const up=()=>{let v=inp.type==='checkbox'?inp.checked:inp.value;if(['scaleMin','scaleMax','stars'].includes(k))v=+v;f[k]=v;if(k==='valid'||inp.dataset.redraw!==undefined)draw()};inp.oninput=up;inp.onchange=up});
    $('[data-type]',c).onchange=x=>{const t=x.target.value,nb=FF.blank(t);const keep={id:f.id,label:f.label,help:f.help,required:t==='section'?false:f.required};
     if(FF.OPT_TYPES.includes(t)&&f.options)keep.options=f.options;fields()[i]={...nb,...keep};draw()};
    $$('[data-list]',c).forEach(L=>{const key=L.dataset.list;
@@ -91,7 +97,8 @@ function fbPreview(FORM,ev){
   <label>Full name <span class="req">*</span><input></label><label>Email <span class="req">*</span><input type="email"></label><label>Mobile number <span class="req">*</span><input type="tel"></label>
   ${std.whatsapp?'<label>WhatsApp number <span class="req">*</span><input type="tel" placeholder="Same as mobile"></label>':''}
   ${std.country?`<label>Country <span class="req">*</span>${sel('India')}</label>`:''}${std.education?`<label>Education level <span class="req">*</span>${sel('Choose…')}</label>`:''}${std.role?`<label>I am a <span class="req">*</span>${sel('Student / Parent')}</label>`:''}
-  ${FORM.fields.map(f=>FF.render(f,'pv')).join('')}
+  ${FORM.fields.filter(f=>!(FORM.each&&FORM.each.on&&f.each)).map(f=>FF.render(f,'pv')).join('')}
+  ${FORM.each&&FORM.each.on?`<label>Number of ${esc(FORM.each.noun==='person'?'people':FORM.each.noun==='child'?'children':FORM.each.noun+'s')}<select disabled><option>1</option></select></label><fieldset class="ffperson"><legend>${esc(FORM.each.noun[0].toUpperCase()+FORM.each.noun.slice(1))} 1</legend><label>Name <span class="req">*</span><input></label>${FORM.fields.filter(f=>f.each).map(f=>FF.render(f,'pv')).join('')}</fieldset>`:''}
   <p class="err" role="alert"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Close</button><button type="submit" class="btn">Check my answers</button></div></form>`,(m)=>{
   m.querySelector('.modal').classList.add('wide');const f=$('.pvform',m);FF.enhance(f);
   $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));

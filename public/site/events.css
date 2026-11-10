@@ -208,3 +208,11 @@
 .lbcount{position:absolute;top:24px;left:20px;font-size:14px;color:#B9D3C7}
 @media (max-width:600px){.lightbox[open]{grid-template-columns:minmax(0,1fr)}.lbnav{position:absolute;bottom:14px;width:48px;height:48px}.lbnav.prev{left:14px}.lbnav.next{right:14px}.lightbox figure{padding:60px 0 80px}}
 @media (max-width:560px){.galgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.galitem figcaption{font-size:13px}.vlink b{font-size:13.5px}.vplay{transform:scale(.8)}}
+/* details for each person (Child 1, Child 2…) */
+.rgf .ffperson{border:2px solid var(--line);border-radius:var(--r-md);padding:14px 16px 16px;margin:4px 0;display:grid;gap:14px;min-width:0;background:var(--mint)}
+.rgf .ffperson[hidden]{display:none}
+.rgf .ffperson>legend{font:700 18px var(--disp);padding:0 8px;color:var(--ink)}
+.rgf .ffperson input,.rgf .ffperson select,.rgf .ffperson .ddbtn{background:#fff}
+.lblhint{font-weight:500;color:var(--slate);font-size:13px}
+.badgecta.many{text-align:center}.badgecta.many p{margin:0 0 4px;font-size:15px}
+.badgecta.many>div{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}

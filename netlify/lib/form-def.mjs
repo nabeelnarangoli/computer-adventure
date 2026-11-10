@@ -10,19 +10,25 @@ export const MAX_DROPDOWN = 5000;
 const list = (a, max, n) => [...new Set((Array.isArray(a) ? a : []).map((x) => str(x, n)).filter(Boolean))].slice(0, max);
 const num = (v) => (v === '' || v == null || !isFinite(Number(v)) ? '' : Number(v));
 
-export const defaultForm = () => ({ std: { whatsapp: true, country: true, education: true, role: true }, fields: [] });
+export const defaultForm = () => ({ std: { whatsapp: true, country: true, education: true, role: true }, each: { on: false, noun: 'person' }, fields: [] });
+// "Details for each person": when someone books for more than one, ask each person's name plus the questions marked each:true
+// (e.g. a parent registering two children in different categories). Answers go to r.people = [{ name, answers, tk }].
+export const eachOn = (form) => !!(form && form.each && form.each.on);
+export const nounOf = (form) => (form && form.each && form.each.noun) || 'person';
 export const formOf = (e) => (e && e.form ? e.form : defaultForm());
 
 export function cleanForm(def) {
   const out = defaultForm();
   if (!def || typeof def !== 'object') return out;
   for (const k of STD_FIELDS) if (def.std && def.std[k] !== undefined) out.std[k] = !!def.std[k];
+  if (def.each && typeof def.each === 'object') out.each = { on: !!def.each.on, noun: str(def.each.noun, 20).toLowerCase().replace(/[^\p{L} -]/gu, '') || 'person' };
   const seen = new Set();
   for (const f of (Array.isArray(def.fields) ? def.fields : []).slice(0, 40)) {
     if (!f || !TYPES.includes(f.type)) continue;
     let id = /^f[a-z0-9]{3,12}$/.test(f.id) && !seen.has(f.id) ? f.id : 'f' + Math.random().toString(36).slice(2, 9);
     seen.add(id);
     const c = { id, type: f.type, label: str(f.label, 200), help: str(f.help, 500), required: f.type === 'section' ? false : !!f.required };
+    if (f.each) c.each = true;                                   // asked once for each person (see eachOn)
     if (OPT.includes(f.type)) { c.options = list(f.options, f.type === 'dropdown' ? MAX_DROPDOWN : 50, 120); if (!c.options.length) c.options = ['Option 1']; if (f.type !== 'dropdown') c.other = !!f.other; }
     if (f.type === 'short') { c.valid = ['text', 'number', 'email', 'url', 'phone'].includes(f.valid) ? f.valid : 'text'; if (c.valid === 'number') { c.min = num(f.min); c.max = num(f.max); } }
     if (f.type === 'scale') { c.scaleMin = Number(f.scaleMin) === 0 ? 0 : 1; c.scaleMax = Math.min(10, Math.max(2, parseInt(f.scaleMax, 10) || 5)); c.minLabel = str(f.minLabel, 40); c.maxLabel = str(f.maxLabel, 40); }
@@ -38,10 +44,13 @@ export function cleanForm(def) {
 const inOpts = (f, v) => f.options.includes(v) || (f.other && /^Other: .{1,200}$/s.test(v));
 
 // returns { answers } or { error }; fileOk(id) checks an uploaded file belongs to this event
-export async function checkAnswers(form, raw, fileOk) {
+// which: 'main' = the booking's own questions, 'each' = one person's questions (only when eachOn(form))
+export async function checkAnswers(form, raw, fileOk, which = 'main') {
   const answers = {}; raw = raw && typeof raw === 'object' ? raw : {};
+  const per = eachOn(form);
   for (const f of form.fields) {
     if (f.type === 'section') continue;
+    if (which === 'each' ? !(per && f.each) : per && f.each) continue;
     let v = raw[f.id];
     const L = `"${f.label}"`;
     const empty = v == null || v === '' || (Array.isArray(v) && !v.length) || (typeof v === 'object' && !Array.isArray(v) && !Object.keys(v).length);

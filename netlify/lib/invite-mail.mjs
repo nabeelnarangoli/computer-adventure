@@ -32,6 +32,9 @@ export function inviteMail(e, r, kind, { origin = '', organizer = '', seq = 0 } 
   const { start, end } = eventTimes(e);
   const page = origin ? `${origin}/events/${e.slug}` : '';
   const badge = origin && r.tk ? `${origin}/badge/${r.tk}` : '';
+  // details for each person: every person on the booking has their own badge
+  const ppl = origin && r.people && r.people.length ? r.people.map((x, i) => ({ name: nameCase(x.name), ref: `${r.ref}-${i + 1}`, url: `${origin}/badge/${x.tk || r.tk}` })) : [];
+  const badgeText = ppl.length ? ppl.map((x) => `${x.name}: ${x.url}`).join('\n') : badge;
   const online = e.mode === 'online';
   const where = online ? 'Online' : e.locationName || '';
   const join = online && e.onlineUrl ? e.onlineUrl : '';
@@ -39,7 +42,7 @@ export function inviteMail(e, r, kind, { origin = '', organizer = '', seq = 0 } 
   const cancel = kind === 'cancel';
   const subject = cancel ? `Cancelled: ${e.title} (Aqlyon Academy)` : kind === 'update' ? `Updated invitation from Aqlyon Academy: ${e.title}` : `Invitation from Aqlyon Academy: ${e.title}`;
 
-  const descLines = [e.summary || '', join ? `Join online: ${join}` : '', !online && e.mapUrl ? `Map: ${e.mapUrl}` : '', `Your reference: ${r.ref}`, badge && !cancel ? `Your badge: ${badge}` : '', page ? `Event page: ${page}` : '', 'Aqlyon Career Discovery Centre'].filter(Boolean);
+  const descLines = [e.summary || '', join ? `Join online: ${join}` : '', !online && e.mapUrl ? `Map: ${e.mapUrl}` : '', `Your reference: ${r.ref}`, badge && !cancel ? (ppl.length ? `Badges:\n${badgeText}` : `Your badge: ${badge}`) : '', page ? `Event page: ${page}` : '', 'Aqlyon Career Discovery Centre'].filter(Boolean);
   const org = organizer || 'aqlyonacademy@gmail.com';
   const ics = ['BEGIN:VCALENDAR', 'PRODID:-//Aqlyon Academy//Events//EN', 'VERSION:2.0', 'CALSCALE:GREGORIAN', `METHOD:${cancel ? 'CANCEL' : 'REQUEST'}`,
     'BEGIN:VEVENT', `UID:${e.id}-${r.id}@aqlyonacademy.com`, `SEQUENCE:${seq}`, `DTSTAMP:${icsDate(Date.now())}`, `DTSTART:${icsDate(start)}`, `DTEND:${icsDate(end)}`,
@@ -65,14 +68,15 @@ export function inviteMail(e, r, kind, { origin = '', organizer = '', seq = 0 } 
 <p style="margin:0 0 6px;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:${cancel ? '#A1262A' : '#5B3FD6'};font-weight:bold">${cancel ? 'Registration cancelled' : kind === 'update' ? 'Event updated' : 'Event invitation'}</p>
 <h1 style="margin:0 0 14px;font-size:22px;line-height:1.3;color:#1A1E3A">${esc(e.title)}</h1>
 <p style="margin:0 0 16px;font-size:15px;line-height:1.55;color:#1A1E3A">Hi ${esc(first)},<br>${intro}</p>
-${cancel ? '' : `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px">${row('When', esc(whenText(e)))}${row('Where', whereHtml)}${row('Reference', `<b>${esc(r.ref)}</b>`)}${r.seats > 1 ? row('People', String(r.seats)) : ''}</table>`}
-${badge && !cancel && !online ? `<div style="background:#E3F3EA;border-radius:12px;padding:14px 16px;margin:0 0 16px;font-size:14px;line-height:1.5;color:#0D2B22"><b>Your entry badge</b><br>Show the QR code on your badge at the entrance. Save it on your phone or print it.<br><a href="${esc(badge)}" style="display:inline-block;margin-top:10px;background:#0D2B22;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:999px;font-weight:bold">Open my badge</a></div>` : badge && !cancel ? `<p style="margin:0 0 14px;font-size:14px"><a href="${esc(badge)}" style="color:#5B3FD6">Open my badge</a> (your personal QR code)</p>` : ''}
+${cancel ? '' : `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 18px">${row('When', esc(whenText(e)))}${row('Where', whereHtml)}${row('Reference', `<b>${esc(r.ref)}</b>`)}${ppl.length ? row('People', ppl.map((x) => esc(x.name)).join('<br>')) : r.seats > 1 ? row('People', String(r.seats)) : ''}</table>`}
+${badge && !cancel && !online && ppl.length ? `<div style="background:#E3F3EA;border-radius:12px;padding:14px 16px;margin:0 0 16px;font-size:14px;line-height:1.5;color:#0D2B22"><b>Entry badges</b><br>Each person has their own badge. Show its QR code at the entrance. Save them on your phone or print them.<br>${ppl.map((x) => `<a href="${esc(x.url)}" style="display:inline-block;margin:10px 8px 0 0;background:#0D2B22;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:999px;font-weight:bold">${esc(x.name)}'s badge</a>`).join('')}</div>`
+  : badge && !cancel && !online ? `<div style="background:#E3F3EA;border-radius:12px;padding:14px 16px;margin:0 0 16px;font-size:14px;line-height:1.5;color:#0D2B22"><b>Your entry badge</b><br>Show the QR code on your badge at the entrance. Save it on your phone or print it.<br><a href="${esc(badge)}" style="display:inline-block;margin-top:10px;background:#0D2B22;color:#ffffff;text-decoration:none;padding:11px 18px;border-radius:999px;font-weight:bold">Open my badge</a></div>` : badge && !cancel ? `<p style="margin:0 0 14px;font-size:14px"><a href="${esc(badge)}" style="color:#5B3FD6">Open my badge</a> (your personal QR code)</p>` : ''}
 ${page && !cancel ? `<p style="margin:0 0 8px"><a href="${esc(page)}" style="display:inline-block;background:#5B3FD6;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:999px;font-weight:bold;font-size:15px">View event page</a></p>` : ''}
 </td></tr>
 <tr><td style="padding:16px 24px;border-top:1px solid #E6E8F2;color:#5B6178;font-size:12px;line-height:1.5">Aqlyon Career Discovery Centre · You received this because you registered for this event on our website. Reply to this email if you have any questions.</td></tr>
 </table></td></tr></table></body></html>`;
   const text = [`Hi ${first},`, '', cancel ? `Your registration for "${e.title}" has been cancelled.` : kind === 'update' ? `The details for "${e.title}" have changed.` : `You're registered for "${e.title}".`,
-    ...(cancel ? [] : ['', `When: ${whenText(e)}`, `Where: ${online ? 'Online' + (join ? ' – ' + join : '') : where + (e.mapUrl ? ' – ' + e.mapUrl : '')}`, `Reference: ${r.ref}`, badge ? `Your badge (show the QR code at the entrance): ${badge}` : '', page ? `Event page: ${page}` : '']),
+    ...(cancel ? [] : ['', `When: ${whenText(e)}`, `Where: ${online ? 'Online' + (join ? ' – ' + join : '') : where + (e.mapUrl ? ' – ' + e.mapUrl : '')}`, `Reference: ${r.ref}`, badge ? (ppl.length ? `Badges (show the QR code at the entrance):\n${badgeText}` : `Your badge (show the QR code at the entrance): ${badge}`) : '', page ? `Event page: ${page}` : '']),
     '', 'Aqlyon Career Discovery Centre'].join('\n');
   return { to: r.email, subject, html, text, ics, method: cancel ? 'CANCEL' : 'REQUEST' };
 }

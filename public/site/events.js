@@ -139,19 +139,25 @@ const guess=typeof guessCountry==='function'?guessCountry():'AE';
 const cOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${c[1]}</option>`).join('');
 const ccOpts=sel=>COUNTRIES.map(c=>`<option value="${c[0]}" ${c[0]===sel?'selected':''}>${flagOf(c[0])} +${c[2]} · ${c[1]}</option>`).join('');
 const FORM=E.form||{std:{whatsapp:true,country:true,education:true,role:true},fields:[]},STD=FORM.std,FIELDS=FORM.fields||[];
+// details for each person: the questions marked "each" are asked once per person (Child 1, Child 2…), with a name
+const EACH=!!(FORM.each&&FORM.each.on),NOUN=(FORM.each&&FORM.each.noun)||'person',Noun=NOUN[0].toUpperCase()+NOUN.slice(1);
+const NOUNS=NOUN==='person'?'people':NOUN==='child'?'children':/(s|x|ch|sh)$/.test(NOUN)?NOUN+'es':NOUN+'s';
+const MAINQ=FIELDS.filter(x=>!(EACH&&x.each)),PERQ=FIELDS.filter(x=>EACH&&x.each);
+const MAXP=Math.max(1,E.maxSeats>1?Math.min(E.maxSeats,E.seatsLeft??E.maxSeats):1);
 rb.onclick=()=>{
  const m=document.createElement('div');m.className='evmodal';m.innerHTML=`<div class="evdlg" role="dialog" aria-modal="true" aria-labelledby="rgh"><button type="button" class="x" aria-label="Close">×</button>
  <h2 id="rgh">Register</h2><p class="small">${esc(E.title)} · ${esc(local(E.start).toLocaleDateString('en-GB',{day:'numeric',month:'short'}))}, ${esc(timeLine(E))}</p>
  <form class="rgf" novalidate>
-  <label>Full name<input name="name" required maxlength="80" autocomplete="name"></label>
+  <label>${EACH?'Your name <small class="lblhint">(the person registering)</small>':'Full name'}<input name="name" required maxlength="80" autocomplete="name"></label>
   <label>Email<input name="email" type="email" required maxlength="80" autocomplete="email"></label>
   <label>Mobile number<span class="tel"><select name="cc" aria-label="Mobile country code">${ccOpts(guess)}</select><input name="mob" type="tel" inputmode="tel" required maxlength="18" autocomplete="tel-national"></span></label>
   ${STD.whatsapp?`<div class="lbl">WhatsApp number<label class="same"><input type="checkbox" name="same" checked> Same as mobile</label><span class="tel wa"><select name="wcc" aria-label="WhatsApp country code" disabled>${ccOpts(guess)}</select><input name="wmob" type="tel" inputmode="tel" required maxlength="18" disabled aria-label="WhatsApp number"></span></div>`:''}
   ${STD.country?`<label>Country<select name="country" required autocomplete="country" data-search>${cOpts(guess)}</select></label>`:''}
   ${STD.education?`<label>Education level<select name="education" required data-search><option value="">Choose…</option>${['SSLC','Plus Two','Bachelors','Masters','PhD','Other'].map(x=>`<option>${x}</option>`).join('')}</select></label>`:''}
   ${STD.role?`<label>I am a<select name="role" required><option value="">Choose…</option><option>Student</option><option>Parent</option></select></label>`:''}
-  ${FIELDS.map(x=>FF.render(x)).join('')}
-  ${E.maxSeats>1?`<label>Number of people<select name="seats">${Array.from({length:Math.min(E.maxSeats,E.seatsLeft??E.maxSeats)},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label>`:''}
+  ${MAINQ.map(x=>FF.render(x)).join('')}
+  ${E.maxSeats>1?`<label>Number of ${EACH?NOUNS:'people'}<select name="seats">${Array.from({length:MAXP},(_,i)=>`<option>${i+1}</option>`).join('')}</select></label>`:''}
+  ${EACH?Array.from({length:MAXP},(_,i)=>`<fieldset class="ffperson" data-p="${i}" ${i?'hidden':''}><legend>${esc(Noun)} ${i+1}</legend><label>${esc(Noun)}'s name<input name="pname${i}" maxlength="80" autocomplete="off"></label>${PERQ.map(x=>FF.render(x,'p'+i)).join('')}</fieldset>`).join(''):''}
   <label class="hp" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
   ${E.paid?`<p class="small paidnote">After you register, you'll send your details to us on WhatsApp to pay <b>${esc(price(E))}</b> per person. Your seat is confirmed once payment is approved.</p>`:''}
   <p class="err" role="alert"></p>
@@ -164,6 +170,8 @@ rb.onclick=()=>{
  const syncWa=()=>{if(!f.same)return;const same=f.same.checked;f.wcc.disabled=f.wmob.disabled=same;if(same){f.wcc.value=f.cc.value;f.wmob.value=f.mob.value}else if(!f.wmob.value)f.wmob.focus()};
  if(f.country)f.country.onchange=()=>{if(!ccT){f.cc.value=f.country.value;syncWa()}};f.cc.onchange=()=>{ccT=true;syncWa()};f.mob.oninput=syncWa;if(f.same)f.same.onchange=syncWa;f.name.focus();
  $$('.othtxt',f).forEach(t=>t.addEventListener('input',()=>{const o=t.closest('.opt').querySelector('input[value=__other]');if(t.value&&o)o.checked=true}));
+ const nPeople=()=>f.seats?+f.seats.value:1;
+ if(EACH&&f.seats)f.seats.onchange=()=>{$$('.ffperson',f).forEach(b=>b.hidden=+b.dataset.p>=nPeople());const nb=$(`.ffperson[data-p="${nPeople()-1}"]`,f);if(nb&&nb.querySelector('input'))nb.scrollIntoView({behavior:'smooth',block:'nearest'})};
  f.onsubmit=async ev=>{ev.preventDefault();const err=$('.err',m);err.textContent='';
   const num=v=>v.replace(/[\s\-().]/g,'').replace(/^0+/,''),dialOf=cc=>(COUNTRIES.find(c=>c[0]===cc)||[])[2];
   const email=f.email.value.trim(),mob=num(f.mob.value),dial=dialOf(f.cc.value),same=!f.same||f.same.checked,wmob=same?mob:num(f.wmob.value),wdial=same?dial:dialOf(f.wcc.value);
@@ -175,22 +183,29 @@ rb.onclick=()=>{
   if(STD.role&&!f.role.value)return err.textContent='Please choose whether you are a student or a parent.';
   $$('.ff.bad',f).forEach(x=>x.classList.remove('bad'));
   const answers={},files=[];
-  for(const q of FIELDS){const v=FF.read(q,f);const msg=FF.check(q,v);
+  for(const q of MAINQ){const v=FF.read(q,f);const msg=FF.check(q,v);
    if(msg){const box=$(`[data-f="${q.id}"]`,f);if(box){box.classList.add('bad');box.scrollIntoView({behavior:'smooth',block:'center'})}return err.textContent=msg}
-   if(v instanceof Blob)files.push([q,v]);else if(v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length))answers[q.id]=v}
+   if(v instanceof Blob)files.push([q,v,answers]);else if(v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length))answers[q.id]=v}
+  const people=[];
+  if(EACH)for(let i=0;i<nPeople();i++){const blk=$(`.ffperson[data-p="${i}"]`,f),pn=f['pname'+i],pa={};
+   if(!pn.value.trim()){pn.focus();blk.scrollIntoView({behavior:'smooth',block:'center'});return err.textContent=`${Noun} ${i+1}: please enter the name.`}
+   for(const q of PERQ){const v=FF.read(q,f,'p'+i);const msg=FF.check(q,v);
+    if(msg){const box=$(`[data-f="${q.id}"]`,blk);if(box){box.classList.add('bad');box.scrollIntoView({behavior:'smooth',block:'center'})}return err.textContent=`${Noun} ${i+1}: ${msg}`}
+    if(v instanceof Blob)files.push([q,v,pa]);else if(v!==undefined&&v!==''&&!(Array.isArray(v)&&!v.length))pa[q.id]=v}
+   people.push({name:pn.value.trim(),answers:pa})}
   const b=$('button[type=submit]',f);b.disabled=true;b.textContent='Registering…';
-  for(const [q,file] of files){b.textContent='Uploading '+file.name.slice(0,24)+'…';
+  for(const [q,file,into] of files){b.textContent='Uploading '+file.name.slice(0,24)+'…';
    try{const data=await new Promise((res,rej)=>{const rd=new FileReader();rd.onload=()=>res(String(rd.result).split(',')[1]);rd.onerror=rej;rd.readAsDataURL(file)});
     const type=file.type||(/\.pdf$/i.test(file.name)?'application/pdf':/\.hei[cf]$/i.test(file.name)?'image/heic':'');
-    const r=await fetch(`/api/events/${E.slug}/upload`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,type,data})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Upload failed');answers[q.id]=d.id}
+    const r=await fetch(`/api/events/${E.slug}/upload`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name:file.name,type,data})});const d=await r.json();if(!r.ok)throw new Error(d.error||'Upload failed');into[q.id]=d.id}
    catch(x){err.textContent=`"${q.label}": ${x.message}`;b.disabled=false;b.textContent=E.paid?'Register and continue to payment':'Register';return}}
   b.textContent='Registering…';
-  const body={name:f.name.value.trim(),email,country:f.country?f.country.value:'',phone:'+'+dial+' '+mob,whatsapp:STD.whatsapp?'+'+wdial+' '+wmob:'',education:f.education?f.education.value:'',role:f.role?f.role.value:'',answers,seats:f.seats?f.seats.value:1,website:f.website.value};
+  const body={name:f.name.value.trim(),email,country:f.country?f.country.value:'',phone:'+'+dial+' '+mob,whatsapp:STD.whatsapp?'+'+wdial+' '+wmob:'',education:f.education?f.education.value:'',role:f.role?f.role.value:'',answers,seats:f.seats?f.seats.value:1,website:f.website.value};if(EACH)body.people=people;
   let d;try{const r=await fetch(`/api/events/${E.slug}/register`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});d=await r.json();if(!r.ok)throw new Error(d.error||'Something went wrong. Please try again.')}
   catch(x){err.textContent=x.message;b.disabled=false;b.textContent=E.paid?'Register and continue to payment':'Register';return}
   const dlg=$('.evdlg',m);
   if(d.status==='pending'){
-   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}${body.whatsapp?`\nWhatsApp: ${body.whatsapp}`:''}${body.education||body.role?`\n${[body.education,body.role].filter(Boolean).join(' · ')}`:''}\nEmail: ${body.email}\nPeople: ${d.seats}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
+   const msg=`Hello Aqlyon, I registered for "${E.title}" (${fmtDay(E)}, ${timeLine(E)}).\nRef: ${d.ref}\nName: ${body.name}\nMobile: ${body.phone}${body.whatsapp?`\nWhatsApp: ${body.whatsapp}`:''}${body.education||body.role?`\n${[body.education,body.role].filter(Boolean).join(' · ')}`:''}\nEmail: ${body.email}\nPeople: ${d.seats}${EACH?` (${people.map(x=>x.name).join(', ')})`:''}\nAmount: ${d.currency} ${d.total}\nPlease send me the payment details.`;
    const wa=`https://api.whatsapp.com/send?phone=${String(d.whatsapp).replace(/[^\d]/g,'')}&text=${encodeURIComponent(msg)}`;
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">1/2</span><h2>One more step: payment</h2><p>Your place is reserved. Send your details to us on WhatsApp and we'll share how to pay <b>${esc(d.currency+' '+d.total)}</b>. Your seat is confirmed once payment is approved.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p><a class="btn solid lg wa" href="${wa}" target="_blank" rel="noopener">Send on WhatsApp</a><p class="small">WhatsApp didn't open? Message <b>${esc(d.whatsapp)}</b> with your reference.</p></div>`;
    window.open(wa,'_blank','noopener');
@@ -198,7 +213,8 @@ rb.onclick=()=>{
    dlg.innerHTML=`<button type="button" class="x" aria-label="Close">×</button><div class="done"><span class="ok">✓</span><h2>You're registered!</h2><p>See you at <b>${esc(E.title)}</b>, ${esc(fmtDay(E))}, ${esc(timeLine(E))}.</p><p class="ref">Your reference: <b>${esc(d.ref)}</b></p>
     ${d.onlineUrl?`<p class="join">Joining link: <a href="${esc(d.onlineUrl)}" target="_blank" rel="noopener">${esc(d.onlineUrl)}</a><br><small>Save it now. It's also in the calendar file below.</small></p>`:E.mode==='online'?'<p>We\'ll send you the joining link before the event.</p>':E.mapUrl?`<p><a href="${esc(E.mapUrl)}" target="_blank" rel="noopener">Directions to ${esc(E.locationName)} ↗</a></p>`:''}
     <p class="small remind">📅 ${d.calendar?'We\'ve emailed your invitation to <b>'+esc(body.email)+'</b>. You can also add':'Add'} the event to your calendar below. The calendar file includes reminders 1 day and 1 hour before.</p>
-    ${d.badge&&E.mode!=='online'?`<p class="badgecta"><a class="btn" href="${esc(d.badge)}" target="_blank" rel="noopener">🎫 View my entry badge</a><small>Show its QR code at the entrance.${d.calendar?' We\'ve also emailed it to you.':''}</small></p>`:''}
+    ${(d.badges||[]).length>1&&E.mode!=='online'?`<div class="badgecta many"><p><b>Entry badges</b>: each ${esc(NOUN)} has their own. Show its QR code at the entrance.${d.calendar?' We\'ve also emailed them to you.':''}</p><div>${d.badges.map(x=>`<a class="btn" href="${esc(x.url)}" target="_blank" rel="noopener">🎫 ${esc(x.name)}</a>`).join('')}</div></div>`
+    :d.badge&&E.mode!=='online'?`<p class="badgecta"><a class="btn" href="${esc(d.badge)}" target="_blank" rel="noopener">🎫 View my entry badge</a><small>Show its QR code at the entrance.${d.calendar?' We\'ve also emailed it to you.':''}</small></p>`:''}
     <div class="row2"><a class="btn line" href="${gcal(d.onlineUrl?'Join: '+d.onlineUrl:'')}" target="_blank" rel="noopener">Add to Google Calendar</a><button type="button" class="btn line icsd">Download calendar file</button>${E.share!==false?`<button type="button" class="btn line sharebig">${ICON.share} Share</button>`:''}</div>
     ${E.share!==false?`<p class="small">Tell a friend: <a href="https://api.whatsapp.com/send?text=${encodeURIComponent('I just registered for '+E.title+'. Join me: '+url)}" target="_blank" rel="noopener">share on WhatsApp</a></p>`:''}</div>`;
    $$('.sharebig',dlg).forEach(b=>b.onclick=shareNow);

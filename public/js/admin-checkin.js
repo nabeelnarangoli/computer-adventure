@@ -5,8 +5,10 @@
    - Find people by name / mobile / ref when they don't have their badge.
    The same screen runs on the staff page (/checkin#<key>): only CKAPI differs.
    ===================================================================== */
+// a booking with details for each person counts as one entry per person (own badge, own check-in)
+const ckExpand=list=>list.flatMap(r=>r.people&&r.people.length?r.people.map((p,i)=>({...r,tk:p.tk||r.tk,name:p.name,ref:`${r.ref}-${i+1}`,seats:1,attended:p.attended||'',contact:r.name,role:''})):[r]);
 var CKAPI=window.CKAPI||{
- regs:async id=>(await AAPI.call(`/admin/events/${id}/regs`)).regs,
+ regs:async id=>ckExpand((await AAPI.call(`/admin/events/${id}/regs`)).regs),
  info:tk=>AAPI.call('/admin/checkin/'+tk),
  mark:(tk,on)=>AAPI.call('/admin/checkin/'+tk,{method:'POST',body:{attended:on}}),
 };
@@ -60,15 +62,15 @@ function ckDraw(){
  const st=$('.evsub [data-sub="checkin"] i');if(st)st.textContent=`${inn}/${tot}`;
  const c=$('.ckcount');if(c)c.innerHTML=`<b>${inn}</b> of ${tot} people checked in<div class="ckprog"><i style="width:${tot?Math.round(inn/tot*100):0}%"></i></div>`;
  const last=ok.filter(r=>r.attended).sort((a,b)=>a.attended<b.attended?1:-1).slice(0,8);
- const l=$('.cklast');if(l)l.innerHTML=last.length?last.map(r=>`<div class="ckrow"><div><b>${esc(r.name)}</b><small>${esc(r.ref)} · ${esc(r.role||'')}${r.seats>1?' · '+r.seats+' people':''}</small></div><span class="attyes">✓ ${ckTime(r.attended)}</span></div>`).join(''):'<p class="small">Nobody yet.</p>';
+ const l=$('.cklast');if(l)l.innerHTML=last.length?last.map(r=>`<div class="ckrow"><div><b>${esc(r.name)}</b><small>${esc(r.ref)}${r.contact?' · booked by '+esc(r.contact):r.role?' · '+esc(r.role):''}${r.seats>1?' · '+r.seats+' people':''}</small></div><span class="attyes">✓ ${ckTime(r.attended)}</span></div>`).join(''):'<p class="small">Nobody yet.</p>';
  ckFind();
 }
 function ckFind(){
  const box=$('.ckres'),q=($('#ckq')||{}).value||'';if(!box)return;const t=q.trim().toLowerCase();
  if(t.length<2){box.innerHTML='';return}
  const digits=t.replace(/\D/g,'');
- const hits=CK.regs.filter(r=>(r.name||'').toLowerCase().includes(t)||(r.ref||'').toLowerCase().includes(t)||(digits.length>=4&&(String((r.phone||'')+(r.whatsapp||'')).replace(/\D/g,'').includes(digits)||(r.p4&&digits.endsWith(r.p4))))).slice(0,8);
- box.innerHTML=hits.length?hits.map(r=>`<button type="button" class="ckrow pick" data-tk="${r.tk||''}"><div><b>${esc(r.name)}</b><small>${esc(r.ref)} · ${esc(r.phone)} · ${esc((REG_ST[r.status]||[r.status])[0])}</small></div>${r.attended?`<span class="attyes">✓ ${ckTime(r.attended)}</span>`:'<span class="ckgo">Open ›</span>'}</button>`).join(''):'<p class="small">No one found for this event.</p>';
+ const hits=CK.regs.filter(r=>(r.name||'').toLowerCase().includes(t)||(r.contact||'').toLowerCase().includes(t)||(r.ref||'').toLowerCase().includes(t)||(digits.length>=4&&(String((r.phone||'')+(r.whatsapp||'')).replace(/\D/g,'').includes(digits)||(r.p4&&digits.endsWith(r.p4))))).slice(0,8);
+ box.innerHTML=hits.length?hits.map(r=>`<button type="button" class="ckrow pick" data-tk="${r.tk||''}"><div><b>${esc(r.name)}</b><small>${esc(r.ref)}${r.contact?' · booked by '+esc(r.contact):''} · ${esc(r.phone)} · ${esc((REG_ST[r.status]||[r.status])[0])}</small></div>${r.attended?`<span class="attyes">✓ ${ckTime(r.attended)}</span>`:'<span class="ckgo">Open ›</span>'}</button>`).join(''):'<p class="small">No one found for this event.</p>';
  $$('.pick',box).forEach(b=>b.onclick=()=>b.dataset.tk&&ckOpen(b.dataset.tk));
 }
 
@@ -87,7 +89,8 @@ function ckShow(d,fromScan,justNow){
   :r.attended?`<div class="ckhead in"><span>✓</span><b>Checked in</b></div>`:`<div class="ckhead ok"><span>✓</span><b>Valid badge</b></div>`;
  ckSheet(`${head}${other?`<p class="ckother">⚠ This badge is for another event: <b>${esc(e.title)}</b></p>`:''}
   <h2 class="ckname">${esc(r.name)}</h2>
-  <p class="ckchips">${r.role?`<span class="chipx">${esc(r.role)}</span>`:''}${r.seats>1?`<span class="chipx adm">Admits ${r.seats}</span>`:''}<span class="chipx">${esc(r.ref)}</span></p>
+  <p class="ckchips">${r.role?`<span class="chipx">${esc(r.role)}</span>`:''}${r.seats>1?`<span class="chipx adm">Admits ${r.seats}</span>`:''}<span class="chipx">${esc(r.ref)}</span>${r.person?`<span class="chipx">${esc(r.person.noun[0].toUpperCase()+r.person.noun.slice(1))} ${r.person.i} of ${r.person.n}</span>${r.person.details.map(x=>`<span class="chipx adm" title="${esc(x.label)}">${esc(x.value)}</span>`).join('')}`:''}</p>
+  ${r.person?`<p class="small">Booked by <b>${esc(r.person.contact)}</b></p>`:''}
   <p class="small">${esc(e.title)} · ${r.phone.includes('•')?esc(r.phone):`<a href="tel:${esc(r.phone)}">${esc(r.phone)}</a>`}${r.education?' · '+esc(r.education):''}</p>
   <div class="ckacts">${ok&&!r.attended?`<button type="button" class="btn big ckmark">✓ Mark as attended${r.seats>1?` (${r.seats} people)`:''}</button>`:''}
   ${ok&&r.attended?`<button type="button" class="btn ghost ckundo">Undo check-in</button>`:''}

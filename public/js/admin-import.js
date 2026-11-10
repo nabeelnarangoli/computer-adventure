@@ -136,7 +136,8 @@ function waEvent(e){
  let when='';try{when=`${new Intl.DateTimeFormat('en-GB',{timeZone:tz,weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(utc(e.start))}, ${tf(utc(e.start))}${e.end?' – '+tf(utc(e.end)):''} (${TZN[tz]||''})`}catch(x){}
  return {title:e.title||'',when,venue:e.mode==='online'?'Online':e.locationName||'',mapUrl:e.mode==='offline'?e.mapUrl||'':'',join:e.onlineUrl||'',page:e.slug?evLink(e):'',mode:e.mode};
 }
-const waPerson=(e,r)=>({name:r.name,ref:r.ref,seats:r.seats||1,badge:e.mode!=='online'&&r.tk?location.origin+'/badge/'+r.tk:''});
+// {badge}: one link, or with details for each person one line per person ("Aisha: …/badge/…")
+const waPerson=(e,r)=>({name:r.name,ref:r.ref,seats:r.seats||1,badge:e.mode==='online'||!r.tk?'':r.people&&r.people.length?r.people.map(x=>`${x.name}: ${location.origin}/badge/${x.tk||r.tk}`).join('\n'):location.origin+'/badge/'+r.tk});
 const WA_SAMPLE={name:'Aisha Rahman',ref:'AQ-7F3C21',seats:1,badge:location.origin+'/badge/preview'};
 // message box with the {placeholder} buttons and a live preview; get() returns the text
 function waEditor(box,{value,online,ev,person,label='Message',id='wamsg'}){
@@ -158,7 +159,7 @@ function slCreate(e,regs,ids,after){
  const sample=good[0],sp=waPerson(e,sample);
  const n=(e.sendLists||[]).length+1;
  // questions people can be split by: one answer each (dropdown, multiple choice, short text, country, education…)
- const SPLIT=rpFields(e,regs).filter(f=>(f.kind==='cat'||f.kind==='text')&&!f.id.startsWith('_'));
+ const SPLIT=rpFields(e,regs).filter(f=>(f.kind==='cat'||f.kind==='text')&&!f.id.startsWith('_')&&!f.per);
  const groupsOf=f=>{const by=new Map();for(const r of good){let v=f.get(r);v=Array.isArray(v)?v.join(', '):String(v??'').trim();const k=v.toLowerCase()||'\u0000';if(!by.has(k))by.set(k,{name:v||'No answer',ids:[]});by.get(k).ids.push(r.id)}
   const ord=f.order||[],pos=g=>{const i=ord.indexOf(g.name);return i<0?1e6:i};
   return [...by.values()].sort((a,b)=>(a.name==='No answer')-(b.name==='No answer')||pos(a)-pos(b)||b.ids.length-a.ids.length||a.name.localeCompare(b.name))};
