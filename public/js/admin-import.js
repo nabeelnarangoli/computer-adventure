@@ -117,6 +117,16 @@ function slShare(e,l){
  <div class="stlink"><div class="stqr">${qr(slUrl(l.key))}</div><div><input class="stin" readonly value="${esc(slUrl(l.key))}" aria-label="List link"><div class="evbtns"><button type="button" class="btn sm slcp">Copy link</button><a class="btn sm ghost" target="_blank" rel="noopener" href="https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}">Send link on WhatsApp</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${esc(slUrl(l.key))}">Open ↗</a></div></div></div>
  <p class="small">The link works until 2 days after the event. You can turn it off or delete it any time.</p><div class="mrow"><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{m.querySelector('.modal').classList.add('wide');$('.slcp',m).onclick=()=>copy(slUrl(l.key))});
 }
+// several lists created at once (split by a question): every link with Copy / Send on WhatsApp / Open, and Copy all
+function slMany(e,lists){
+ if(!lists.length)return;
+ const note=l=>`Hi! Please send the WhatsApp confirmations for "${e.title}", ${l.name} (${l.total} people).\nOpen this link on your phone and tap "Send on WhatsApp" for each person:\n${slUrl(l.key)}\nPlease don't share this link.`;
+ const all=lists.map(l=>`${l.name} (${l.total}): ${slUrl(l.key)}`).join('\n');
+ modal(`<h2>${lists.length} WhatsApp lists ready</h2><p>Send each link to the helper for that group. Each helper sees only their own people; follow the progress under Registrations.</p>
+ <div class="slmany">${lists.map((l,i)=>`<div class="slmrow"><div><b>${esc(l.name)}</b><small>${l.total} ${l.total===1?'person':'people'}</small></div><span class="evbtns" style="margin:0"><button type="button" class="btn sm ghost" data-cp="${i}">Copy link</button><a class="btn sm wabtn" target="_blank" rel="noopener" href="https://api.whatsapp.com/send?text=${encodeURIComponent(note(l))}">Send on WhatsApp</a><a class="btn sm ghost" target="_blank" rel="noopener" href="${esc(slUrl(l.key))}">Open ↗</a></span></div>`).join('')}</div>
+ <p class="small">The links work until 2 days after the event. You can edit, turn off or delete each one under Registrations.</p><div class="mrow"><button type="button" class="btn ghost slall">Copy all links</button><button type="button" class="btn" data-close>Done</button></div>`,(m)=>{
+  m.querySelector('.modal').classList.add('wide');$$('[data-cp]',m).forEach(b=>b.onclick=()=>copy(slUrl(lists[+b.dataset.cp].key)));$('.slall',m).onclick=()=>copy(all)});
+}
 /* ---------- WhatsApp message helpers (admin) ---------- */
 // the event's details as the message placeholders need them (same wording as the server)
 function waEvent(e){
@@ -147,14 +157,31 @@ function slCreate(e,regs,ids,after){
  const ev=waEvent(e);
  const sample=good[0],sp=waPerson(e,sample);
  const n=(e.sendLists||[]).length+1;
+ // questions people can be split by: one answer each (dropdown, multiple choice, short text, country, education…)
+ const SPLIT=rpFields(e,regs).filter(f=>(f.kind==='cat'||f.kind==='text')&&!f.id.startsWith('_'));
+ const groupsOf=f=>{const by=new Map();for(const r of good){let v=f.get(r);v=Array.isArray(v)?v.join(', '):String(v??'').trim();const k=v.toLowerCase()||'\u0000';if(!by.has(k))by.set(k,{name:v||'No answer',ids:[]});by.get(k).ids.push(r.id)}
+  const ord=f.order||[],pos=g=>{const i=ord.indexOf(g.name);return i<0?1e6:i};
+  return [...by.values()].sort((a,b)=>(a.name==='No answer')-(b.name==='No answer')||pos(a)-pos(b)||b.ids.length-a.ids.length||a.name.localeCompare(b.name))};
  modal(`<h2>Share for WhatsApp</h2><p><b>${good.length}</b> ${good.length===1?'person':'people'} will be on this list${left?` (${left} not confirmed ${left===1?'is':'are'} left out)`:''}. A helper opens the link and sends each person this message from their own WhatsApp.</p>
- <div class="field"><label for="slname">Name of the list <small>(e.g. the helper's name)</small></label><input id="slname" maxlength="60" value="List ${n}"></div>
+ ${SPLIT.length?`<div class="slmode"><label class="ck"><input type="radio" name="slmode" value="one" checked><span><b>One link</b> for all ${good.length}</span></label><label class="ck"><input type="radio" name="slmode" value="split"><span><b>A separate link for each answer</b> to a question, e.g. one per constituency, each named after it</span></label></div>
+ <div class="slsplit" hidden><div class="field"><label for="slfield">Split by</label><select id="slfield">${SPLIT.map((f,i)=>`<option value="${i}">${esc(f.label)}</option>`).join('')}</select></div><div class="slgroups"></div></div>`:''}
+ <div class="field slone"><label for="slname">Name of the list <small>(e.g. the helper's name)</small></label><input id="slname" maxlength="60" value="List ${n}"></div>
  <div class="slwa"></div>
  <div class="wasave"><label class="ck"><input type="checkbox" id="sl-saveev"><span>Save this message for <b>${esc(e.title)}</b> (used next time for this event)</span></label><label class="ck"><input type="checkbox" id="sl-saveall"><span>Save as the <b>common message</b> for all events</span></label></div>
  <p class="formerr" role="alert"></p><div class="mrow"><button type="button" class="btn ghost" data-close>Cancel</button><button type="button" class="btn slgo">Create link</button></div>`,(m,close)=>{
   m.querySelector('.modal').classList.add('wide');
   const W=waEditor($('.slwa',m),{value:waTemplate(e,EVSET),online:e.mode==='online',ev,person:sp,id:'slmsg'});
+  const split=()=>SPLIT.length&&(m.querySelector('input[name=slmode]:checked')||{}).value==='split';
+  let groups=[];
+  const drawSplit=()=>{const on=split();$('.slone',m).hidden=!!on;if(SPLIT.length)$('.slsplit',m).hidden=!on;
+   if(on){groups=groupsOf(SPLIT[+$('#slfield',m).value]);$('.slgroups',m).innerHTML=`<p class="small"><b>${groups.length}</b> link${groups.length===1?'':'s'} will be created:</p><div class="slchips">${groups.map(g=>`<span>${esc(g.name)} <i>${g.ids.length}</i></span>`).join('')}</div>`}
+   $('.slgo',m).textContent=on?`Create ${groups.length} link${groups.length===1?'':'s'}`:'Create link'};
+  $$('input[name=slmode]',m).forEach(r=>r.onchange=drawSplit);if(SPLIT.length)$('#slfield',m).onchange=drawSplit;drawSplit();
   $('.slgo',m).onclick=async x=>{x.target.disabled=true;try{const msg=W.get();if(!msg)throw new Error('Write a message first.');
+   if(split()){const made=[];
+    for(const [i,g] of groups.entries()){x.target.textContent=`Creating ${i+1} of ${groups.length}…`;
+     try{made.push(await AAPI.call(`/admin/events/${e.id}/sendlists`,{method:'POST',body:{name:g.name.slice(0,60),msg,ids:g.ids}}))}catch(er){toast(`${g.name}: ${er.message}`,true)}}
+    e.sendLists=[...(e.sendLists||[]),...made.map(l=>l.key)];close();slMany(e,made);after&&after();return}
    const l=await AAPI.call(`/admin/events/${e.id}/sendlists`,{method:'POST',body:{name:$('#slname',m).value,msg,ids:good.map(r=>r.id)}});
    const saved=[];
    if($('#sl-saveev',m).checked){try{await AAPI.call('/admin/events/'+e.id,{method:'PATCH',body:{waMsg:msg}});e.waMsg=msg;const k=EVENTS.find(v=>v.id===e.id);if(k)k.waMsg=msg;saved.push('this event')}catch(er){toast('List created, but the message was not saved for the event: '+er.message,true)}}

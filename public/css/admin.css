@@ -433,3 +433,12 @@ pre.seomd{white-space:pre-wrap;background:var(--surface);border:1px solid var(--
 .mdsite{position:absolute;inset:0;display:grid;place-items:center;font-weight:700;font-size:14px;color:var(--ink);background:var(--soft);text-align:center;padding:6px}
 .callbtn{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
 @media (max-width:520px){.warow{flex-wrap:wrap}.warow .waacts{width:100%;justify-content:flex-end}}
+/* WhatsApp lists: one link per answer (split by a question) */
+.slmode{display:grid;gap:6px;margin:4px 0 10px}
+.slsplit[hidden],.slone[hidden]{display:none}
+.slchips{display:flex;flex-wrap:wrap;gap:6px;max-height:180px;overflow:auto}
+.slchips span{background:var(--soft);border-radius:99px;padding:5px 10px;font-size:13.5px;font-weight:600}
+.slchips i{font-style:normal;color:var(--muted);margin-left:4px}
+.slmany{display:grid;gap:8px;max-height:52vh;overflow:auto;margin:10px 0}
+.slmrow{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;background:var(--soft);border-radius:12px;padding:10px 12px}
+.slmrow small{display:block;color:var(--muted);font-size:13px}

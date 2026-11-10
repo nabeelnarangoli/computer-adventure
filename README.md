@@ -144,6 +144,8 @@ The same SEO assistant as aqlyondm.com, inside the admin panel (no separate logi
 
 - The helper's WhatsApp list page has a **Call** button for each person: a `tel:` link that opens the phone's dialler with their mobile number filled in.
 
+- **One link per answer**: in *Share for WhatsApp*, choose *A separate link for each answer* and pick a question (Constituency, Grama Panchayat, country, any dropdown, multiple-choice or short-text question). The selected people are grouped by their answer (same spelling ignoring capitals and spaces; *No answer* for blanks), the groups are shown before creating, and one list is created per group, named after the answer. A summary shows every link with Copy, Send on WhatsApp and Open, plus Copy all links.
+
 ## Event live stream, photos and videos
 
 In the event editor:
