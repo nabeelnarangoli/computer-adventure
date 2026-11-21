@@ -5,7 +5,7 @@
    Imported people arrive as "Imported, not confirmed". Selecting them and pressing
    Confirm then follows the normal process (confirmed, badge, invitation email).
    ===================================================================== */
-const IMP_STD=[['name','Full name',1],['email','Email',1],['phone','Mobile number',1],['whatsapp','WhatsApp number'],['country','Country'],['education','Education level'],['role','Student or parent'],['seats','Number of people']];
+const IMP_STD=[['name','Full name',1],['email','Email'],['phone','Mobile number',1],['whatsapp','WhatsApp number'],['country','Country'],['education','Education level'],['role','Student or parent'],['seats','Number of people']];
 const impNorm=s=>String(s??'').toLowerCase().replace(/[^a-z0-9]+/g,'');
 const IMP_SYN={
  name:['name','fullname','studentname','participantname','participant','candidatename','candidate','attendee','attendeename'],
@@ -82,8 +82,8 @@ function importView(e,regs,onDone){
      if(f.type==='checkboxes')answers[f.id]=v.split(/\s*[,;]\s*/).filter(Boolean).map(x=>(f.options||[]).find(o=>o.toLowerCase()===x.toLowerCase())||(f.other?'Other: '+x:x));
      else if(['choice','dropdown'].includes(f.type))answers[f.id]=(f.options||[]).find(o=>o.toLowerCase()===v.toLowerCase())||(f.other?'Other: '+v:v);
      else answers[f.id]=v});
-    const why=!name?'No name':!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)?'Email missing or not valid':!phone?'Mobile missing or not valid':seenE.has(email)?'Already registered (email)':seenP.has(phone)?'Already registered (mobile)':inE.has(email)?'Repeated in the file (email)':inP.has(phone)?'Repeated in the file (mobile)':'';
-    if(!why){inE.add(email);inP.add(phone)}
+    const why=!name?'No name':email&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)?'Email not valid':!phone?'Mobile missing or not valid':email&&seenE.has(email)?'Already registered (email)':seenP.has(phone)?'Already registered (mobile)':inE.has(email)?'Repeated in the file (email)':inP.has(phone)?'Repeated in the file (mobile)':'';
+    if(!why){if(email)inE.add(email);inP.add(phone)}
     return {row:r.n,name,email,phone,whatsapp:wa||(FM.std.whatsapp!==false?phone:''),country,education:impEdu(g(r,'education')),role:impRole(g(r,'role')),seats:Math.min(e.maxSeats||20,Math.max(1,parseInt(g(r,'seats'),10)||1)),answers,why}})};
   let picked=null;
   function draw(){const rows=build();if(!picked)picked=new Set(rows.filter(r=>!r.why).map(r=>r.row));

@@ -157,6 +157,8 @@ In the event editor's registration form, tick **Ask the details of each person**
 - Excel: the Registrations sheet adds the names, plus a sheet with one row per person (their ref, answers, who booked, check-in).
 - Report: per-person questions are counted once per person (*Category (each child)*: 2 children answered).
 
+- Excel import: **email is optional** when a mobile number is given (e.g. a WhatsApp contact list). People without an email are confirmed and get their badge through the WhatsApp lists; the invitation email simply skips them.
+
 ## Event live stream, photos and videos
 
 In the event editor:

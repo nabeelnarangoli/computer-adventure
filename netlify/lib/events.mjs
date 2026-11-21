@@ -247,7 +247,8 @@ export function createEvents({ getStore, json }) {
   }
   // send invitation / update / cancellation emails; marks each registration with the result so the admin can see it
   async function calGuests(e, doc, list, kind, origin) {
-    const cfg = await calCfg(); if (!cfg || !list.length) return null;
+    list = list.filter((r) => EMAIL_RE.test(r.email || ''));   // people imported without an email get their details on WhatsApp only
+    const cfg = await calCfg(); if (!cfg) return null; if (!list.length) return { ok: true, sent: 0 };
     for (const r of list) await ensureTk(e, r);
     const messages = list.map((r) => inviteMail(e, r, kind, { origin, organizer: cfg.calEmail, seq: (r.calSeq ?? -1) + 1 }));
     const out = await calPost(cfg, { action: 'mail', messages }, 25000);
@@ -544,9 +545,9 @@ export function createEvents({ getStore, json }) {
           const added = [], skipped = [];
           for (const [i, x] of rows.entries()) {
             const name = nameCase(String(x.name || '').slice(0, 120)).slice(0, 80), email = String(x.email || '').trim().toLowerCase().slice(0, 80), phone = String(x.phone || '').trim().slice(0, 24);
-            const why = !name ? 'No name' : !EMAIL_RE.test(email) ? 'Email missing or not valid' : !/^\+\d{1,4} \d{5,14}$/.test(phone) ? 'Mobile missing or not valid' : seenE.has(email) ? 'Already registered (same email)' : seenP.has(phone) ? 'Already registered (same mobile)' : '';
+            const why = !name ? 'No name' : email && !EMAIL_RE.test(email) ? 'Email not valid' : !/^\+\d{1,4} \d{5,14}$/.test(phone) ? 'Mobile missing or not valid' : email && seenE.has(email) ? 'Already registered (same email)' : seenP.has(phone) ? 'Already registered (same mobile)' : '';
             if (why) { skipped.push({ row: x.row ?? i + 1, name, reason: why }); continue; }
-            seenE.add(email); seenP.add(phone);
+            if (email) seenE.add(email); seenP.add(phone);
             const answers = {};
             for (const [k, v] of Object.entries(x.answers || {})) if (qids.has(k) && v !== '' && v != null) answers[k] = Array.isArray(v) ? v.map((y) => String(y).slice(0, 220)).slice(0, 60) : String(v).slice(0, 2000);
             const r = { id: crypto.randomBytes(8).toString('hex'), ref: 'AQ-' + crypto.randomBytes(3).toString('hex').toUpperCase(), name, email, phone,
@@ -580,7 +581,7 @@ export function createEvents({ getStore, json }) {
         }
         if (!m[3] && method === 'POST' && body.action === 'invite-all') {
           const skip = new Set(body.skip || []);   // ones that already failed in this round
-          const all = doc.list.filter((r) => calOk(r) && !r.cal && !skip.has(r.id)), todo = all.slice(0, 10);
+          const all = doc.list.filter((r) => calOk(r) && !r.cal && !skip.has(r.id) && EMAIL_RE.test(r.email || '')), todo = all.slice(0, 10);
           if (!todo.length) return json(200, { ok: true, invited: 0, left: 0, regs: doc.list });
           const out = await calGuests(e, doc, todo, 'invite', new URL(req.url).origin);
           if (!out) return json(400, { error: 'Connect calendar invitations first (Events → Connect).' });
