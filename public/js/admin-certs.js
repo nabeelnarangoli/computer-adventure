@@ -112,7 +112,8 @@ function ctDraw(){
   <p><button type="button" class="btn ctsave">Save design</button> <span class="small ctsaved"></span></p>
  </div>
  <div class="ctside">
-  <div class="ctpv"><canvas width="1400" height="990" aria-label="Certificate preview"></canvas><p class="small ctpvn"></p></div>
+  <div class="ctpv"><canvas width="1400" height="990" tabindex="0" aria-label="Certificate preview. Click a part to select it, then drag it or use the arrow keys to move it."></canvas><p class="small ctpvn"></p>
+   <div class="ctmove"></div></div>
   <section class="ctgen"><h2>${CT.kind==='win'?'Winners':CT.kind==='blank'?'Blank certificates':'Generate certificates'}</h2>
    ${CT.kind==='part'?`<div class="field"><label for="ctwho">Who gets one</label><select id="ctwho"><option value="ok" ${CT.who==='ok'?'selected':''}>Everyone confirmed</option><option value="in" ${CT.who==='in'?'selected':''}>Only people who checked in</option><option value="pick" ${CT.who==='pick'?'selected':''}>Choose people…</option></select></div>
    <div class="ctpick"></div>`:CT.kind==='win'?`<div class="ctwin"></div>`:`
@@ -124,6 +125,7 @@ function ctDraw(){
    <div class="ctprog" hidden><div class="ctbar"><i></i></div><p class="small"></p></div>
   </section>
  </div></div>`;
+ ctMoveBar();ctBindMove();
  ctBind();CT.kind==='win'?ctWin():CT.kind==='part'?ctWho():ctCount();ctMark();certLoadFonts().then(ctThumbs);
 }
 // small previews of the drawn templates in the chosen colour (picture templates use their own thumbnail)
@@ -140,7 +142,7 @@ const ctMark=()=>{const s=$('.ctsaved');if(!s)return;if(JSON.stringify(CT.D)!==C
 let ctT=null;const ctLater=()=>{clearTimeout(ctT);ctT=setTimeout(()=>{ctRead();ctPreview();ctMark()},180)};
 function ctBind(){
  const D=CT.D;
- $$('input[name=cttpl]').forEach(r=>r.onchange=()=>{D.tpl=r.value;$$('.cttpl').forEach(l=>l.classList.toggle('on',l.contains(r)));$('.ctcolf').hidden=!!CERT_ART[D.tpl];ctLater()});
+ $$('input[name=cttpl]').forEach(r=>r.onchange=()=>{D.tpl=r.value;CT.sel=null;ctMoveBar();$$('.cttpl').forEach(l=>l.classList.toggle('on',l.contains(r)));$('.ctcolf').hidden=!!CERT_ART[D.tpl];ctLater()});
  $$('.ctswb').forEach(b=>b.onclick=()=>{D.color=b.dataset.c;$('#ctcol').value=b.dataset.c;$$('.ctswb').forEach(x=>x.classList.toggle('on',x===b));ctLater();ctThumbs()});
  $('#ctcol').oninput=ev=>{D.color=ev.target.value;$$('.ctswb').forEach(x=>x.classList.remove('on'));ctLater();clearTimeout(ctTT);ctTT=setTimeout(ctThumbs,250)};
  $$('.ctform input:not([type=file]):not([name=cttpl]),.ctform textarea').forEach(i=>{i.addEventListener('input',ctLater);i.addEventListener('change',ctLater)});
@@ -168,13 +170,54 @@ async function ctSave(say){
   CT.saved=JSON.stringify(CT.D);const s=$('.ctsaved');if(s)s.textContent='Saved ✓';if(say)toast('Certificate design saved');return true}
  catch(err){toast(err.message,true);return false}finally{if(b)b.disabled=false}
 }
+/* ---- moving parts in the preview: click to select, drag or use arrow keys, size slider ---- */
+const CT_PARTS={logo:'Logo',logo2:'Second logo',logo3:'Event logo',org:'Organiser name',title:'Title',pre:'Line above the name',name:'Name',body:'Text',signs:'Signatures',seal:'Seal / medal',meta:'Certificate number'};
+const ctLay=()=>{const D=CT.D;D.layout=D.layout||{};return D.layout[D.tpl]=D.layout[D.tpl]||{}};
+const ctPart=k=>{const L=ctLay();return L[k]=L[k]||{x:0,y:0,s:1}};
+function ctRender(){   // redraw the preview from what was last loaded (fast, used while dragging)
+ const cv=$('.ctpv canvas');if(!cv||!CT.pv)return;const {P,imgs}=CT.pv;
+ drawCert(cv,ctDesign(P.place),P,imgs);
+ const ctx=cv.getContext('2d'),hits=cv._hits||[],k=cv.width/1000;
+ const box=(h,col,dash)=>{ctx.save();ctx.strokeStyle=col;ctx.lineWidth=k*1.6;ctx.setLineDash(dash?[k*6,k*4]:[]);ctx.strokeRect(h.x0-k*5,h.y0-k*5,h.x1-h.x0+k*10,h.y1-h.y0+k*10);ctx.restore()};
+ const hv=hits.find(h=>h.key===CT.hover&&h.key!==CT.sel);if(hv)box(hv,'rgba(91,63,217,.45)',true);
+ const sl=hits.find(h=>h.key===CT.sel);if(sl){box(sl,'#5B3FD9',false);ctx.save();ctx.fillStyle='#5B3FD9';ctx.font=`700 ${k*11}px Montserrat`;const t=CT_PARTS[sl.key]||sl.key,w=ctx.measureText(t).width;ctx.fillRect(sl.x0-k*5,sl.y0-k*24,w+k*14,k*18);ctx.fillStyle='#fff';ctx.fillText(t,sl.x0+k*2,sl.y0-k*10.5);ctx.restore()}
+}
+function ctMoveBar(){
+ const bar=$('.ctmove');if(!bar)return;const L=ctLay(),moved=Object.keys(L).length;
+ if(!CT.sel){bar.innerHTML=`<p class="small">✋ Click any part of the certificate (name, logo, title…) to move or resize it.${moved?' <button type="button" class="linkbtn ctrall">Reset all positions</button>':''}</p>`}
+ else{const o=ctPart(CT.sel);bar.innerHTML=`<div class="ctmv"><b>${esc(CT_PARTS[CT.sel]||CT.sel)}</b>
+  <label class="ctsz">Size <input type="range" min="30" max="250" step="5" value="${Math.round((o.s||1)*100)}" aria-label="Size"><span>${Math.round((o.s||1)*100)}%</span></label>
+  <span class="ctnudge"><button type="button" class="btn sm ghost" data-nd="-1,0" aria-label="Move left">←</button><button type="button" class="btn sm ghost" data-nd="0,-1" aria-label="Move up">↑</button><button type="button" class="btn sm ghost" data-nd="0,1" aria-label="Move down">↓</button><button type="button" class="btn sm ghost" data-nd="1,0" aria-label="Move right">→</button></span>
+  <button type="button" class="linkbtn ctr1">Reset</button><button type="button" class="linkbtn ctdone">Done</button></div>
+  <p class="small">Drag it in the preview, or use the arrow keys (hold Shift for bigger steps). Positions are saved for the ${esc((CERT_TPLS.find(t=>t[0]===CT.D.tpl)||[])[1]||'')} template.</p>`}
+ const ra=$('.ctrall',bar);if(ra)ra.onclick=()=>{CT.D.layout[CT.D.tpl]={};ctRender();ctMoveBar();ctMark()};
+ const rng=$('input[type=range]',bar);if(rng)rng.oninput=()=>{ctPart(CT.sel).s=+rng.value/100;$('.ctsz span',bar).textContent=rng.value+'%';ctRender();ctMark()};
+ $$('[data-nd]',bar).forEach(b=>b.onclick=ev=>{const [x,y]=b.dataset.nd.split(',').map(Number);ctNudge(x,y,ev.shiftKey)});
+ const r1=$('.ctr1',bar);if(r1)r1.onclick=()=>{delete ctLay()[CT.sel];ctRender();ctMoveBar();ctMark()};
+ const dn=$('.ctdone',bar);if(dn)dn.onclick=()=>{CT.sel=null;ctRender();ctMoveBar()};
+}
+function ctNudge(x,y,big){if(!CT.sel)return;const o=ctPart(CT.sel),st=big?.01:.002;o.x=+(o.x+x*st).toFixed(4);o.y=+(o.y+y*st*1.414).toFixed(4);ctRender();ctMark()}
+function ctBindMove(){
+ const cv=$('.ctpv canvas');if(!cv)return;
+ const at=ev=>{const r=cv.getBoundingClientRect();return [(ev.clientX-r.left)/r.width*cv.width,(ev.clientY-r.top)/r.height*cv.height]};
+ const hitAt=([x,y])=>{const pad=cv.width/200;return [...(cv._hits||[])].reverse().find(h=>x>=h.x0-pad&&x<=h.x1+pad&&y>=h.y0-pad&&y<=h.y1+pad)};
+ let drag=null,raf=0;const later=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;ctRender()})};
+ cv.onpointerdown=ev=>{const p=at(ev),h=hitAt(p);if(!h){if(CT.sel){CT.sel=null;ctRender();ctMoveBar()}return}
+  ev.preventDefault();cv.focus();if(CT.sel!==h.key){CT.sel=h.key;ctMoveBar()}const o=ctPart(h.key);drag={p,x:o.x,y:o.y,id:ev.pointerId};cv.setPointerCapture(ev.pointerId);later()};
+ cv.onpointermove=ev=>{const p=at(ev);
+  if(drag){const o=ctPart(CT.sel);o.x=+(drag.x+(p[0]-drag.p[0])/cv.width).toFixed(4);o.y=+(drag.y+(p[1]-drag.p[1])/cv.height).toFixed(4);later();return}
+  const h=hitAt(p),k=h?h.key:null;cv.style.cursor=h?'move':'default';if(k!==CT.hover){CT.hover=k;later()}};
+ const end=()=>{if(drag){drag=null;ctMark()}};cv.onpointerup=end;cv.onpointercancel=end;
+ cv.onpointerleave=()=>{if(!drag&&CT.hover){CT.hover=null;later()}};
+ cv.onkeydown=ev=>{const m={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[ev.key];if(m&&CT.sel){ev.preventDefault();ctNudge(m[0],m[1],ev.shiftKey)}else if(ev.key==='Escape'&&CT.sel){CT.sel=null;ctRender();ctMoveBar()}};
+}
 let ctPvN=0;
 async function ctPreview(){
  const cv=$('.ctpv canvas');if(!cv)return;const n=++ctPvN;
  const items=ctItems(),all=ctPeople(),sample=all[0]||{name:'Aisha Rahman',ref:'AQ-000000-1',answers:{}};
  const it=items[0]||{P:CT.kind==='blank'?ctP(sample,0,true):ctP(sample,CT.kind==='win'?1:0)};
  const imgs=await ctLoadImgs();if(n!==ctPvN)return;
- drawCert(cv,ctDesign(it.P.place),it.P,imgs);
+ CT.pv={P:it.P,imgs};ctRender();
  const t=$('.ctpvn');if(t)t.textContent=it.P.blank?`Preview: blank ${it.P.place?ctRank(it.P.place):'participation'} certificate`:items[0]||all[0]?`Preview with ${it.P.name}'s details${it.P.place?' · '+ctRank(it.P.place):''}`:'Preview with a sample name';
 }
 function ctWho(){

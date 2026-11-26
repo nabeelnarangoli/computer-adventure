@@ -38,6 +38,7 @@ export function cleanBadge(b = {}) {
 }
 // certificate design per event (drawn and turned into PDFs in the admin's browser)
 export const CERT_TPLS = ['classic', 'modern', 'elegant', 'crimson', 'mosaic', 'ribbon', 'fluid', 'blocks', 'orbit', 'panel'];
+const CERT_PARTS = ['logo', 'logo2', 'logo3', 'org', 'title', 'pre', 'name', 'body', 'signs', 'seal', 'meta'];
 export function cleanCert(b = {}) {
   const t = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
   const img = (v) => (/^[a-f0-9]{24}$/.test(v || '') ? v : '');
@@ -53,6 +54,8 @@ export function cleanCert(b = {}) {
     footer: t(b.footer, 160),
     // winners' certificates: their own wording, and who came 1st, 2nd or 3rd (person refs like AQ-1A2B3C-1)
     win: ((w) => ({ title: t(w.title, 40), subtitle: t(w.subtitle, 60), pre: t(w.pre, 120), body: t(w.body, 600) }))(b.win && typeof b.win === 'object' ? b.win : {}),
+    // where each part sits, per template: {crimson: {name: {x, y, s}}} — moved in the admin preview
+    layout: Object.fromEntries(Object.entries(b.layout && typeof b.layout === 'object' ? b.layout : {}).filter(([k]) => CERT_TPLS.includes(k)).map(([k, v]) => [k, Object.fromEntries(Object.entries(v && typeof v === 'object' ? v : {}).filter(([e]) => CERT_PARTS.includes(e)).map(([e, o]) => { const n = (x, lo, hi, d) => { const f = Number(x); return Number.isFinite(f) ? Math.round(Math.min(hi, Math.max(lo, f)) * 10000) / 10000 : d; }; return [e, { x: n(o && o.x, -1, 1, 0), y: n(o && o.y, -1, 1, 0), s: n(o && o.s, 0.3, 3, 1) }]; }))])),
     winners: (Array.isArray(b.winners) ? b.winners : []).filter((w) => w && /^[A-Z0-9-]{3,30}$/.test(w.ref || '') && [1, 2, 3].includes(+w.place)).slice(0, 500).map((w) => ({ ref: w.ref, place: +w.place })),
   };
 }
