@@ -36,6 +36,23 @@ export function cleanBadge(b = {}) {
     showRole: bool(b.showRole, true), showTime: bool(b.showTime, true), showVenue: bool(b.showVenue, true), hole: bool(b.hole, true),
   };
 }
+// certificate design per event (drawn and turned into PDFs in the admin's browser)
+export const CERT_TPLS = ['classic', 'modern', 'elegant'];
+export function cleanCert(b = {}) {
+  const t = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
+  const img = (v) => (/^[a-f0-9]{24}$/.test(v || '') ? v : '');
+  return {
+    tpl: CERT_TPLS.includes(b.tpl) ? b.tpl : 'classic',
+    color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#0D2B22',
+    title: t(b.title, 40), subtitle: t(b.subtitle, 60), pre: t(b.pre, 120), body: t(b.body, 600),
+    nameStyle: b.nameStyle === 'serif' ? 'serif' : 'script',
+    org: t(b.org, 90), logo: img(b.logo), logo2: img(b.logo2),
+    signs: (Array.isArray(b.signs) ? b.signs : []).slice(0, 3).map((s) => ({ name: t(s && s.name, 60), title: t(s && s.title, 80), img: img(s && s.img) })),
+    showId: b.showId === undefined ? true : !!b.showId,
+    issued: /^\d{4}-\d{2}-\d{2}$/.test(b.issued || '') ? b.issued : '',
+    footer: t(b.footer, 160),
+  };
+}
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
 
 const waText = (v) => String(v ?? '').replace(/\r/g, '').slice(0, 1500).trim();
@@ -114,6 +131,7 @@ function clean(b, old = {}) {
   if (b.share !== undefined) e.share = !!b.share;
   if (b.waMsg !== undefined) e.waMsg = waText(b.waMsg); // WhatsApp confirmation message for this event ('' = use the common one)
   if (b.badge !== undefined) e.badge = cleanBadge(b.badge);
+  if (b.cert !== undefined) e.cert = cleanCert(b.cert);
   if (b.live !== undefined) e.live = cleanLive(b.live);
   if (b.media !== undefined) e.media = cleanMedia(b.media);
   if (b.maxSeats !== undefined) e.maxSeats = Math.min(20, Math.max(1, parseInt(b.maxSeats, 10) || 1));
@@ -618,7 +636,9 @@ export function createEvents({ getStore, json }) {
       if (!m[2] && method === 'DELETE') {
         for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
         if (e.staffKey) await meta().delete('staff-' + e.staffKey);
-        await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); if (e.badge && e.badge.logo) await images().delete(e.badge.logo); return json(200, { ok: true }); }
+        await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); if (e.badge && e.badge.logo) await images().delete(e.badge.logo);
+        if (e.cert) for (const id of [e.cert.logo, e.cert.logo2, ...(e.cert.signs || []).map((x) => x.img)]) if (id) await images().delete(id);
+        return json(200, { ok: true }); }
     }
     return null;
   }

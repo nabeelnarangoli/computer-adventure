@@ -18,8 +18,8 @@ async function showTab(t){
  if(t==='checkin')return checkinRoute();
  if(t==='seo')return seoView((location.hash.match(/^#seo\/(\w+)/)||[])[1]);
  if(t==='events'){$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading events…</p>';await loadEvents();
-  const m=location.hash.match(/^#events\/([a-f0-9]{16})(\/checkin|\/report)?/),ev=m&&EVENTS.find(x=>x.id===m[1]);   // reopen the event page after a refresh
-  if(ev)return m[2]==='/checkin'?checkinView(ev):m[2]==='/report'?reportView(ev):regsView(ev);renderEvents()}
+  const m=location.hash.match(/^#events\/([a-f0-9]{16})(\/checkin|\/report|\/certificates)?/),ev=m&&EVENTS.find(x=>x.id===m[1]);   // reopen the event page after a refresh
+  if(ev)return m[2]==='/checkin'?checkinView(ev):m[2]==='/report'?reportView(ev):m[2]==='/certificates'?certView(ev):regsView(ev);renderEvents()}
  else{$('.adm').innerHTML='<p class="lead" style="margin-top:20px">Loading learners…</p>';try{await load()}catch(e){return}render()}
 }
 async function loadEvents(){const d=await AAPI.call('/admin/events');EVENTS=d.events;EVSET=d.settings}
@@ -270,11 +270,11 @@ function evHeadHTML(e,active){
  const c=e.counts||{};
  return `<p class="rback"><button type="button" class="linkbtn backev">← All events</button></p>
  <div class="evhead"><h1>${esc(e.title)}</h1><p class="small">${esc(evDate(e))}${e.mode==='offline'&&e.locationName?' · '+esc(e.locationName):e.mode==='online'?' · Online':''}</p></div>
- <nav class="evsub" role="tablist"><button type="button" role="tab" data-sub="regs" class="${active==='regs'?'on':''}" aria-selected="${active==='regs'}">Registrations${c.total!=null?` <i>${c.total}</i>`:''}</button>${evCanCheckin(e)?`<button type="button" role="tab" data-sub="checkin" class="${active==='checkin'?'on':''}" aria-selected="${active==='checkin'}">📷 Check-in${c.seats?` <i>${c.attended||0}/${c.seats}</i>`:''}</button>`:''}${e.regMode==='form'?`<button type="button" role="tab" data-sub="report" class="${active==='report'?'on':''}" aria-selected="${active==='report'}">📊 Report</button>`:''}</nav>`;
+ <nav class="evsub" role="tablist"><button type="button" role="tab" data-sub="regs" class="${active==='regs'?'on':''}" aria-selected="${active==='regs'}">Registrations${c.total!=null?` <i>${c.total}</i>`:''}</button>${evCanCheckin(e)?`<button type="button" role="tab" data-sub="checkin" class="${active==='checkin'?'on':''}" aria-selected="${active==='checkin'}">📷 Check-in${c.seats?` <i>${c.attended||0}/${c.seats}</i>`:''}</button>`:''}${e.regMode==='form'?`<button type="button" role="tab" data-sub="report" class="${active==='report'?'on':''}" aria-selected="${active==='report'}">📊 Report</button><button type="button" role="tab" data-sub="certs" class="${active==='certs'?'on':''}" aria-selected="${active==='certs'}">🎓 Certificates</button>`:''}</nav>`;
 }
 function bindEvHead(e){
  $('.backev').onclick=async()=>{if(typeof stopScan==='function')stopScan();history.replaceState(null,'','#events');await loadEvents();renderEvents();scrollTo(0,0)};
- $$('[data-sub]').forEach(b=>b.onclick=async()=>{if(typeof stopScan==='function')stopScan();try{await loadEvents()}catch(x){}const fresh=EVENTS.find(x=>x.id===e.id)||e;b.dataset.sub==='checkin'?checkinView(fresh):b.dataset.sub==='report'?reportView(fresh):regsView(fresh)});
+ $$('[data-sub]').forEach(b=>b.onclick=async()=>{if(typeof stopScan==='function')stopScan();try{await loadEvents()}catch(x){}const fresh=EVENTS.find(x=>x.id===e.id)||e;b.dataset.sub==='checkin'?checkinView(fresh):b.dataset.sub==='report'?reportView(fresh):b.dataset.sub==='certs'?certView(fresh):regsView(fresh)});
 }
 
 /* ---------- Registrations page for one event ---------- */
