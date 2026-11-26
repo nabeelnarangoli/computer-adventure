@@ -39,9 +39,11 @@ export function cleanBadge(b = {}) {
 // certificate design per event (drawn and turned into PDFs in the admin's browser)
 export const CERT_TPLS = ['classic', 'modern', 'elegant', 'crimson', 'mosaic', 'ribbon', 'fluid', 'blocks', 'orbit', 'panel'];
 const CERT_PARTS = ['logo', 'logo2', 'logo3', 'org', 'title', 'pre', 'name', 'body', 'signs', 'seal', 'meta'];
-export function cleanCert(b = {}) {
+// one complete certificate design (template, colour, wording, logos, signatures, positions)
+function cleanCertDesign(b = {}) {
   const t = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
   const img = (v) => (/^[a-f0-9]{24}$/.test(v || '') ? v : '');
+  const n = (x, lo, hi, d) => { const f = Number(x); return Number.isFinite(f) ? Math.round(Math.min(hi, Math.max(lo, f)) * 10000) / 10000 : d; };
   return {
     tpl: CERT_TPLS.includes(b.tpl) ? b.tpl : 'classic',
     color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#0D2B22',
@@ -52,13 +54,20 @@ export function cleanCert(b = {}) {
     showId: b.showId === undefined ? true : !!b.showId,
     issued: /^\d{4}-\d{2}-\d{2}$/.test(b.issued || '') ? b.issued : '',
     footer: t(b.footer, 160),
-    // winners' certificates: their own wording, and who came 1st, 2nd or 3rd (person refs like AQ-1A2B3C-1)
-    win: ((w) => ({ title: t(w.title, 40), subtitle: t(w.subtitle, 60), pre: t(w.pre, 120), body: t(w.body, 600) }))(b.win && typeof b.win === 'object' ? b.win : {}),
     // where each part sits, per template: {crimson: {name: {x, y, s}}} — moved in the admin preview
-    layout: Object.fromEntries(Object.entries(b.layout && typeof b.layout === 'object' ? b.layout : {}).filter(([k]) => CERT_TPLS.includes(k)).map(([k, v]) => [k, Object.fromEntries(Object.entries(v && typeof v === 'object' ? v : {}).filter(([e]) => CERT_PARTS.includes(e)).map(([e, o]) => { const n = (x, lo, hi, d) => { const f = Number(x); return Number.isFinite(f) ? Math.round(Math.min(hi, Math.max(lo, f)) * 10000) / 10000 : d; }; return [e, { x: n(o && o.x, -1, 1, 0), y: n(o && o.y, -1, 1, 0), s: n(o && o.s, 0.3, 3, 1) }]; }))])),
-    winners: (Array.isArray(b.winners) ? b.winners : []).filter((w) => w && /^[A-Z0-9-]{3,30}$/.test(w.ref || '') && [1, 2, 3].includes(+w.place)).slice(0, 500).map((w) => ({ ref: w.ref, place: +w.place })),
+    layout: Object.fromEntries(Object.entries(b.layout && typeof b.layout === 'object' ? b.layout : {}).filter(([k]) => CERT_TPLS.includes(k)).map(([k, v]) => [k, Object.fromEntries(Object.entries(v && typeof v === 'object' ? v : {}).filter(([e]) => CERT_PARTS.includes(e)).map(([e, o]) => [e, { x: n(o && o.x, -1, 1, 0), y: n(o && o.y, -1, 1, 0), s: n(o && o.s, 0.3, 3, 1) }]))])),
   };
 }
+// e.cert: the participation design at the top level, and the winners' and blank certificates' own designs
+// in win / blank (full: true; an older win held only wording, which the admin page turns into a full design)
+export function cleanCert(b = {}) {
+  const sub = (x) => (x && typeof x === 'object' ? (x.full ? { ...cleanCertDesign(x), full: true } : { title: String(x.title || '').slice(0, 40), subtitle: String(x.subtitle || '').slice(0, 60), pre: String(x.pre || '').slice(0, 120), body: String(x.body || '').slice(0, 600) }) : null);
+  const out = { ...cleanCertDesign(b), win: sub(b.win), blank: sub(b.blank) };
+  // who came 1st, 2nd or 3rd (person refs like AQ-1A2B3C-1)
+  out.winners = (Array.isArray(b.winners) ? b.winners : []).filter((w) => w && /^[A-Z0-9-]{3,30}$/.test(w.ref || '') && [1, 2, 3].includes(+w.place)).slice(0, 500).map((w) => ({ ref: w.ref, place: +w.place }));
+  return out;
+}
+const certImages = (c) => [c, c && c.win, c && c.blank].filter(Boolean).flatMap((d) => [d.logo, d.logo2, d.logo3, ...(d.signs || []).map((x) => x.img)]).filter(Boolean);
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
 
 const waText = (v) => String(v ?? '').replace(/\r/g, '').slice(0, 1500).trim();
@@ -643,7 +652,7 @@ export function createEvents({ getStore, json }) {
         for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
         if (e.staffKey) await meta().delete('staff-' + e.staffKey);
         await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); if (e.badge && e.badge.logo) await images().delete(e.badge.logo);
-        if (e.cert) for (const id of [e.cert.logo, e.cert.logo2, e.cert.logo3, ...(e.cert.signs || []).map((x) => x.img)]) if (id) await images().delete(id);
+        for (const id of new Set(certImages(e.cert))) await images().delete(id);
         return json(200, { ok: true }); }
     }
     return null;

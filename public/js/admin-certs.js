@@ -15,7 +15,9 @@ const ctRank=n=>CERT_RANK[n]+' Place';
 const ctLoaded={};
 function ctScript(src){return ctLoaded[src]||(ctLoaded[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete ctLoaded[src];no(new Error('Could not load '+src))};document.head.appendChild(s)}))}
 const ctImg=id=>{if(!id)return Promise.resolve(null);return new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src='/api/img/'+id})};
-async function ctLoadImgs(){const D=CT.D,ids={logo:D.logo,logo2:D.logo2,logo3:D.logo3};(D.signs||[]).forEach((s,i)=>ids['sign'+i]=s.img);
+// the design being edited: each type (participation, winners, blank) has its own complete design
+const ctCur=()=>CT.kind==='win'?CT.D.win:CT.kind==='blank'?CT.D.blank:CT.D;
+async function ctLoadImgs(){const D=ctCur(),ids={logo:D.logo,logo2:D.logo2,logo3:D.logo3};(D.signs||[]).forEach((s,i)=>ids['sign'+i]=s.img);
  const out={};if(CERT_ART[D.tpl]){const src='/img/cert/'+D.tpl+'.jpg';if(!CT.imgs[src])CT.imgs[src]=new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});out.bg=await CT.imgs[src]}await Promise.all(Object.entries(ids).map(async([k,id])=>{if(!id){out[k]=null;return}if(!CT.imgs[id])CT.imgs[id]=ctImg(id);out[k]=await CT.imgs[id]}));return out}
 
 /* ---- the words that go on the certificate ---- */
@@ -44,13 +46,14 @@ function ctPeople(){
  return out.filter(p=>p.name);
 }
 function ctP(p,place=0,blank=false){
- const e=CT.e,D=CT.D,iss=D.issued?ctDay(D.issued):ctDay(e.end||e.start)||new Date();
+ const e=CT.e,D=ctCur(),iss=D.issued?ctDay(D.issued):ctDay(e.end||e.start)||new Date();
  return {name:blank?'':p.name,place,blank,event:e.title,date:ctDateText(e),venue:e.mode==='online'?'Online':(e.locationName||''),organiser:D.org||'',ref:blank?'':p.ref,
   issued:iss?iss.toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'}):'',year:iss?iss.getFullYear():new Date().getFullYear(),answers:p.answers};
 }
 // the design with the right wording: winners (and blank 1st–3rd) use the Winners wording
-const ctDesign=place=>place?{...CT.D,...CT.D.win}:CT.D;
-const ctWords=()=>CT.kind==='win'?CT.D.win:CT.D;
+// blank 1st–3rd certificates: the blank design with the winners' wording
+const ctDesign=place=>{const D=ctCur();if(CT.kind!=='blank'||!place)return D;const W=CT.D.win;return {...D,title:W.title,subtitle:W.subtitle,pre:W.pre,body:W.body}};
+const ctWords=ctCur;
 // what Generate will make: [{P, file, copies}]
 function ctItems(){
  if(CT.kind==='win'){const by=new Map(ctPeople().map(p=>[p.ref,p]));return CT.D.winners.map(w=>({w,p:by.get(w.ref)})).filter(x=>x.p).sort((a,b)=>a.w.place-b.w.place||a.p.name.localeCompare(b.p.name)).map(({w,p})=>({P:ctP(p,w.place),file:`${ctRank(w.place)} - ${p.name}`}))}
@@ -63,14 +66,20 @@ const ctChosen=()=>{const all=ctPeople();return CT.who==='pick'?all.filter(p=>CT
 async function certView(e){
  const main=$('.adm');CT.e=e;CT.D=JSON.parse(JSON.stringify({...CERT_DEFAULT,org:(e.badge&&e.badge.org)||'',...(e.cert||{})}));
  if(!CT.D.signs||!CT.D.signs.length)CT.D.signs=[{name:'',title:'',img:''}];
- const w=CT.D.win||{};CT.D.win=w.title||w.body?{...CT_WIN,...w}:{...CT_WIN};CT.D.winners=CT.D.winners||[];
+ // winners' and blank certificates start as a copy of the participation design (older saves kept only the winners' wording)
+ const base=()=>{const b=JSON.parse(JSON.stringify(CT.D));delete b.win;delete b.blank;delete b.winners;return b};
+ const w=CT.D.win||{},bl=CT.D.blank||{};
+ CT.D.win=w.full?{...CERT_DEFAULT,...w}:{...base(),...CT_WIN,...(w.title||w.body?{title:w.title,subtitle:w.subtitle,pre:w.pre,body:w.body}:{}),full:true};
+ CT.D.blank=bl.full?{...CERT_DEFAULT,...bl}:{...base(),full:true};
+ [CT.D.win,CT.D.blank].forEach(d=>{if(!d.signs||!d.signs.length)d.signs=[{name:'',title:'',img:''}]});
+ CT.D.winners=CT.D.winners||[];
  main.innerHTML=`${evHeadHTML(e,'certs')}<p class="lead">Loading…</p>`;bindEvHead(e);history.replaceState(null,'','#events/'+e.id+'/certificates');
  try{CT.regs=(await AAPI.call(`/admin/events/${e.id}/regs`)).regs}catch(err){CT.regs=[];toast(err.message,true)}
  CT.picked=new Set();CT.q='';CT.saved=JSON.stringify(CT.D);
  ctDraw();certLoadFonts().then(ctPreview);
 }
 function ctDraw(){
- const e=CT.e,D=CT.D,main=$('.adm');
+ const e=CT.e,D=ctCur(),main=$('.adm');
  const W=ctWords(),blank=CT.kind==='blank';
  const chips=[...(CT.kind==='win'?[['place','Place']]:[]),['name','Name'],['event','Event name'],['date','Event date'],['venue','Venue'],['organiser','Organiser'],['ref','Ref no.'],...ctQFields(e).map(f=>[f.label,f.label])];
  const sw=['#0D2B22','#123E7C','#0B1F3A','#6B1E2E','#3B2A6B','#7A4A12','#1F2937','#0F5257'];
@@ -80,13 +89,14 @@ function ctDraw(){
  <div class="ctkinds" role="tablist">${CT_KINDS.map(([k,l])=>`<button type="button" role="tab" data-kind="${k}" class="${CT.kind===k?'on':''}" aria-selected="${CT.kind===k}">${l}</button>`).join('')}</div>
  <div class="ctwrap">
  <div class="ctform">
-  <fieldset class="qset"><legend>Design</legend>
+  <fieldset class="qset"><legend>Design for ${CT.kind==='win'?'winners':CT.kind==='blank'?'blank certificates':'participation'}</legend>
+   <p class="small ctown">Each type has its own design: changes here do not affect the ${CT_KINDS.filter(k=>k[0]!==CT.kind).map(k=>k[1].replace(/^\S+ /,'').replace(/ \(.*/,'')).join(' or ')} certificate. <span class="ctcopy">Copy design from: ${CT_KINDS.filter(k=>k[0]!==CT.kind).map(([k,l])=>`<button type="button" class="linkbtn" data-copy="${k}">${l.replace(/^\S+ /,'').replace(/ \(.*/,'')}</button>`).join(' · ')}</span></p>
    <div class="cttpls">${CERT_TPLS.map(([v,n,d])=>`<label class="cttpl ${D.tpl===v?'on':''}" title="${esc(d)}"><input type="radio" name="cttpl" value="${v}" ${D.tpl===v?'checked':''}>${CERT_ART[v]?`<img src="/img/cert/${v}-thumb.jpg" alt="" loading="lazy">`:`<canvas width="360" height="255" data-tpl="${v}"></canvas>`}<b>${n}</b></label>`).join('')}</div>
    <div class="field ctcolf" ${CERT_ART[D.tpl]?'hidden':''}><label>Main colour</label><div class="ctsw">${sw.map(c=>`<button type="button" class="ctswb ${D.color.toLowerCase()===c.toLowerCase()?'on':''}" data-c="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}<input type="color" id="ctcol" value="${esc(D.color)}" aria-label="Pick any colour"></div></div>
    <div class="field"><label>Name written in</label><div class="rrow"><label class="radio"><input type="radio" name="ctns" value="script" ${!['serif','sans'].includes(D.nameStyle)?'checked':''}><span>Handwriting style</span></label><label class="radio"><input type="radio" name="ctns" value="serif" ${D.nameStyle==='serif'?'checked':''}><span>Classic serif</span></label><label class="radio"><input type="radio" name="ctns" value="sans" ${D.nameStyle==='sans'?'checked':''}><span>Modern bold</span></label></div></div>
   </fieldset>
   <fieldset class="qset"><legend>${CT.kind==='win'?'Wording for winners':'Wording'}</legend>
-   ${blank?`<p class="small">Blank certificates use the <button type="button" class="linkbtn" data-kind="part">Participation</button> wording, or the <button type="button" class="linkbtn" data-kind="win">Winners</button> wording for 1st, 2nd and 3rd. The name is left empty, and anything about one person (like {Category}) prints as a line to write on.</p>`:`
+   ${blank?`<p class="small">The name is left empty, and anything about one person (like {Category}) prints as a line to write on. Blank 1st, 2nd and 3rd certificates use the <button type="button" class="linkbtn" data-kind="win">Winners</button> wording with this design.</p>`:''}${`
    ${CT.kind==='win'?'<p class="small">Use {Place} for First Place, Second Place or Third Place. Everything else (design, logos, signatures) is shared with the participation certificate.</p>':''}
    ${tx('ct-title','Title',W.title,40)}${tx('ct-sub','Second line',W.subtitle,60,'e.g. of Participation, of Achievement, of Appreciation')}
    ${tx('ct-pre','Line above the name',W.pre,120)}
@@ -130,9 +140,9 @@ function ctDraw(){
 }
 // small previews of the drawn templates in the chosen colour (picture templates use their own thumbnail)
 let ctTT=null;
-function ctThumbs(){$$('.cttpl canvas').forEach(c=>drawCert(c,{...CERT_DEFAULT,tpl:c.dataset.tpl,color:CT.D.color,body:'',pre:'',signs:[{name:' ',title:''}],showId:false},{name:'Your Name',year:new Date().getFullYear(),answers:{}},{}))}
+function ctThumbs(){$$('.cttpl canvas').forEach(c=>drawCert(c,{...CERT_DEFAULT,tpl:c.dataset.tpl,color:ctCur().color,body:'',pre:'',signs:[{name:' ',title:''}],showId:false},{name:'Your Name',year:new Date().getFullYear(),answers:{}},{}))}
 function ctRead(){
- const D=CT.D,v=s=>$(s).value;
+ const D=ctCur(),v=s=>$(s).value;
  if($('#ct-title')){const W=ctWords();W.title=v('#ct-title');W.subtitle=v('#ct-sub');W.pre=v('#ct-pre');W.body=v('#ct-body')}
  D.footer=v('#ct-foot');D.org=v('#ct-org');
  D.showId=$('#ct-id').checked;D.issued=v('#ct-iss');D.nameStyle=($('input[name=ctns]:checked')||{}).value||'script';
@@ -141,7 +151,7 @@ function ctRead(){
 const ctMark=()=>{const s=$('.ctsaved');if(!s)return;if(JSON.stringify(CT.D)!==CT.saved)s.textContent='Not saved yet';else if(s.textContent==='Not saved yet')s.textContent=''};
 let ctT=null;const ctLater=()=>{clearTimeout(ctT);ctT=setTimeout(()=>{ctRead();ctPreview();ctMark()},180)};
 function ctBind(){
- const D=CT.D;
+ const D=ctCur();
  $$('input[name=cttpl]').forEach(r=>r.onchange=()=>{D.tpl=r.value;CT.sel=null;ctMoveBar();$$('.cttpl').forEach(l=>l.classList.toggle('on',l.contains(r)));$('.ctcolf').hidden=!!CERT_ART[D.tpl];ctLater()});
  $$('.ctswb').forEach(b=>b.onclick=()=>{D.color=b.dataset.c;$('#ctcol').value=b.dataset.c;$$('.ctswb').forEach(x=>x.classList.toggle('on',x===b));ctLater();ctThumbs()});
  $('#ctcol').oninput=ev=>{D.color=ev.target.value;$$('.ctswb').forEach(x=>x.classList.remove('on'));ctLater();clearTimeout(ctTT);ctTT=setTimeout(ctThumbs,250)};
@@ -157,7 +167,12 @@ function ctBind(){
  const add=$('.ctsadd');if(add)add.onclick=()=>{ctRead();D.signs.push({name:'',title:'',img:''});ctDraw()};
  $$('.ctsdel').forEach(b=>b.onclick=()=>{ctRead();D.signs.splice(+b.closest('.ctsign').dataset.i,1);ctDraw()});
  $('.ctsave').onclick=()=>ctSave(true);
- $$('[data-kind]').forEach(b=>b.onclick=()=>{ctRead();CT.kind=b.dataset.kind;CT.focus=null;ctDraw()});
+ $$('[data-kind]').forEach(b=>b.onclick=()=>{ctRead();CT.kind=b.dataset.kind;CT.focus=null;CT.sel=null;ctDraw()});
+ // copy another type's design (template, colours, logos, signatures, positions) but keep this type's wording
+ $$('[data-copy]').forEach(b=>b.onclick=()=>{ctRead();const k=b.dataset.copy,src=JSON.parse(JSON.stringify(k==='win'?CT.D.win:k==='blank'?CT.D.blank:CT.D));delete src.win;delete src.blank;delete src.winners;
+  const cur=ctCur(),keep={title:cur.title,subtitle:cur.subtitle,pre:cur.pre,body:cur.body};const next={...src,...keep,full:true};
+  if(CT.kind==='part'){Object.keys(next).forEach(x=>{if(!['full'].includes(x))CT.D[x]=next[x]})}else if(CT.kind==='win')CT.D.win=next;else CT.D.blank=next;
+  toast('Design copied. Wording kept.');ctDraw()});
  const who=$('#ctwho');if(who)who.onchange=ev=>{CT.who=ev.target.value;ctWho()};
  const comb=$('#ctcomb');if(comb)comb.onchange=ev=>CT.combined=ev.target.checked;
  $$('[data-bk]').forEach(c=>c.onchange=()=>{CT.blank[c.dataset.bk]=c.checked;ctCount()});
@@ -172,7 +187,7 @@ async function ctSave(say){
 }
 /* ---- moving parts in the preview: click to select, drag or use arrow keys, size slider ---- */
 const CT_PARTS={logo:'Logo',logo2:'Second logo',logo3:'Event logo',org:'Organiser name',title:'Title',pre:'Line above the name',name:'Name',body:'Text',signs:'Signatures',seal:'Seal / medal',meta:'Certificate number'};
-const ctLay=()=>{const D=CT.D;D.layout=D.layout||{};return D.layout[D.tpl]=D.layout[D.tpl]||{}};
+const ctLay=()=>{const D=ctCur();D.layout=D.layout||{};return D.layout[D.tpl]=D.layout[D.tpl]||{}};
 const ctPart=k=>{const L=ctLay();return L[k]=L[k]||{x:0,y:0,s:1}};
 function ctRender(){   // redraw the preview from what was last loaded (fast, used while dragging)
  const cv=$('.ctpv canvas');if(!cv||!CT.pv)return;const {P,imgs}=CT.pv;
@@ -189,8 +204,8 @@ function ctMoveBar(){
   <label class="ctsz">Size <input type="range" min="30" max="250" step="5" value="${Math.round((o.s||1)*100)}" aria-label="Size"><span>${Math.round((o.s||1)*100)}%</span></label>
   <span class="ctnudge"><button type="button" class="btn sm ghost" data-nd="-1,0" aria-label="Move left">←</button><button type="button" class="btn sm ghost" data-nd="0,-1" aria-label="Move up">↑</button><button type="button" class="btn sm ghost" data-nd="0,1" aria-label="Move down">↓</button><button type="button" class="btn sm ghost" data-nd="1,0" aria-label="Move right">→</button></span>
   <button type="button" class="linkbtn ctr1">Reset</button><button type="button" class="linkbtn ctdone">Done</button></div>
-  <p class="small">Drag it in the preview, or use the arrow keys (hold Shift for bigger steps). Positions are saved for the ${esc((CERT_TPLS.find(t=>t[0]===CT.D.tpl)||[])[1]||'')} template.</p>`}
- const ra=$('.ctrall',bar);if(ra)ra.onclick=()=>{CT.D.layout[CT.D.tpl]={};ctRender();ctMoveBar();ctMark()};
+  <p class="small">Drag it in the preview, or use the arrow keys (hold Shift for bigger steps). Positions are saved for the ${esc((CERT_TPLS.find(t=>t[0]===ctCur().tpl)||[])[1]||'')} template.</p>`}
+ const ra=$('.ctrall',bar);if(ra)ra.onclick=()=>{const D=ctCur();D.layout[D.tpl]={};ctRender();ctMoveBar();ctMark()};
  const rng=$('input[type=range]',bar);if(rng)rng.oninput=()=>{ctPart(CT.sel).s=+rng.value/100;$('.ctsz span',bar).textContent=rng.value+'%';ctRender();ctMark()};
  $$('[data-nd]',bar).forEach(b=>b.onclick=ev=>{const [x,y]=b.dataset.nd.split(',').map(Number);ctNudge(x,y,ev.shiftKey)});
  const r1=$('.ctr1',bar);if(r1)r1.onclick=()=>{delete ctLay()[CT.sel];ctRender();ctMoveBar();ctMark()};
@@ -272,7 +287,7 @@ async function ctGenerate(){
    const it=list[i],P=it.P,Dk=ctDesign(P.place);say(`Making ${i+1} of ${list.length}: ${it.file}`,i/list.length);
    drawCert(cv,Dk,P,imgs);const jpg=cv.toDataURL('image/jpeg',.9);
    const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4',compress:true});
-   doc.setProperties({title:`${Dk.title||'Certificate'} – ${P.name||it.file}`,subject:CT.e.title,author:CT.D.org||'',creator:'Aqlyon'});
+   doc.setProperties({title:`${Dk.title||'Certificate'} – ${P.name||it.file}`,subject:CT.e.title,author:ctCur().org||'',creator:'Aqlyon'});
    for(let c=0;c<(it.copies||1);c++){if(c)doc.addPage('a4','landscape');doc.addImage(jpg,'JPEG',0,0,297,210,'cert','FAST')}   // the same image is stored once however many copies
    let fn=it.num?`${String(i+1).padStart(pad,'0')} - ${safe(it.file)}`:safe(it.file);if(used.has(fn))fn+=' '+P.ref;used.add(fn);
    zip.file(fn+'.pdf',doc.output('arraybuffer'));
