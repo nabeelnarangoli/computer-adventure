@@ -46,11 +46,14 @@ export function cleanCert(b = {}) {
     color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#0D2B22',
     title: t(b.title, 40), subtitle: t(b.subtitle, 60), pre: t(b.pre, 120), body: t(b.body, 600),
     nameStyle: ['serif', 'sans'].includes(b.nameStyle) ? b.nameStyle : 'script',
-    org: t(b.org, 90), logo: img(b.logo), logo2: img(b.logo2),
+    org: t(b.org, 90), logo: img(b.logo), logo2: img(b.logo2), logo3: img(b.logo3),   // logo3: the event's own logo
     signs: (Array.isArray(b.signs) ? b.signs : []).slice(0, 3).map((s) => ({ name: t(s && s.name, 60), title: t(s && s.title, 80), img: img(s && s.img) })),
     showId: b.showId === undefined ? true : !!b.showId,
     issued: /^\d{4}-\d{2}-\d{2}$/.test(b.issued || '') ? b.issued : '',
     footer: t(b.footer, 160),
+    // winners' certificates: their own wording, and who came 1st, 2nd or 3rd (person refs like AQ-1A2B3C-1)
+    win: ((w) => ({ title: t(w.title, 40), subtitle: t(w.subtitle, 60), pre: t(w.pre, 120), body: t(w.body, 600) }))(b.win && typeof b.win === 'object' ? b.win : {}),
+    winners: (Array.isArray(b.winners) ? b.winners : []).filter((w) => w && /^[A-Z0-9-]{3,30}$/.test(w.ref || '') && [1, 2, 3].includes(+w.place)).slice(0, 500).map((w) => ({ ref: w.ref, place: +w.place })),
   };
 }
 const badgeDesign = (e) => { const d = cleanBadge(e.badge || {}); return { ...d, logo: d.logo ? `/api/img/${d.logo}` : '' }; };
@@ -637,7 +640,7 @@ export function createEvents({ getStore, json }) {
         for (const r of await getRegs(e.id)) for (const v of Object.values(r.answers || {})) if (v && v.id && v.size !== undefined) await uploads().delete(v.id);
         if (e.staffKey) await meta().delete('staff-' + e.staffKey);
         await store.delete(e.id); await regs().delete(e.id); if (e.cover) await images().delete(e.cover); if (e.badge && e.badge.logo) await images().delete(e.badge.logo);
-        if (e.cert) for (const id of [e.cert.logo, e.cert.logo2, ...(e.cert.signs || []).map((x) => x.img)]) if (id) await images().delete(id);
+        if (e.cert) for (const id of [e.cert.logo, e.cert.logo2, e.cert.logo3, ...(e.cert.signs || []).map((x) => x.img)]) if (id) await images().delete(id);
         return json(200, { ok: true }); }
     }
     return null;
