@@ -10,7 +10,7 @@ const ctLoaded={};
 function ctScript(src){return ctLoaded[src]||(ctLoaded[src]=new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>{delete ctLoaded[src];no(new Error('Could not load '+src))};document.head.appendChild(s)}))}
 const ctImg=id=>{if(!id)return Promise.resolve(null);return new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src='/api/img/'+id})};
 async function ctLoadImgs(){const D=CT.D,ids={logo:D.logo,logo2:D.logo2};(D.signs||[]).forEach((s,i)=>ids['sign'+i]=s.img);
- const out={};await Promise.all(Object.entries(ids).map(async([k,id])=>{if(!id){out[k]=null;return}if(!CT.imgs[id])CT.imgs[id]=ctImg(id);out[k]=await CT.imgs[id]}));return out}
+ const out={};if(CERT_ART[D.tpl]){const src='/img/cert/'+D.tpl+'.jpg';if(!CT.imgs[src])CT.imgs[src]=new Promise(ok=>{const i=new Image();i.onload=()=>ok(i);i.onerror=()=>ok(null);i.src=src});out.bg=await CT.imgs[src]}await Promise.all(Object.entries(ids).map(async([k,id])=>{if(!id){out[k]=null;return}if(!CT.imgs[id])CT.imgs[id]=ctImg(id);out[k]=await CT.imgs[id]}));return out}
 
 /* ---- the words that go on the certificate ---- */
 const ctDay=s=>{const d=new Date(String(s).slice(0,10)+'T12:00:00');return isNaN(d)?'':d};
@@ -63,9 +63,9 @@ function ctDraw(){
  <div class="ctwrap">
  <div class="ctform">
   <fieldset class="qset"><legend>Design</legend>
-   <div class="cttpls">${CERT_TPLS.map(([v,n,d])=>`<label class="cttpl ${D.tpl===v?'on':''}"><input type="radio" name="cttpl" value="${v}" ${D.tpl===v?'checked':''}><b>${n}</b><small>${d}</small></label>`).join('')}</div>
-   <div class="field"><label>Main colour</label><div class="ctsw">${sw.map(c=>`<button type="button" class="ctswb ${D.color.toLowerCase()===c.toLowerCase()?'on':''}" data-c="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}<input type="color" id="ctcol" value="${esc(D.color)}" aria-label="Pick any colour"></div></div>
-   <div class="field"><label>Name written in</label><div class="rrow"><label class="radio"><input type="radio" name="ctns" value="script" ${D.nameStyle!=='serif'?'checked':''}><span>Handwriting style</span></label><label class="radio"><input type="radio" name="ctns" value="serif" ${D.nameStyle==='serif'?'checked':''}><span>Classic capitals style</span></label></div></div>
+   <div class="cttpls">${CERT_TPLS.map(([v,n,d])=>`<label class="cttpl ${D.tpl===v?'on':''}" title="${esc(d)}"><input type="radio" name="cttpl" value="${v}" ${D.tpl===v?'checked':''}>${CERT_ART[v]?`<img src="/img/cert/${v}-thumb.jpg" alt="" loading="lazy">`:`<canvas width="360" height="255" data-tpl="${v}"></canvas>`}<b>${n}</b></label>`).join('')}</div>
+   <div class="field ctcolf" ${CERT_ART[D.tpl]?'hidden':''}><label>Main colour</label><div class="ctsw">${sw.map(c=>`<button type="button" class="ctswb ${D.color.toLowerCase()===c.toLowerCase()?'on':''}" data-c="${c}" style="background:${c}" aria-label="Colour ${c}"></button>`).join('')}<input type="color" id="ctcol" value="${esc(D.color)}" aria-label="Pick any colour"></div></div>
+   <div class="field"><label>Name written in</label><div class="rrow"><label class="radio"><input type="radio" name="ctns" value="script" ${!['serif','sans'].includes(D.nameStyle)?'checked':''}><span>Handwriting style</span></label><label class="radio"><input type="radio" name="ctns" value="serif" ${D.nameStyle==='serif'?'checked':''}><span>Classic serif</span></label><label class="radio"><input type="radio" name="ctns" value="sans" ${D.nameStyle==='sans'?'checked':''}><span>Modern bold</span></label></div></div>
   </fieldset>
   <fieldset class="qset"><legend>Wording</legend>
    ${tx('ct-title','Title',D.title,40)}${tx('ct-sub','Second line',D.subtitle,60,'e.g. of Participation, of Achievement, of Appreciation')}
@@ -102,8 +102,11 @@ function ctDraw(){
    <div class="ctprog" hidden><div class="ctbar"><i></i></div><p class="small"></p></div>
   </section>
  </div></div>`;
- ctBind();ctWho();ctPreview();ctMark();
+ ctBind();ctWho();ctPreview();ctMark();certLoadFonts().then(ctThumbs);
 }
+// small previews of the drawn templates in the chosen colour (picture templates use their own thumbnail)
+let ctTT=null;
+function ctThumbs(){$$('.cttpl canvas').forEach(c=>drawCert(c,{...CERT_DEFAULT,tpl:c.dataset.tpl,color:CT.D.color,body:'',pre:'',signs:[{name:' ',title:''}],showId:false},{name:'Your Name',year:new Date().getFullYear(),answers:{}},{}))}
 function ctRead(){
  const D=CT.D,v=s=>$(s).value;
  D.title=v('#ct-title');D.subtitle=v('#ct-sub');D.pre=v('#ct-pre');D.body=v('#ct-body');D.footer=v('#ct-foot');D.org=v('#ct-org');
@@ -114,9 +117,9 @@ const ctMark=()=>{const s=$('.ctsaved');if(!s)return;if(JSON.stringify(CT.D)!==C
 let ctT=null;const ctLater=()=>{clearTimeout(ctT);ctT=setTimeout(()=>{ctRead();ctPreview();ctMark()},180)};
 function ctBind(){
  const D=CT.D;
- $$('input[name=cttpl]').forEach(r=>r.onchange=()=>{D.tpl=r.value;$$('.cttpl').forEach(l=>l.classList.toggle('on',l.contains(r)));ctLater()});
- $$('.ctswb').forEach(b=>b.onclick=()=>{D.color=b.dataset.c;$('#ctcol').value=b.dataset.c;$$('.ctswb').forEach(x=>x.classList.toggle('on',x===b));ctLater()});
- $('#ctcol').oninput=ev=>{D.color=ev.target.value;$$('.ctswb').forEach(x=>x.classList.remove('on'));ctLater()};
+ $$('input[name=cttpl]').forEach(r=>r.onchange=()=>{D.tpl=r.value;$$('.cttpl').forEach(l=>l.classList.toggle('on',l.contains(r)));$('.ctcolf').hidden=!!CERT_ART[D.tpl];ctLater()});
+ $$('.ctswb').forEach(b=>b.onclick=()=>{D.color=b.dataset.c;$('#ctcol').value=b.dataset.c;$$('.ctswb').forEach(x=>x.classList.toggle('on',x===b));ctLater();ctThumbs()});
+ $('#ctcol').oninput=ev=>{D.color=ev.target.value;$$('.ctswb').forEach(x=>x.classList.remove('on'));ctLater();clearTimeout(ctTT);ctTT=setTimeout(ctThumbs,250)};
  $$('.ctform input:not([type=file]):not([name=cttpl]),.ctform textarea').forEach(i=>{i.addEventListener('input',ctLater);i.addEventListener('change',ctLater)});
  $$('.ctt').forEach(i=>i.addEventListener('focus',()=>CT.focus=i));
  $$('[data-ph]').forEach(b=>{b.onmousedown=ev=>ev.preventDefault();b.onclick=()=>{const i=CT.focus||$('#ct-body'),t=`{${b.dataset.ph}}`,a=i.selectionStart??i.value.length,z=i.selectionEnd??a;

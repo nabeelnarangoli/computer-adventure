@@ -64,6 +64,7 @@ function certCorner(ctx,x,y,sx,sy,u,col){
 }
 
 function drawCert(cv,D0,P,imgs={}){
+ if(D0&&typeof CERT_ART!=='undefined'&&CERT_ART[D0.tpl])return drawArtCert(cv,Object.assign({},CERT_DEFAULT,D0),P,imgs,CERT_ART[D0.tpl]);
  const D=Object.assign({},CERT_DEFAULT,D0||{}),W=cv.width,H=cv.height,u=W/1000,ctx=cv.getContext('2d'),C=/^#[0-9a-f]{6}$/i.test(D.color)?D.color:'#0D2B22';
  const tpl=D.tpl,dark=tpl==='elegant';
  ctx.save();ctx.clearRect(0,0,W,H);ctx.textBaseline='alphabetic';
@@ -152,5 +153,100 @@ function drawCert(cv,D0,P,imgs={}){
  const meta=[D.showId&&P.ref?`Certificate No. ${P.ref}`:'',P.issued?`Issued ${P.issued}`:''].filter(Boolean).join('   ·   ');
  if(meta){ctx.textAlign='center';ctx.fillText(meta,cx,H-u*(tpl==='modern'?50:54))}
  if(D.footer){ctx.textAlign='center';ctx.fillText(certFill(D.footer,P),cx,H-u*(tpl==='modern'?66:70))}
+ ctx.letterSpacing='0px';ctx.restore();
+}
+
+/* =====================================================================
+   Picture templates: a ready-made background (public/img/cert/<id>.jpg, A4 landscape 2480x1754,
+   made from licensed vector designs with their sample text removed) plus a layout that says
+   where each piece of text goes. x values are fractions of the width, y of the height,
+   sizes are in u (1/1000 of the width). Colours come from the design, not the colour picker.
+   ===================================================================== */
+const CERT_ART={
+ crimson:{name:'Crimson',desc:'Navy and red folded corners',title:'#1A2230',accent:'#E31E3C',
+  cx:.5,colW:.58,logo:{y:.085,h:.075},org:{y:.19},titleY:.30,subY:.355,preY:.44,nameY:.535,lineY:.575,bodyY:.625,
+  signY:.835,slots:{1:[.28],2:[.28,.685],3:[.17,.33,.685]},seal:{x:.49,y:.795,r:46}},
+ mosaic:{name:'Mosaic',desc:'Colourful geometric frame with laurel',title:'#22285A',accent:'#F26B2A',nameColor:'#F26B2A',
+  cx:.5,colW:.5,orgBand:{x:.05,y:.083,color:'#FFFFFF'},laurel:{x:.15,y:.305,r:.045},titleY:.245,subY:.295,preY:.40,nameY:.49,lineY:.53,bodyY:.585,
+  signY:.75,slots:{1:[.5],2:[.33,.67],3:[.3,.5,.7]},meta:{y:.85}},
+ ribbon:{name:'Red ribbon',desc:'Folded red ribbon with a wax seal',title:'#1B1F2A',accent:'#D71A3A',
+  cx:.645,colW:.5,logo:{y:.07,h:.075},org:{y:.175},titleY:.27,subY:.32,preY:.405,nameY:.495,lineY:.535,bodyY:.585,
+  signY:.835,slots:{1:[.555],2:[.555,.885],3:[.47,.6,.885]},meta:{y:.925,x:.645}},
+ fluid:{name:'Fluid',desc:'Soft colour gradients on light grey',title:'#1C1C1C',accent:'#3B7DD8',
+  cx:.5,colW:.56,logo:{y:.12,h:.07},org:{y:.215},titleY:.31,subY:.355,preY:.44,nameY:.525,lineY:.565,bodyY:.615,
+  signY:.775,slots:{1:[.5],2:[.37,.63],3:[.33,.5,.67]},meta:{y:.87}},
+ blocks:{name:'Blocks',desc:'Bauhaus blocks down the left side',title:'#14193A',accent:'#F04E23',align:'left',
+  x0:.255,colW:.6,logo:{y:.075,h:.075},org:{y:.18},titleY:.29,subY:.34,preY:.43,nameY:.515,lineY:.555,bodyY:.605,
+  signY:.82,slots:{1:[.40],2:[.40,.65],3:[.38,.565,.75]},meta:{y:.905,x:.30}},
+ orbit:{name:'Orbit',desc:'Orange and blue 3D circles',title:'#263C8C',accent:'#F39C12',nameColor:'#263C8C',
+  cx:.515,colW:.46,logo:{y:.018,h:.055},org:{y:.105,w:.3,lines:2},titleY:.27,subY:.315,preY:.39,nameY:.47,lineY:.505,bodyY:.55,
+  signY:.745,slots:{1:[.515],2:[.355,.665],3:[.33,.515,.70]},meta:{y:.835}},
+ panel:{name:'Blue panel',desc:'Bold blue side panel with shapes',title:'#FFFFFF',accent:'#3366BF',
+  cx:.70,colW:.44,panel:{cx:.24,w:.32,logoY:.12,logoH:.1,orgY:.27,titleY:.445,subY:.49},preY:.36,nameY:.445,lineY:.485,bodyY:.535,
+  signY:.855,slots:{1:[.70],2:[.60,.80],3:[.55,.70,.85]},meta:{y:.935,x:.70},ink:'#1F2430'},
+};
+Object.entries(CERT_ART).forEach(([k,a])=>CERT_TPLS.push([k,a.name,a.desc]));
+
+function drawArtCert(cv,D,P,imgs,A){
+ const W=cv.width,H=cv.height,u=W/1000,ctx=cv.getContext('2d'),X=f=>f*W,Y=f=>f*H;
+ ctx.save();ctx.clearRect(0,0,W,H);ctx.textBaseline='alphabetic';
+ if(imgs.bg)ctx.drawImage(imgs.bg,0,0,W,H);else{ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H)}
+ const left=A.align==='left',ax=left?X(A.x0):X(A.cx),al=left?'left':'center',colW=X(A.colW),ink=A.ink||A.title,soft='#555B66';
+ const spaced=(txt,x,y,font,ls,col,align=al)=>{ctx.font=font;ctx.fillStyle=col;ctx.textAlign=align;ctx.letterSpacing=`${ls}px`;ctx.fillText(txt,x,y);ctx.letterSpacing='0px'};
+ const fitSpaced=(txt,font,size,min,maxW,ls)=>{let s=size;for(;s>min;s-=1){ctx.font=font(s);ctx.letterSpacing=`${ls*s}px`;if(ctx.measureText(txt).width<=maxW)break}ctx.letterSpacing='0px';return s};
+ const L=imgs.logo,L2=imgs.logo2;
+ /* logos & organiser */
+ if(A.panel){const p=A.panel,pcx=X(p.cx),pw=X(p.w);
+  const shown=[L,L2].filter(Boolean),bh=Y(p.logoH);
+  shown.forEach((im,i)=>{const x=shown.length===2?pcx+(i?1:-1)*pw*.24:pcx,bw=shown.length===2?pw*.42:pw*.55;ctx.fillStyle='#fff';ctx.beginPath();ctx.roundRect(x-bw/2,Y(p.logoY),bw,bh,u*10);ctx.fill();certImg(ctx,im,x,Y(p.logoY)+bh/2,bw*.84,bh*.76)});
+  if(D.org){const f=certFit(ctx,s=>`600 ${s}px Montserrat`,D.org.toUpperCase(),u*14,u*9,pw*.9,2);ctx.fillStyle='#fff';ctx.letterSpacing=`${u*1.4}px`;certText(ctx,f.lines,pcx,Y(p.orgY)+f.s,f.s*1.35);ctx.letterSpacing='0px'}
+  const t=(D.title||'').toUpperCase(),ts=fitSpaced(t,s=>`700 ${s}px Montserrat`,u*44,u*20,pw*.9,.08);spaced(t,pcx,Y(p.titleY),`700 ${ts}px Montserrat`,ts*.08,'#fff','center');
+  if(D.subtitle){const st=D.subtitle.toUpperCase(),ss=fitSpaced(st,s=>`500 ${s}px Montserrat`,u*15,u*9,pw*.9,.18);spaced(st,pcx,Y(p.subY),`500 ${ss}px Montserrat`,ss*.18,'#fff','center')}
+ }else{
+  if(A.orgBand){ // organiser written in the dark top band
+   let x=X(A.orgBand.x);const bh=u*34,cy=Y(A.orgBand.y);
+   if(L2){const w=certImg(ctx,L2,x+u*40,cy,u*80,bh);x+=u*88}   // second logo next to the name (the first goes in the laurel)
+   if(D.org){const f=certFit(ctx,s=>`700 ${s}px Montserrat`,D.org.toUpperCase(),u*14,u*9,X(.5),1);ctx.fillStyle=A.orgBand.color;ctx.textAlign='left';ctx.letterSpacing=`${u*1.2}px`;ctx.fillText(f.lines[0]||'',x,cy+f.s*.36);ctx.letterSpacing='0px'}
+  }
+  if(A.logo){const shown=[L,L2].filter(Boolean),lh=Y(A.logo.h);
+   shown.forEach((im,i)=>{const x=left?X(A.x0)+u*70+i*u*160:shown.length===2?ax+(i?1:-1)*u*85:ax;certImg(ctx,im,x,Y(A.logo.y)+lh/2,u*140,lh,'multiply')});
+   if(D.org&&A.org){ctx.fillStyle=A.title;ctx.textAlign=al;const n=A.org.lines||1,f=certFit(ctx,s=>`600 ${s}px Montserrat`,D.org.toUpperCase(),u*13,u*8,(A.org.w?X(A.org.w):colW)*.88,n);ctx.letterSpacing=`${u*2}px`;certText(ctx,f.lines,ax,Y(shown.length?A.org.y:A.logo.y+.03),f.s*1.45,al);ctx.letterSpacing='0px'}
+  }
+  /* title */
+  const t=(D.title||'').toUpperCase(),ts=fitSpaced(t,s=>`700 ${s}px Montserrat`,u*54,u*24,colW,.06);spaced(t,ax,Y(A.titleY),`700 ${ts}px Montserrat`,ts*.06,A.title);
+  if(D.subtitle){const st=D.subtitle.toUpperCase(),ss=fitSpaced(st,s=>`500 ${s}px Montserrat`,u*16,u*9,colW,.22);spaced(st,ax,Y(A.subY),`500 ${ss}px Montserrat`,ss*.22,A.accent)}
+ }
+ /* laurel badge: first logo inside, or the year */
+ if(A.laurel){const lx=X(A.laurel.x),ly=Y(A.laurel.y),r=X(A.laurel.r);
+  if(L)certImg(ctx,L,lx,ly,r*1.35,r*1.15,'multiply');
+  else{ctx.fillStyle=A.title;ctx.textAlign='center';ctx.font=`700 ${u*19}px Montserrat`;ctx.fillText(String(P.year||''),lx,ly+u*7)}}
+ /* presented to */
+ const ct=A.cx!=null&&!left?ax:ax;
+ if(D.pre){const pt=certFill(D.pre,P).toUpperCase(),ps=fitSpaced(pt,s=>`500 ${s}px Montserrat`,u*12.5,u*8,colW,.12);spaced(pt,ct,Y(A.preY),`500 ${ps}px Montserrat`,ps*.12,soft)}
+ /* name */
+ const st=D.nameStyle==='sans'?'sans':D.nameStyle==='serif'?'serif':'script';
+ const nf=st==='script'?s=>`400 ${s}px "Great Vibes"`:st==='serif'?s=>`700 ${s}px "Cormorant Garamond"`:s=>`600 ${s}px Montserrat`;
+ const f=certFit(ctx,nf,P.name||'',st==='script'?u*68:st==='serif'?u*54:u*44,u*24,colW,1);ctx.font=nf(f.s);ctx.fillStyle=A.nameColor||ink;ctx.textAlign=al;ctx.fillText(f.lines[0]||'',ct,Y(A.nameY));
+ // underline in the accent colour
+ const lw=left?colW*.8:colW*.78;ctx.strokeStyle=A.accent;ctx.lineWidth=u*1.6;ctx.beginPath();if(left){ctx.moveTo(ax,Y(A.lineY));ctx.lineTo(ax+lw,Y(A.lineY))}else{ctx.moveTo(ax-lw/2,Y(A.lineY));ctx.lineTo(ax+lw/2,Y(A.lineY))}ctx.stroke();
+ /* body: as large as fits above the signatures */
+ const by=Y(A.bodyY),limit=Y(A.signY)-u*62,body=certFill(D.body,P);let bs=u*16,bl=[];
+ for(;bs>=u*10;bs-=u*.5){ctx.font=`400 ${bs}px Montserrat`;bl=certLines(ctx,body,colW*.95);if(bl.length<=4&&by+(bl.length-1)*bs*1.55<=limit)break}
+ ctx.fillStyle='#3A404A';certText(ctx,bl.slice(0,4),ct,by,bs*1.55,al);
+ /* seal */
+ if(A.seal)certSeal(ctx,X(A.seal.x),Y(A.seal.y),u*A.seal.r,'CERTIFIED',String(P.year||new Date().getFullYear()));
+ /* signatures */
+ const signs=(D.signs||[]).filter(s=>s&&(s.name||s.title||s.img)).slice(0,3),slots=(A.slots[signs.length]||[]),sw=u*150,base=Y(A.signY);
+ signs.forEach((s,i)=>{const x=X(slots[i]);if(!x)return;
+  const im=imgs['sign'+(D.signs||[]).indexOf(s)];if(im)certImg(ctx,im,x,base-u*26,sw*.95,u*48,'multiply');
+  ctx.strokeStyle='#9AA0A8';ctx.lineWidth=u*1;ctx.beginPath();ctx.moveTo(x-sw/2,base);ctx.lineTo(x+sw/2,base);ctx.stroke();
+  ctx.textAlign='center';ctx.fillStyle=ink;const n=certFit(ctx,z=>`700 ${z}px Montserrat`,(s.name||'').toUpperCase(),u*12,u*8,sw*1.2,1);ctx.letterSpacing=`${u*.6}px`;ctx.fillText(n.lines[0]||'',x,base+u*20);ctx.letterSpacing='0px';
+  ctx.fillStyle='#6A707A';const tt=certFit(ctx,z=>`500 ${z}px Montserrat`,s.title||'',u*10.5,u*7,sw*1.35,1);ctx.font=`500 ${tt.s}px Montserrat`;ctx.fillText(s.title||'',x,base+u*35,sw*1.4)});
+ /* certificate number, issue date, footer */
+ ctx.font=`500 ${u*9.5}px Montserrat`;ctx.fillStyle='#7A808A';ctx.letterSpacing=`${u*.6}px`;
+ const meta=[D.showId&&P.ref?`Certificate No. ${P.ref}`:'',P.issued?`Issued ${P.issued}`:''].filter(Boolean).join('   ·   ');
+ const m=A.meta||{y:A.signY+.075},mx=m.x!=null?X(m.x):ax;
+ if(meta){ctx.textAlign=al;ctx.fillText(meta,mx,Y(m.y))}
+ if(D.footer){ctx.textAlign=al;ctx.fillText(certFill(D.footer,P),mx,Y(m.y)+u*15)}
  ctx.letterSpacing='0px';ctx.restore();
 }

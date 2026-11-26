@@ -37,7 +37,7 @@ export function cleanBadge(b = {}) {
   };
 }
 // certificate design per event (drawn and turned into PDFs in the admin's browser)
-export const CERT_TPLS = ['classic', 'modern', 'elegant'];
+export const CERT_TPLS = ['classic', 'modern', 'elegant', 'crimson', 'mosaic', 'ribbon', 'fluid', 'blocks', 'orbit', 'panel'];
 export function cleanCert(b = {}) {
   const t = (v, n) => String(v || '').replace(/\s+/g, ' ').trim().slice(0, n);
   const img = (v) => (/^[a-f0-9]{24}$/.test(v || '') ? v : '');
@@ -45,7 +45,7 @@ export function cleanCert(b = {}) {
     tpl: CERT_TPLS.includes(b.tpl) ? b.tpl : 'classic',
     color: /^#[0-9a-f]{6}$/i.test(b.color || '') ? b.color : '#0D2B22',
     title: t(b.title, 40), subtitle: t(b.subtitle, 60), pre: t(b.pre, 120), body: t(b.body, 600),
-    nameStyle: b.nameStyle === 'serif' ? 'serif' : 'script',
+    nameStyle: ['serif', 'sans'].includes(b.nameStyle) ? b.nameStyle : 'script',
     org: t(b.org, 90), logo: img(b.logo), logo2: img(b.logo2),
     signs: (Array.isArray(b.signs) ? b.signs : []).slice(0, 3).map((s) => ({ name: t(s && s.name, 60), title: t(s && s.title, 80), img: img(s && s.img) })),
     showId: b.showId === undefined ? true : !!b.showId,
