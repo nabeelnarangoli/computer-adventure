@@ -522,3 +522,5 @@ pre.seomd{white-space:pre-wrap;background:var(--surface);border:1px solid var(--
 .ctsz span{min-width:42px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .ctnudge{display:flex;gap:4px}
 .ctnudge .btn{padding:4px 10px;min-width:0}
+.ctpvw{font-weight:700;padding:0;min-height:0;font-size:inherit}
+.ctmv .ctr1,.ctmv .ctdone{padding:0;min-height:0}

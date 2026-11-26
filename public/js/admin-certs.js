@@ -215,7 +215,9 @@ let ctPvN=0;
 async function ctPreview(){
  const cv=$('.ctpv canvas');if(!cv)return;const n=++ctPvN;
  const items=ctItems(),all=ctPeople(),sample=all[0]||{name:'Aisha Rahman',ref:'AQ-000000-1',answers:{}};
- const it=items[0]||{P:CT.kind==='blank'?ctP(sample,0,true):ctP(sample,CT.kind==='win'?1:0)};
+ let it=items[0]||{P:CT.kind==='blank'?ctP(sample,0,true):ctP(sample,CT.kind==='win'?CT.wplace:0)};
+ if(CT.kind==='win'){   // show the place chosen above: the winner clicked in the list, else the first winner with that place, else a sample
+  it=items.find(x=>x.P.ref===CT.pvRef&&x.P.place===CT.wplace)||items.find(x=>x.P.place===CT.wplace)||{P:ctP(sample,CT.wplace)}}
  const imgs=await ctLoadImgs();if(n!==ctPvN)return;
  CT.pv={P:it.P,imgs};ctRender();
  const t=$('.ctpvn');if(t)t.textContent=it.P.blank?`Preview: blank ${it.P.place?ctRank(it.P.place):'participation'} certificate`:items[0]||all[0]?`Preview with ${it.P.name}'s details${it.P.place?' · '+ctRank(it.P.place):''}`:'Preview with a sample name';
@@ -244,10 +246,11 @@ function ctWin(){
  box.innerHTML=`<div class="field"><label>Add a winner</label><div class="ctplaces">${[1,2,3].map(k=>`<label class="radio"><input type="radio" name="ctpl" value="${k}" ${CT.wplace===k?'checked':''}><span>${['','🥇','🥈','🥉'][k]} ${ctRank(k)}</span></label>`).join('')}</div>
   <input type="search" class="ctwq" placeholder="Search name, ref or answer (e.g. a category)" value="${esc(CT.wq)}"></div>
   ${q?`<div class="ctlist">${hits.map(p=>`<div class="cthit"><span>${esc(p.name)} <small>${esc(p.ref)}${info(p)?' · '+esc(info(p)):''}</small></span><button type="button" class="btn sm" data-add="${esc(p.ref)}">+ ${ctRank(CT.wplace)}</button></div>`).join('')||'<p class="small">Nobody matches (or already a winner).</p>'}</div>`:''}
-  ${[1,2,3].map(k=>{const ws=D.winners.filter(w=>w.place===k&&by.get(w.ref));return ws.length?`<div class="ctwg"><h3>${['','🥇','🥈','🥉'][k]} ${ctRank(k)}</h3>${ws.map(w=>{const p=by.get(w.ref);return `<div class="cthit"><span>${esc(p.name)} <small>${esc(p.ref)}${info(p)?' · '+esc(info(p)):''}</small></span><button type="button" class="linkbtn" data-del="${esc(w.ref)}" aria-label="Remove ${esc(p.name)}">Remove</button></div>`}).join('')}</div>`:''}).join('')}`;
- $$('input[name=ctpl]',box).forEach(r=>r.onchange=()=>{CT.wplace=+r.value;ctWin()});
+  ${[1,2,3].map(k=>{const ws=D.winners.filter(w=>w.place===k&&by.get(w.ref));return ws.length?`<div class="ctwg"><h3>${['','🥇','🥈','🥉'][k]} ${ctRank(k)}</h3>${ws.map(w=>{const p=by.get(w.ref);return `<div class="cthit"><span><button type="button" class="linkbtn ctpvw" data-pv="${esc(p.ref)}" data-pl="${k}" title="Show in the preview">${esc(p.name)}</button> <small>${esc(p.ref)}${info(p)?' · '+esc(info(p)):''}</small></span><button type="button" class="linkbtn" data-del="${esc(w.ref)}" aria-label="Remove ${esc(p.name)}">Remove</button></div>`}).join('')}</div>`:''}).join('')}`;
+ $$('input[name=ctpl]',box).forEach(r=>r.onchange=()=>{CT.wplace=+r.value;CT.pvRef=null;ctWin()});
  const s=$('.ctwq',box);s.oninput=()=>{CT.wq=s.value;const pos=s.selectionStart;ctWin();const n=$('.ctwq');n.focus();n.setSelectionRange(pos,pos)};
  $$('[data-add]',box).forEach(b=>b.onclick=()=>{D.winners.push({ref:b.dataset.add,place:CT.wplace});CT.wq='';ctWin();ctMark();$('.ctwq').focus()});
+ $$('[data-pv]',box).forEach(b=>b.onclick=()=>{CT.pvRef=b.dataset.pv;CT.wplace=+b.dataset.pl;ctWin()});
  $$('[data-del]',box).forEach(b=>b.onclick=()=>{D.winners=D.winners.filter(w=>w.ref!==b.dataset.del);ctWin();ctMark()});
  ctCount();
 }
