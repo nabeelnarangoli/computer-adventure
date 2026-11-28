@@ -1,4 +1,6 @@
 /* Participant badge at /badge/<token> (and /badge/preview#<design> for the admin preview).
+   /badge/batch is a hidden helper for the admin's "Download badges (PDF)": it draws each badge it is sent and
+   returns a print-resolution image, so the PDF looks exactly like every person's own badge.
    One badge layout, styled by the event's design (template, colour, organiser, size). The saved image is
    painted from the badge on screen, so screen, print and image always match. Data comes from window.BADGE. */
 (()=>{
@@ -65,15 +67,17 @@ function render(){
    else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
   }catch(x){console.error(x);alert('Could not make the image. Take a screenshot instead.')}
   sv.disabled=false;sv.textContent='Save badge image'};
+ return {qr,N,sz};
 }
 
 /* paint the badge element onto a canvas: backgrounds, borders, images, the QR code and every word of text,
    at the same positions as on screen, scaled to the print resolution */
-async function paint(root,outW,{qr,N}){
+async function paint(root,outW,{qr,N},type='image/png',quality){
  try{await document.fonts.ready}catch(x){}
  await Promise.all([...root.querySelectorAll('img')].map(i=>i.complete?0:new Promise(r=>{i.onload=i.onerror=r})));
  const R0=root.getBoundingClientRect(),k=outW/R0.width,c=document.createElement('canvas');c.width=Math.round(R0.width*k);c.height=Math.round(R0.height*k);
- const g=c.getContext('2d');g.scale(k,k);g.translate(-R0.left,-R0.top);
+ const g=c.getContext('2d');if(type==='image/jpeg'){g.fillStyle='#fff';g.fillRect(0,0,c.width,c.height)}   // JPEG has no see-through corners: make them white
+ g.scale(k,k);g.translate(-R0.left,-R0.top);
  const rr=(x,y,w,h,r)=>{r=Math.max(0,Math.min(r,w/2,h/2));g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()};
  const px=v=>parseFloat(v)||0;const clear=v=>!v||v==='transparent'||/rgba\([^)]*,\s*0\)$/.test(v);
  const rs=getComputedStyle(root);rr(R0.left,R0.top,R0.width,R0.height,px(rs.borderTopLeftRadius));g.clip();
@@ -100,8 +104,16 @@ async function paint(root,outW,{qr,N}){
    let word=w[0];if(s.textTransform==='uppercase')word=word.toUpperCase();
    g.fillText(word,b.left,b.top+(b.height-(asc+desc))/2+asc)}
  }
- return await new Promise(res=>c.toBlob(res,'image/png'));
+ return await new Promise(res=>c.toBlob(res,type,quality));
 }
-render();
-addEventListener('hashchange',()=>{if(!window.BADGE)render()});
+if(/^\/badge\/batch\/?$/.test(location.pathname)){
+ // batch: the admin page (same site only) sends one badge at a time and gets back a JPEG at 300 dpi
+ addEventListener('message',async ev=>{
+  if(ev.origin!==location.origin||ev.source!==parent||!ev.data||!ev.data.badge)return;
+  try{window.BADGE=ev.data.badge;const {qr,N,sz}=render();
+   const blob=await paint($('.bdg'),Math.round(sz.mm[0]/25.4*300),{qr,N},'image/jpeg',.92),buf=await blob.arrayBuffer();
+   parent.postMessage({i:ev.data.i,buf,mm:sz.mm},location.origin,[buf])}
+  catch(x){parent.postMessage({i:ev.data.i,error:String(x&&x.message||x)},location.origin)}});
+ parent.postMessage({ready:true},location.origin);
+}else{render();addEventListener('hashchange',()=>{if(!window.BADGE)render()})}
 })();

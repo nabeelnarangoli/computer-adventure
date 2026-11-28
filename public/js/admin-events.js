@@ -337,7 +337,7 @@ async function regsView(e){
   return `<div class="rstats"><div><b>${regs.length}</b><span>Registrations</span></div><div><b>${ppl}${e.capacity?`<small> / ${e.capacity}</small>`:''}</b><span>People attending</span></div>${e.paid?`<div class="${pend?'hot':''}"><b>${pend}</b><span>Waiting for approval</span></div>`:''}${nimp?`<div class="hot"><b>${nimp}</b><span>Imported, not confirmed</span></div>`:''}<div class="chk"><b>${regs.filter(okReg).reduce((t,r)=>t+attN(r),0)}<small> / ${ppl}</small></b><span>Checked in</span></div>${showStd('role')?`<div><b>${stu}</b><span>Students</span></div><div><b>${par}</b><span>Parents</span></div>`:''}</div>`};
  const opts=[['all','All'],['active','Attending'],...(e.paid?[['pending','Waiting for approval'],['approved','Approved'],['rejected','Rejected']]:[['confirmed','Confirmed']]),['cancelled','Cancelled'],['in','Checked in'],['notin','Not checked in yet'],['imported','Imported, not confirmed']];
  main.innerHTML=`${evHeadHTML(e,'regs')}
-  <div class="evbtns rbtns"><button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost impx">⬆ Import from Excel</button><button type="button" class="btn ghost editev">Edit event</button></div>
+  <div class="evbtns rbtns"><button type="button" class="btn xls" ${regs.length?'':'disabled'}>⬇ Download Excel</button><button type="button" class="btn ghost bdgpdf" ${regs.some(r=>r.status==='confirmed'||r.status==='approved')?'':'disabled'} title="Every confirmed person's badge in one PDF, one per page at the printed badge size">🪪 Download badges (PDF)</button><button type="button" class="btn ghost impx">⬆ Import from Excel</button><button type="button" class="btn ghost editev">Edit event</button></div>
   <div class="calnote"></div>
   <div class="rstatwrap">${stats()}</div>
   <div class="rtools"><input type="search" class="rq" placeholder="Search name, email, mobile or ref" aria-label="Search registrations"><select class="rf" aria-label="Show">${opts.map(([v,t])=>`<option value="${v}">${t}</option>`).join('')}</select></div>
@@ -384,6 +384,7 @@ async function regsView(e){
  $('.rq',main).oninput=ev=>{q=ev.target.value;draw()};
  $('.rf',main).onchange=ev=>{fs=ev.target.value;draw()};
  $('.xls',main).onclick=download;
+ $('.bdgpdf',main).onclick=ev=>badgesPdf(e,ev.currentTarget);
  bindEvHead(e);history.replaceState(null,'','#events/'+e.id);
  $('.editev',main).onclick=()=>eventForm(EVENTS.find(x=>x.id===e.id)||e);
  note();bind();bindSel();scrollTo(0,0);slPanel(e,$('.wlistwrap',main));

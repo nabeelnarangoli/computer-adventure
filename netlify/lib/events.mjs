@@ -558,6 +558,21 @@ export function createEvents({ getStore, json }) {
       await events().setJSON(e.id, e);
       return json(200, { on: e.staffOn, key: e.staffKey || '' });
     }
+    // every confirmed person's badge, for the "Download badges (PDF)" button (drawn in the admin's browser)
+    m = path.match(/^\/admin\/events\/([a-f0-9]{16})\/badges$/);
+    if (m && method === 'GET') {
+      const e = await events().get(m[1], { type: 'json' }); if (!e) return json(404, { error: 'Event not found.' });
+      const rs = regs(), doc = (await rs.get(e.id, { type: 'json' })) || { list: [] }, origin = new URL(req.url).origin, pe = publicEvent(e, doc.list);
+      let changed = false; for (const r of doc.list) if (calOk(r) && (await ensureTk(e, r))) changed = true;
+      if (changed) await rs.setJSON(e.id, doc);
+      const out = [];
+      for (const r of doc.list.filter(calOk)) {
+        if (r.people && r.people.length) r.people.forEach((x, i) => out.push({ ...badgeData(e, r, i, origin, pe), others: [], regId: r.id }));
+        else out.push({ ...badgeData(e, r, -1, origin, pe), regId: r.id });
+      }
+      out.sort((a, b) => a.name.localeCompare(b.name));
+      return json(200, { badges: out });
+    }
     m = path.match(/^\/admin\/events\/([a-f0-9]{16})(\/regs(?:\/([a-f0-9]{16}))?)?$/);
     if (m) {
       const store = events(); const e = await store.get(m[1], { type: 'json' });
@@ -658,21 +673,25 @@ export function createEvents({ getStore, json }) {
     return null;
   }
 
+  // what one badge shows: a person's own badge (details for each person: their name, ref AQ-1234-2 and their answers,
+  // e.g. age group, as chips) or the booking's badge. Used by the badge page and by the admin's "all badges" PDF.
+  function badgeData(e, r, p, origin, pe) {
+    const P = personOf(r, p);
+    return { design: badgeDesign(e), tk: P ? P.tk : r.tk, qr: `${origin}/admin#checkin/${P ? P.tk : r.tk}`, name: P ? P.name : nameCase(r.name), role: P ? '' : r.role || '', seats: P ? 1 : r.seats || 1, ref: P ? P.ref : r.ref, status: r.status, valid: calOk(r), attended: P ? P.attended : r.attended || '',
+      chips: P ? eachSummary(e, r.people[p]).filter((x) => x.value.length <= 24).slice(0, 2).map((x) => (/^\d+(\.\d+)?$/.test(x.value) ? `${x.label} ${x.value}`.slice(0, 30) : x.value)) : [], person: P ? { i: P.i + 1, n: P.n, noun: nounOf(formOf(e)) } : null,
+      others: P && P.n > 1 ? r.people.map((x, i) => ({ name: nameCase(x.name), url: `/badge/${x.tk || r.tk}`, me: i === p })) : [],
+      event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
+  }
   // Badge page: what the participant shows at the entrance (QR code for the admin check-in)
   async function badge(tk, origin) {
-    const f = tk === 'preview' ? null : await byBadge(tk);
+    const f = tk === 'preview' || tk === 'batch' ? null : await byBadge(tk);
     const head = (t) => `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>${esc(t)}</title><meta name="robots" content="noindex"><link rel="icon" href="/img/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Instrument+Sans:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="/site/site.css"><link rel="stylesheet" href="/site/badge.css"></head>`;
-    if (tk === 'preview') return new Response(`${head('Badge preview')}<body class="bdgpage pv"><main class="bdgwrap" id="badge"></main><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' } });
+    if (tk === 'preview' || tk === 'batch') return new Response(`${head('Badge preview')}<body class="bdgpage pv"><main class="bdgwrap" id="badge"></main><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' } });
     if (!f) return new Response(`${head('Badge not found')}<body class="bdgpage"><main class="bdgwrap"><div class="bdgmsg"><h1>Badge not found</h1><p>Check the link, or contact Aqlyon Career Discovery Centre.</p><p><a class="btn" href="/#events">See upcoming events</a></p></div></main></body></html>`, { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
-    const { e, r } = f, P = personOf(r, f.p);
-    const pe = publicEvent(e, f.doc.list);
-    // a person's own badge (details for each person): their name, ref AQ-1234-2 and their answers (e.g. age group) as chips
-    const data = { design: badgeDesign(e), tk: P ? P.tk : r.tk, qr: `${origin}/admin#checkin/${P ? P.tk : r.tk}`, name: P ? P.name : nameCase(r.name), role: P ? '' : r.role || '', seats: P ? 1 : r.seats || 1, ref: P ? P.ref : r.ref, status: r.status, valid: calOk(r), attended: P ? P.attended : r.attended || '',
-      chips: P ? eachSummary(e, r.people[f.p]).filter((x) => x.value.length <= 24).slice(0, 2).map((x) => (/^\d+(\.\d+)?$/.test(x.value) ? `${x.label} ${x.value}`.slice(0, 30) : x.value)) : [], person: P ? { i: P.i + 1, n: P.n, noun: nounOf(formOf(e)) } : null,
-      others: P && P.n > 1 ? r.people.map((x, i) => ({ name: nameCase(x.name), url: `/badge/${x.tk || r.tk}`, me: i === f.p })) : [],
-      event: { title: e.title, slug: e.slug, start: e.start, end: e.end || '', tz: e.tz, tzLabel: pe.tzLabel, startUTC: pe.startUTC, endUTC: pe.endUTC, mode: e.mode, locationName: e.locationName || '', mapUrl: e.mapUrl || '', cover: pe.cover } };
+    const { e, r } = f;
+    const data = badgeData(e, r, f.p, origin, publicEvent(e, f.doc.list));
     return new Response(`${head(`${data.name} · ${e.title} · Badge`)}<body class="bdgpage"><main class="bdgwrap" id="badge"></main>
 <script>window.BADGE=${JSON.stringify(data).replace(/</g, '\\u003c')};</script><script src="/js/vendor/qrcode.js"></script><script src="/site/badge.js"></script></body></html>`,
       { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-robots-tag': 'noindex' } });

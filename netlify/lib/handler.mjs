@@ -98,7 +98,7 @@ export function createHandler({ getStore, env }) {
     const pm = url.pathname.match(/^\/events\/([a-z0-9-]{1,80})\/?$/);
     if (pm && req.method === 'GET') return EV.page(pm[1], url.origin);
     if (req.method === 'GET' && /^\/(sitemap\.xml|robots\.txt|google[a-z0-9]{6,40}\.html)$/i.test(url.pathname)) { const r = await SEO.publicFile(url.pathname, url.origin, allEvents); if (r) return r; }
-    const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20}|preview)\/?$/);
+    const bm = url.pathname.match(/^\/badge\/([a-f0-9]{20}|preview|batch)\/?$/);
     if (bm && req.method === 'GET') return EV.badge(bm[1], url.origin);
     const path = url.pathname.replace(/^\/api/, '').replace(/\/+$/, '') || '/';
     const method = req.method.toUpperCase();
